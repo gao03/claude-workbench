@@ -31,6 +31,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<UsageStats | null>(null);
+  const [todayStats, setTodayStats] = useState<UsageStats | null>(null);
   const [sessionStats, setSessionStats] = useState<ProjectUsage[] | null>(null);
   const [selectedDateRange, setSelectedDateRange] = useState<"all" | "7d" | "30d">("7d");
   const [activeTab, setActiveTab] = useState("overview");
@@ -94,10 +95,12 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ }) => {
     // Check cache first
     const cachedStats = getCachedData(`${cacheKey}-stats`);
     const cachedSessions = getCachedData(`${cacheKey}-sessions`);
+    const cachedTodayStats = getCachedData('usage-today');
     
-    if (cachedStats && cachedSessions) {
+    if (cachedStats && cachedSessions && cachedTodayStats) {
       setStats(cachedStats);
       setSessionStats(cachedSessions);
+      setTodayStats(cachedTodayStats);
       setLoading(false);
       return;
     }
@@ -109,17 +112,25 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ }) => {
       }
       setError(null);
 
+      // Get today's date range
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
       let statsData: UsageStats;
       let sessionData: ProjectUsage[] = [];
+      let todayData: UsageStats;
       
       if (selectedDateRange === "all") {
-        // Fetch both in parallel for all time
-        const [statsResult, sessionResult] = await Promise.all([
+        // Fetch all data in parallel
+        const [statsResult, sessionResult, todayResult] = await Promise.all([
           api.getUsageStats(),
-          api.getSessionStats()
+          api.getSessionStats(),
+          api.getUsageByDateRange(todayStart.toISOString(), todayEnd.toISOString())
         ]);
         statsData = statsResult;
         sessionData = sessionResult;
+        todayData = todayResult;
       } else {
         const endDate = new Date();
         const startDate = new Date();
@@ -133,8 +144,8 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ }) => {
           return `${year}${month}${day}`;
         }
 
-        // Fetch both in parallel for better performance
-        const [statsResult, sessionResult] = await Promise.all([
+        // Fetch all data in parallel for better performance
+        const [statsResult, sessionResult, todayResult] = await Promise.all([
           api.getUsageByDateRange(
             startDate.toISOString(),
             endDate.toISOString()
@@ -143,20 +154,24 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ }) => {
             formatDateForApi(startDate),
             formatDateForApi(endDate),
             'desc'
-          )
+          ),
+          api.getUsageByDateRange(todayStart.toISOString(), todayEnd.toISOString())
         ]);
         
         statsData = statsResult;
         sessionData = sessionResult;
+        todayData = todayResult;
       }
       
       // Update state
       setStats(statsData);
       setSessionStats(sessionData);
+      setTodayStats(todayData);
       
       // Cache the data
       setCachedData(`${cacheKey}-stats`, statsData);
       setCachedData(`${cacheKey}-sessions`, sessionData);
+      setCachedData('usage-today', todayData);
     } catch (err: any) {
       console.error("Failed to load usage stats:", err);
       setError("Failed to load usage statistics. Please try again.");
@@ -199,6 +214,51 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ }) => {
       }
     });
   }, [activeTab, stats, loading])
+
+  // Memoize today's usage card
+  const todayCard = useMemo(() => {
+    if (!todayStats) return null;
+    
+    return (
+      <Card className="p-6 mb-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-label font-semibold flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            今日用量
+          </h3>
+          <span className="text-caption text-muted-foreground">
+            {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <p className="text-caption text-muted-foreground mb-1">今日费用</p>
+            <p className="text-heading-3 font-semibold text-primary">
+              {formatCurrency(todayStats.total_cost)}
+            </p>
+          </div>
+          <div>
+            <p className="text-caption text-muted-foreground mb-1">今日会话</p>
+            <p className="text-heading-3 font-semibold">
+              {formatNumber(todayStats.total_sessions)}
+            </p>
+          </div>
+          <div>
+            <p className="text-caption text-muted-foreground mb-1">今日令牌</p>
+            <p className="text-heading-3 font-semibold">
+              {formatTokens(todayStats.total_tokens)}
+            </p>
+          </div>
+          <div>
+            <p className="text-caption text-muted-foreground mb-1">缓存读取</p>
+            <p className="text-heading-3 font-semibold text-green-600">
+              {formatTokens(todayStats.total_cache_read_tokens)}
+            </p>
+          </div>
+        </div>
+      </Card>
+    );
+  }, [todayStats, formatCurrency, formatNumber, formatTokens]);
 
   // Memoize expensive computations
   const summaryCards = useMemo(() => {
@@ -358,6 +418,9 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ }) => {
             </div>
           ) : stats ? (
             <div className="space-y-6">
+              {/* Today's Usage Card */}
+              {todayCard}
+              
               {/* Summary Cards */}
               {summaryCards}
 
