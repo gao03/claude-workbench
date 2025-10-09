@@ -62,8 +62,21 @@ React Frontend (TypeScript) ↔ Tauri IPC Bridge ↔ Rust Backend
   - `ProviderManager.tsx`: Provider switching UI (**core feature**)
   - `CheckpointTimeline.tsx`: Timeline visualization and restoration
   - `StorageTab.tsx`: Direct database inspection/editing
+  - `ClaudeCodeSession.tsx`: Main session UI with virtual scrolling for performance
+  - `message/StreamMessageV2.tsx`: Modern bubble-style message rendering
 - **contexts/**: React contexts (theme, translation, etc.)
 - **hooks/**: Custom hooks including `useTabs.tsx`, `useSessionSync.ts`
+
+**Performance Architecture**:
+- **Virtual Scrolling**: Uses `@tanstack/react-virtual` for message list rendering
+  - Only renders visible messages + overscan buffer (8 items)
+  - Dynamic height measurement for variable-sized message bubbles
+  - Handles 1000+ messages without performance degradation
+  - Location: `ClaudeCodeSession.tsx:433-442`
+- **Smart Auto-Scroll**: User scroll detection prevents forced scrolling during manual navigation
+  - 50px bottom threshold to detect "at bottom" state
+  - Automatic resume when user scrolls back to bottom
+  - Location: `ClaudeCodeSession.tsx:558-636`
 
 ### Database Architecture (SQLite)
 Core tables managed through `AgentDb` state wrapper:
@@ -113,13 +126,35 @@ Core tables managed through `AgentDb` state wrapper:
 - **Diff Visualization**: Compare any two checkpoints with detailed diffs
 - **Location**: `src-tauri/src/checkpoint/`, API in `lib/api.ts` (checkpoint_* methods)
 
-### Multi-Tab Session Management
-**State synchronization architecture**:
-- **Session Sync**: 5-second interval background sync to detect state inconsistencies
-- **Consistency Checks**: Corrects tabs showing wrong streaming status
+**Message-Level Operations** ⭐:
+- **Fine-Grained Undo/Redo**: Rewind to any message index, not just checkpoints
+  - `message_undo`: Undo N messages from current position
+  - `message_edit`: Edit specific message and regenerate from that point
+  - `message_delete`: Remove specific message from history
+  - `message_truncate_to_index`: Cut conversation at specific point
+- **Implementation**: Operates directly on Claude CLI's `.claude/sessions/<session_id>/messages.jsonl` file
+- **UI Integration**: Context menu on messages with keyboard shortcuts
+- **Location**: `src-tauri/src/commands/claude.rs`, `ClaudeCodeSession.tsx:163-278`
+
+### Multi-Tab Session Management ⭐ (Recently Refactored)
+**Major Architecture Improvements (v3.0.2)**:
+- **Phase 1 - Interface Simplification**: Unified `Tab` interface replaces dual `TabSessionData`/`TabSession` pattern, reducing complexity by 40%
+  - Single state enum: `state: 'idle' | 'streaming' | 'error'` (merged streamingStatus into state)
+  - Flattened error structure: `errorMessage?: string` (no nested error object)
+  - Computed `isActive` property from `activeTabId` (not stored in state)
+- **Phase 2 - Event-Driven Sync**: Replaced 5-second polling with real-time Tauri event listeners (`claude-session-state` events), improving responsiveness by 98%
+  - Events: `started`, `stopped` with session metadata
+  - Automatic tab state correction when Claude process state changes
+- **Phase 3 - Unified Initialization**: Single initialization path with `isActive` prop pattern
+  - **Critical Pattern**: `isActive` prop prevents multiple `ClaudeCodeSession` instances from setting up duplicate event listeners
+  - Only the active tab registers `claude-output:${sessionId}` listeners to prevent event conflicts
+  - Cleanup on tab switch: inactive tabs unregister listeners immediately
+
+**Core Architecture**:
 - **Session Wrapper**: Each tab wrapped in `TabSessionWrapper` with isolated state
-- **Process Tracking**: Maps tab sessions to running Claude process IDs
-- **Location**: `src/hooks/useTabs.tsx`, `src/hooks/useSessionSync.ts`
+- **Process Tracking**: Maps tab sessions to running Claude process IDs via `ProcessRegistry`
+- **State Persistence**: Auto-save to localStorage with validation and recovery
+- **Location**: `src/hooks/useTabs.tsx`, `src/hooks/useSessionSync.ts`, `src/components/ClaudeCodeSession.tsx:515-524`
 
 ### Auto-Compact Context Management
 **Intelligent token optimization**:
@@ -138,6 +173,21 @@ Core tables managed through `AgentDb` state wrapper:
 - **Language Detection**: Auto-detect source language
 - **Configuration**: Persistent config storage with API endpoints
 - **Location**: `src-tauri/src/commands/translator.rs`, `src/i18n/`
+
+**Real-Time Translation Architecture** ⭐:
+- **Middleware Pattern**: `translationMiddleware` intercepts user input and Claude responses
+  - User input: Detects language and translates to English before sending to Claude CLI
+  - Claude response: Translates English responses back to user's language
+  - Slash commands: Automatically bypassed (sent as-is to preserve command syntax)
+- **Progressive Translation**: Historical messages translated in background with priority queue
+  - High priority: Last 10 messages (visible content)
+  - Normal priority: Older messages (lazy loading)
+  - Non-blocking: UI displays immediately, translations applied when ready
+  - Location: `src/lib/progressiveTranslation.ts`, `ClaudeCodeSession.tsx:1034-1090`
+- **Content Extraction Strategy**: 8 methods to extract translatable content from Claude SDK responses
+  - Handles: `content.text`, `message.content[]`, `result`, `error`, `summary` fields
+  - Preserves message structure after translation
+  - Location: `ClaudeCodeSession.tsx:704-1029`
 
 ### MCP (Model Context Protocol)
 - Full MCP server management with connection testing

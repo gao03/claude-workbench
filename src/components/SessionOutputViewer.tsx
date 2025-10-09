@@ -541,6 +541,7 @@ export function SessionOutputViewer({ session, onClose, className }: SessionOutp
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.2 }}
+                          className="mb-6"
                         >
                           <ErrorBoundary>
                             <StreamMessage message={message} streamMessages={messages} />

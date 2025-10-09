@@ -789,7 +789,7 @@ export const AgentExecution: React.FC<AgentExecutionProps> = ({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute inset-x-4 pb-4"
+                        className="absolute inset-x-4 pb-6"
                         style={{ top: virtualItem.start }}
                       >
                         <ErrorBoundary>
@@ -931,7 +931,7 @@ export const AgentExecution: React.FC<AgentExecutionProps> = ({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute inset-x-4 pb-4"
+                        className="absolute inset-x-4 pb-6"
                         style={{ top: virtualItem.start }}
                       >
                         <ErrorBoundary>

@@ -33,7 +33,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "mb-6 flex w-full",
+        "flex w-full mb-6", // 恢复 mb-6 确保消息间距
         isUser ? "justify-end" : "justify-start",
         className
       )}

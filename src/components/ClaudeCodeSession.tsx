@@ -2209,7 +2209,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className="absolute inset-x-4 pb-4"
+                className="absolute inset-x-4"
                 style={{
                   top: virtualItem.start,
                 }}

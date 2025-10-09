@@ -689,7 +689,7 @@ export function AgentRunOutputViewer({
             ) : (
               <div 
                 ref={scrollAreaRef}
-                className="h-full overflow-y-auto p-4 space-y-2"
+                className="h-full overflow-y-auto p-4"
                 onScroll={handleScroll}
               >
                 <AnimatePresence>
@@ -699,6 +699,7 @@ export function AgentRunOutputViewer({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
+                      className="mb-6"
                     >
                       <ErrorBoundary>
                         <StreamMessage message={message} streamMessages={messages} />
