@@ -217,11 +217,18 @@ impl ClaudePermissionConfig {
     }
     
     /// Plan Mode - 使用 Claude CLI 原生的 plan 权限模式
-    /// Plan Mode 自动提供只读工具访问权限，用于安全的研究和规划阶段
+    /// Plan Mode 允许分析但禁止修改文件或执行命令
+    /// 
+    /// 官方定义：Claude can analyze but not modify files or execute commands
+    /// - 允许：Read, Grep, Glob, LS, NotebookRead (只读工具)
+    /// - 允许：WebFetch, WebSearch (信息获取)
+    /// - 允许：TodoWrite (规划任务)
+    /// - 允许：MCP 只读工具（根据具体工具特性）
+    /// - 禁止：Edit, Write, MultiEdit, Bash (修改和执行)
     pub fn plan_mode() -> Self {
         Self {
-            allowed_tools: vec![],  // Claude CLI 的 plan 模式会自动处理工具权限
-            disallowed_tools: vec![],
+            allowed_tools: vec![],  // CLI 的 --permission-mode plan 会自动处理
+            disallowed_tools: vec![],  // 不需要额外禁止，CLI 已经处理
             permission_mode: PermissionMode::Plan,
             auto_approve_edits: false,
             enable_dangerous_skip: false,
