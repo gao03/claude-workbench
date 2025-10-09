@@ -262,7 +262,7 @@ const FloatingPromptInputInner = (
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Compose your prompt</h3>
+                <h3 className="text-sm font-medium">编写提示词</h3>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -315,7 +315,7 @@ const FloatingPromptInputInner = (
                 value={prompt}
                 onChange={handleTextChange}
                 onPaste={handlePaste}
-                placeholder="在这里输入您的提示词..."
+                placeholder="输入您的提示词..."
                 className="min-h-[240px] resize-none"
                 disabled={disabled}
                 onDragEnter={handleDrag}
@@ -350,7 +350,7 @@ const FloatingPromptInputInner = (
                   disabled={!prompt.trim() || disabled}
                   size="default"
                 >
-                  Send
+                  发送
                 </Button>
               </div>
             </motion.div>
@@ -430,7 +430,7 @@ const FloatingPromptInputInner = (
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
-                placeholder={dragActive ? "Drop images here..." : "Ask Claude anything..."}
+                placeholder={dragActive ? "拖放图片到这里..." : "向 Claude 提问..."}
                 disabled={disabled}
                 className={cn(
                   "min-h-[56px] max-h-[160px] resize-none pr-10 overflow-y-auto",
@@ -489,16 +489,16 @@ const FloatingPromptInputInner = (
                   className="gap-2"
                 >
                   <Wand2 className="h-4 w-4" />
-                  {isEnhancing ? "Enhancing..." : "Enhance"}
+                  {isEnhancing ? "优化中..." : "优化提示词"}
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={handleEnhancePrompt}>
-                  Use Claude Code
+                  使用 Claude
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleEnhancePromptWithGemini}>
-                  Use Gemini
+                  使用 Gemini
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -511,7 +511,7 @@ const FloatingPromptInputInner = (
                 size="default"
                 disabled={disabled}
               >
-                Cancel
+                取消
               </Button>
             ) : (
               <Button
@@ -519,7 +519,7 @@ const FloatingPromptInputInner = (
                 disabled={!prompt.trim() || disabled}
                 size="default"
               >
-                Send
+                发送
               </Button>
             )}
           </div>
