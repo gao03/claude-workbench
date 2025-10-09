@@ -149,6 +149,24 @@ const FloatingPromptInputInner = (
     }
   }, [isExpanded]);
 
+  // Auto-resize textarea based on content
+  const adjustTextareaHeight = (textarea: HTMLTextAreaElement | null) => {
+    if (!textarea) return;
+    
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = 'auto';
+    
+    // Set height to scrollHeight (content height)
+    const newHeight = Math.min(textarea.scrollHeight, 160); // Max 160px as per original CSS
+    textarea.style.height = `${newHeight}px`;
+  };
+
+  // Auto-resize on prompt change
+  useEffect(() => {
+    const textarea = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+    adjustTextareaHeight(textarea);
+  }, [prompt, isExpanded]);
+
   // Event handlers
   const handleSend = () => {
     if (prompt.trim() && !disabled) {
@@ -172,6 +190,14 @@ const FloatingPromptInputInner = (
       setPrompt("");
       setImageAttachments([]);
       setEmbeddedImages([]);
+      
+      // Reset textarea height after sending
+      setTimeout(() => {
+        const textarea = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+        if (textarea) {
+          textarea.style.height = 'auto';
+        }
+      }, 0);
     }
   };
 
@@ -407,10 +433,11 @@ const FloatingPromptInputInner = (
                 placeholder={dragActive ? "Drop images here..." : "Ask Claude anything..."}
                 disabled={disabled}
                 className={cn(
-                  "min-h-[56px] max-h-[160px] resize-none pr-10",
+                  "min-h-[56px] max-h-[160px] resize-none pr-10 overflow-y-auto",
                   dragActive && "border-primary"
                 )}
                 rows={1}
+                style={{ height: 'auto' }}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
