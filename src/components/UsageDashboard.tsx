@@ -10,7 +10,8 @@ import {
   Loader2,
   Briefcase,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from "lucide-react";
 
 interface UsageDashboardProps {
@@ -27,7 +28,7 @@ const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes cache - increased for bette
 /**
  * Optimized UsageDashboard component with caching and progressive loading
  */
-export const UsageDashboard: React.FC<UsageDashboardProps> = ({ }) => {
+export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<UsageStats | null>(null);
@@ -376,6 +377,17 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ }) => {
       <div className="max-w-6xl mx-auto flex flex-col h-full">
         {/* Header */}
         <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              返回主页
+            </Button>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-heading-1">使用情况仪表板</h1>
