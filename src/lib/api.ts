@@ -1182,23 +1182,26 @@ export const api = {
 
   /**
    * Executes a new interactive Claude Code session with streaming output
+   * @param planMode - Enable Plan Mode for read-only research and planning
    */
-  async executeClaudeCode(projectPath: string, prompt: string, model: string): Promise<void> {
-    return invoke("execute_claude_code", { projectPath, prompt, model });
+  async executeClaudeCode(projectPath: string, prompt: string, model: string, planMode?: boolean): Promise<void> {
+    return invoke("execute_claude_code", { projectPath, prompt, model, planMode });
   },
 
   /**
    * Continues an existing Claude Code conversation with streaming output
+   * @param planMode - Enable Plan Mode for read-only research and planning
    */
-  async continueClaudeCode(projectPath: string, prompt: string, model: string): Promise<void> {
-    return invoke("continue_claude_code", { projectPath, prompt, model });
+  async continueClaudeCode(projectPath: string, prompt: string, model: string, planMode?: boolean): Promise<void> {
+    return invoke("continue_claude_code", { projectPath, prompt, model, planMode });
   },
 
   /**
    * Resumes an existing Claude Code session by ID with streaming output
+   * @param planMode - Enable Plan Mode for read-only research and planning
    */
-  async resumeClaudeCode(projectPath: string, sessionId: string, prompt: string, model: string): Promise<void> {
-    return invoke("resume_claude_code", { projectPath, sessionId, prompt, model });
+  async resumeClaudeCode(projectPath: string, sessionId: string, prompt: string, model: string, planMode?: boolean): Promise<void> {
+    return invoke("resume_claude_code", { projectPath, sessionId, prompt, model, planMode });
   },
 
   /**

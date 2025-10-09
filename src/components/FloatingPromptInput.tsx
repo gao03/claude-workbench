@@ -10,7 +10,8 @@ import {
   Square,
   Brain,
   X,
-  Wand2
+  Wand2,
+  Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,14 @@ interface FloatingPromptInputProps {
    * Optional function to get conversation context for prompt enhancement
    */
   getConversationContext?: () => string[];
+  /**
+   * Whether Plan Mode is enabled
+   */
+  isPlanMode?: boolean;
+  /**
+   * Callback when Plan Mode is toggled
+   */
+  onTogglePlanMode?: () => void;
 }
 
 interface ImageAttachment {
@@ -201,6 +210,8 @@ const FloatingPromptInputInner = (
     className,
     onCancel,
     getConversationContext,
+    isPlanMode = false,
+    onTogglePlanMode,
   }: FloatingPromptInputProps,
   ref: React.Ref<FloatingPromptInputRef>,
 ) => {
@@ -1212,6 +1223,40 @@ const FloatingPromptInputInner = (
                 align="start"
                 side="top"
               />
+
+              {/* Plan Mode Toggle */}
+              {onTogglePlanMode && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={isPlanMode ? "default" : "outline"}
+                        size="default"
+                        onClick={onTogglePlanMode}
+                        disabled={disabled}
+                        className={cn(
+                          "gap-2",
+                          isPlanMode && "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                        )}
+                      >
+                        <Search className="h-4 w-4" />
+                        <span className="text-sm font-medium">Plan</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="font-medium">
+                        {isPlanMode ? "Plan Mode (Active)" : "Plan Mode"}
+                      </p>
+                      <p className="text-xs text-muted-foreground max-w-[200px]">
+                        {isPlanMode 
+                          ? "只读研究模式 - Claude 只能分析和规划，不会修改文件"
+                          : "点击启用只读研究模式（快捷键: Shift+Tab 两次）"
+                        }
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
 
               {/* Prompt Input */}
               <div className="flex-1 relative">

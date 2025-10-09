@@ -1532,25 +1532,32 @@ pub async fn execute_claude_code(
     project_path: String,
     prompt: String,
     model: String,
+    plan_mode: Option<bool>,
 ) -> Result<(), String> {
+    let plan_mode = plan_mode.unwrap_or(false);
     log::info!(
-        "Starting Claude Code session with project context resume in: {} with model: {}",
+        "Starting Claude Code session with project context resume in: {} with model: {}, plan_mode: {}",
         project_path,
-        model
+        model,
+        plan_mode
     );
 
     let claude_path = find_claude_binary(&app)?;
     
     // 获取当前执行配置
-    let execution_config = get_claude_execution_config(app.clone()).await
+    let mut execution_config = get_claude_execution_config(app.clone()).await
         .unwrap_or_else(|e| {
             log::warn!("Failed to load execution config, using default: {}", e);
             ClaudeExecutionConfig::default()
         });
     
-    log::info!("Using execution config: permissions_mode={:?}, dangerous_skip={}", 
+    // 如果启用 Plan Mode，覆盖配置
+    execution_config.plan_mode = plan_mode;
+    
+    log::info!("Using execution config: permissions_mode={:?}, dangerous_skip={}, plan_mode={}", 
         execution_config.permissions.permission_mode,
-        execution_config.permissions.enable_dangerous_skip
+        execution_config.permissions.enable_dangerous_skip,
+        execution_config.plan_mode
     );
     
     // 使用新的参数构建函数（先映射模型名称）
@@ -1570,25 +1577,32 @@ pub async fn continue_claude_code(
     project_path: String,
     prompt: String,
     model: String,
+    plan_mode: Option<bool>,
 ) -> Result<(), String> {
+    let plan_mode = plan_mode.unwrap_or(false);
     log::info!(
-        "Continuing Claude Code conversation in: {} with model: {}",
+        "Continuing Claude Code conversation in: {} with model: {}, plan_mode: {}",
         project_path,
-        model
+        model,
+        plan_mode
     );
 
     let claude_path = find_claude_binary(&app)?;
     
     // 获取当前执行配置
-    let execution_config = get_claude_execution_config(app.clone()).await
+    let mut execution_config = get_claude_execution_config(app.clone()).await
         .unwrap_or_else(|e| {
             log::warn!("Failed to load execution config, using default: {}", e);
             ClaudeExecutionConfig::default()
         });
     
-    log::info!("Continuing with execution config: permissions_mode={:?}, dangerous_skip={}", 
+    // 如果启用 Plan Mode，覆盖配置
+    execution_config.plan_mode = plan_mode;
+    
+    log::info!("Continuing with execution config: permissions_mode={:?}, dangerous_skip={}, plan_mode={}", 
         execution_config.permissions.permission_mode,
-        execution_config.permissions.enable_dangerous_skip
+        execution_config.permissions.enable_dangerous_skip,
+        execution_config.plan_mode
     );
     
     // 使用新的参数构建函数，添加 -c 标志用于继续对话（先映射模型名称）
@@ -1612,12 +1626,15 @@ pub async fn resume_claude_code(
     session_id: String,
     prompt: String,
     model: String,
+    plan_mode: Option<bool>,
 ) -> Result<(), String> {
+    let plan_mode = plan_mode.unwrap_or(false);
     log::info!(
-        "Resuming Claude Code session: {} in: {} with model: {}",
+        "Resuming Claude Code session: {} in: {} with model: {}, plan_mode: {}",
         session_id,
         project_path,
-        model
+        model,
+        plan_mode
     );
     
     // Log the session file path for debugging
@@ -1632,15 +1649,19 @@ pub async fn resume_claude_code(
     let claude_path = find_claude_binary(&app)?;
     
     // 获取当前执行配置
-    let execution_config = get_claude_execution_config(app.clone()).await
+    let mut execution_config = get_claude_execution_config(app.clone()).await
         .unwrap_or_else(|e| {
             log::warn!("Failed to load execution config, using default: {}", e);
             ClaudeExecutionConfig::default()
         });
     
-    log::info!("Resuming with execution config: permissions_mode={:?}, dangerous_skip={}", 
+    // 如果启用 Plan Mode，覆盖配置
+    execution_config.plan_mode = plan_mode;
+    
+    log::info!("Resuming with execution config: permissions_mode={:?}, dangerous_skip={}, plan_mode={}", 
         execution_config.permissions.permission_mode,
-        execution_config.permissions.enable_dangerous_skip
+        execution_config.permissions.enable_dangerous_skip,
+        execution_config.plan_mode
     );
     
     // 使用新的参数构建函数，添加 --resume 和 session_id（先映射模型名称）
@@ -1662,7 +1683,7 @@ pub async fn resume_claude_code(
         Err(resume_error) => {
             log::warn!("Resume failed: {}, trying continue mode as fallback", resume_error);
             // Fallback to continue mode
-            continue_claude_code(app, project_path, prompt, model).await
+            continue_claude_code(app, project_path, prompt, model, Some(plan_mode)).await
         }
     }
 }

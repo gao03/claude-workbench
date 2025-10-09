@@ -113,6 +113,12 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const [forkSessionName, setForkSessionName] = useState("");
   const [lastEscapeTime, setLastEscapeTime] = useState(0);
 
+  // Plan Mode state
+  const [isPlanMode, setIsPlanMode] = useState(false);
+  const [lastShiftTabTime, setLastShiftTabTime] = useState(0);
+  // const [planModeContent, setPlanModeContent] = useState<string | null>(null); // Reserved for future plan preview dialog
+  // const [showPlanDialog, setShowPlanDialog] = useState(false); // Reserved for future plan approval flow
+
   // Queued prompts state
   const [queuedPrompts, setQueuedPrompts] = useState<Array<{ id: string; prompt: string; model: "sonnet" | "opus" | "sonnet1m" }>>([]);
 
@@ -553,6 +559,38 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       document.removeEventListener('keydown', handleEscapeKey, { capture: true });
     };
   }, [lastEscapeTime, isActive, extractedSessionInfo, projectPath]);
+
+  // Shift+Tab double press detection for Plan Mode toggle
+  useEffect(() => {
+    const handlePlanModeToggle = (event: KeyboardEvent) => {
+      if (event.key === 'Tab' && event.shiftKey && isActive) {
+        const now = Date.now();
+
+        // Check if this is a double Shift+Tab within 500ms
+        if (now - lastShiftTabTime < 500) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          // Toggle Plan Mode
+          setIsPlanMode(prev => {
+            const newState = !prev;
+            console.log(`[PlanMode] ${newState ? 'Enabled' : 'Disabled'} Plan Mode`);
+            return newState;
+          });
+        }
+
+        setLastShiftTabTime(now);
+      }
+    };
+
+    if (isActive) {
+      document.addEventListener('keydown', handlePlanModeToggle, { capture: true });
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handlePlanModeToggle, { capture: true });
+    };
+  }, [lastShiftTabTime, isActive]);
 
   // Smart scroll detection - detect when user manually scrolls
   useEffect(() => {
@@ -1856,17 +1894,17 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           // Resume existing session
           console.log('[ClaudeCodeSession] Resuming session:', effectiveSession.id);
           try {
-            await api.resumeClaudeCode(projectPath, effectiveSession.id, processedPrompt, model);
+            await api.resumeClaudeCode(projectPath, effectiveSession.id, processedPrompt, model, isPlanMode);
           } catch (resumeError) {
             console.warn('[ClaudeCodeSession] Resume failed, falling back to continue mode:', resumeError);
             // Fallback to continue mode if resume fails
-            await api.continueClaudeCode(projectPath, processedPrompt, model);
+            await api.continueClaudeCode(projectPath, processedPrompt, model, isPlanMode);
           }
         } else {
           // Start new session
           console.log('[ClaudeCodeSession] Starting new session');
           setIsFirstPrompt(false);
-          await api.executeClaudeCode(projectPath, processedPrompt, model);
+          await api.executeClaudeCode(projectPath, processedPrompt, model, isPlanMode);
         }
     } catch (err) {
       console.error("Failed to send prompt:", err);
@@ -2410,6 +2448,23 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               <span className="text-sm font-medium text-foreground">
                 {projectPath || "未选择项目"}
               </span>
+              
+              {/* Plan Mode Indicator */}
+              {isPlanMode && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Badge 
+                    variant="secondary" 
+                    className="ml-2 flex items-center gap-1 px-2 py-0.5 h-6 bg-blue-50 text-blue-700 border-blue-200"
+                  >
+                    <span className="text-xs font-semibold">🔍 Plan Mode</span>
+                  </Badge>
+                </motion.div>
+              )}
             </div>
           </div>
 
@@ -2818,6 +2873,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               disabled={!projectPath}
               projectPath={projectPath}
               getConversationContext={getConversationContext}
+              isPlanMode={isPlanMode}
+              onTogglePlanMode={() => setIsPlanMode(prev => !prev)}
               // Removed hasActiveSession - now using Claude Code SDK directly
             />
           </div>
