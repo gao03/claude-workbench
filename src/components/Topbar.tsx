@@ -42,7 +42,6 @@ interface TopbarProps {
  * <Topbar
  *   onClaudeClick={() => setView('editor')}
  *   onSettingsClick={() => setView('settings')}
- *   onUsageClick={() => setView('usage-dashboard')}
  *   onMCPClick={() => setView('mcp')}
  * />
  */
