@@ -18,6 +18,9 @@ import { useFileSelection } from "./hooks/useFileSelection";
 import { useSlashCommands } from "./hooks/useSlashCommands";
 import { usePromptEnhancement } from "./hooks/usePromptEnhancement";
 
+// Re-export types for external use
+export type { FloatingPromptInputRef, FloatingPromptInputProps, ThinkingMode, ModelType } from "./types";
+
 /**
  * FloatingPromptInput - Refactored modular component
  * 
