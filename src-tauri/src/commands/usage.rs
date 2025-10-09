@@ -516,8 +516,113 @@ pub fn get_usage_by_date_range(
         });
     }
 
-    // Use same aggregation logic as get_usage_stats_simple
-    get_usage_stats(None)
+    // Calculate aggregated stats from filtered entries
+    let mut total_cost = 0.0;
+    let mut total_input_tokens = 0u64;
+    let mut total_output_tokens = 0u64;
+    let mut total_cache_creation_tokens = 0u64;
+    let mut total_cache_read_tokens = 0u64;
+
+    let mut model_stats: HashMap<String, ModelUsage> = HashMap::new();
+    let mut daily_stats: HashMap<String, DailyUsage> = HashMap::new();
+    let mut project_stats: HashMap<String, ProjectUsage> = HashMap::new();
+
+    for entry in &filtered_entries {
+        // Update totals
+        total_cost += entry.cost;
+        total_input_tokens += entry.input_tokens;
+        total_output_tokens += entry.output_tokens;
+        total_cache_creation_tokens += entry.cache_creation_tokens;
+        total_cache_read_tokens += entry.cache_read_tokens;
+
+        // Update model stats
+        let model_stat = model_stats
+            .entry(entry.model.clone())
+            .or_insert(ModelUsage {
+                model: entry.model.clone(),
+                total_cost: 0.0,
+                total_tokens: 0,
+                input_tokens: 0,
+                output_tokens: 0,
+                cache_creation_tokens: 0,
+                cache_read_tokens: 0,
+                session_count: 0,
+            });
+        model_stat.total_cost += entry.cost;
+        model_stat.input_tokens += entry.input_tokens;
+        model_stat.output_tokens += entry.output_tokens;
+        model_stat.cache_creation_tokens += entry.cache_creation_tokens;
+        model_stat.cache_read_tokens += entry.cache_read_tokens;
+        model_stat.total_tokens = model_stat.input_tokens + model_stat.output_tokens;
+        model_stat.session_count += 1;
+
+        // Update daily stats
+        let date = entry
+            .timestamp
+            .split('T')
+            .next()
+            .unwrap_or(&entry.timestamp)
+            .to_string();
+        let daily_stat = daily_stats.entry(date.clone()).or_insert(DailyUsage {
+            date,
+            total_cost: 0.0,
+            total_tokens: 0,
+            models_used: vec![],
+        });
+        daily_stat.total_cost += entry.cost;
+        daily_stat.total_tokens += entry.input_tokens
+            + entry.output_tokens
+            + entry.cache_creation_tokens
+            + entry.cache_read_tokens;
+        if !daily_stat.models_used.contains(&entry.model) {
+            daily_stat.models_used.push(entry.model.clone());
+        }
+
+        // Update project stats
+        let project_stat =
+            project_stats
+                .entry(entry.project_path.clone())
+                .or_insert(ProjectUsage {
+                    project_path: entry.project_path.clone(),
+                    project_name: entry
+                        .project_path
+                        .split('/')
+                        .last()
+                        .unwrap_or(&entry.project_path)
+                        .to_string(),
+                    total_cost: 0.0,
+                    total_tokens: 0,
+                    session_count: 0,
+                    last_used: entry.timestamp.clone(),
+                });
+        project_stat.total_cost += entry.cost;
+        project_stat.total_tokens += entry.input_tokens
+            + entry.output_tokens
+            + entry.cache_creation_tokens
+            + entry.cache_read_tokens;
+        project_stat.session_count += 1;
+        if entry.timestamp > project_stat.last_used {
+            project_stat.last_used = entry.timestamp.clone();
+        }
+    }
+
+    let unique_sessions: HashSet<_> = filtered_entries.iter().map(|e| &e.session_id).collect();
+
+    Ok(UsageStats {
+        total_cost,
+        total_tokens: total_input_tokens
+            + total_output_tokens
+            + total_cache_creation_tokens
+            + total_cache_read_tokens,
+        total_input_tokens,
+        total_output_tokens,
+        total_cache_creation_tokens,
+        total_cache_read_tokens,
+        total_sessions: unique_sessions.len() as u64,
+        by_model: model_stats.into_values().collect(),
+        by_date: daily_stats.into_values().collect(),
+        by_project: project_stats.into_values().collect(),
+    })
 }
 
 #[command]
