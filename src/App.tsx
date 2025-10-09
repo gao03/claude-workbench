@@ -17,7 +17,7 @@ import { ClaudeCodeSession } from "@/components/ClaudeCodeSession";
 import { TabManager } from "@/components/TabManager";
 import { TabProvider, useTabs } from "@/hooks/useTabs";
 import { TabIndicator } from "@/components/TabIndicator";
-import { UsageDashboard } from "@/components/UsageDashboard";
+
 import { MCPManager } from "@/components/MCPManager";
 import { ClaudeBinaryDialog } from "@/components/ClaudeBinaryDialog";
 import { Toast, ToastContainer } from "@/components/ui/toast";
@@ -41,7 +41,6 @@ type View =
   | "agent-execution"
   | "agent-run-view"
   | "mcp"
-  | "usage-dashboard"
   | "project-settings"
   | "subagent-manager"
   | "enhanced-hooks-manager";
@@ -599,10 +598,7 @@ function AppContent() {
           />
         );
       
-      case "usage-dashboard":
-        return (
-          <UsageDashboard onBack={handleSmartBack} />
-        );
+
 
       case "mcp":
         return (
@@ -636,7 +632,6 @@ function AppContent() {
           <Topbar
             onClaudeClick={() => handleViewChange("editor")}
             onSettingsClick={() => handleViewChange("settings")}
-            onUsageClick={() => handleViewChange("usage-dashboard")}
             onMCPClick={() => handleViewChange("mcp")}
           />
 

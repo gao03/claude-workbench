@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, Settings, BarChart3, Network } from "lucide-react";
+import { FileText, Settings, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClaudeStatusIndicator } from "@/components/ClaudeStatusIndicator";
 import { cn } from "@/lib/utils";
@@ -16,10 +16,7 @@ interface TopbarProps {
    * Callback when Settings is clicked
    */
   onSettingsClick: () => void;
-  /**
-   * Callback when Usage Dashboard is clicked
-   */
-  onUsageClick: () => void;
+
   /**
    * Callback when MCP is clicked
    */
@@ -52,7 +49,6 @@ interface TopbarProps {
 export const Topbar: React.FC<TopbarProps> = ({
   onClaudeClick,
   onSettingsClick,
-  onUsageClick,
   onMCPClick,
   messages,
   sessionId,
@@ -85,16 +81,7 @@ export const Topbar: React.FC<TopbarProps> = ({
       
       {/* Action Buttons */}
       <div className="flex items-center space-x-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onUsageClick}
-          className="text-xs"
-        >
-          <BarChart3 className="mr-2 h-3 w-3" />
-          {t('navigation.usage')}
-        </Button>
-        
+
         <Button
           variant="ghost"
           size="sm"
