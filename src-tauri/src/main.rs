@@ -42,9 +42,7 @@ use commands::mcp::{
 };
 
 use commands::usage::{
-    get_session_stats, get_usage_by_date_range, get_usage_details, get_usage_stats,
-    get_today_usage_stats, get_usage_by_api_base_url, get_active_sessions, get_burn_rate_analysis,
-    get_usage_overview, get_session_cache_tokens, get_realtime_usage_stats,
+    get_session_stats, get_usage_by_date_range, get_usage_stats,
 };
 use commands::storage::{
     storage_list_tables, storage_read_table, storage_update_row, storage_delete_row,
@@ -256,18 +254,10 @@ fn main() {
             test_hook_condition,
             execute_pre_commit_review,
 
-            // Usage & Analytics
+            // Usage & Analytics (Simplified from opcode)
             get_usage_stats,
-            get_usage_overview,
-            get_today_usage_stats,
-            get_usage_by_api_base_url,
             get_usage_by_date_range,
-            get_usage_details,
             get_session_stats,
-            get_active_sessions,
-            get_burn_rate_analysis,
-            get_session_cache_tokens,
-            get_realtime_usage_stats,
             
             // MCP (Model Context Protocol)
             mcp_add,
