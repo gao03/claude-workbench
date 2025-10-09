@@ -1551,13 +1551,15 @@ pub async fn execute_claude_code(
             ClaudeExecutionConfig::default()
         });
     
-    // 如果启用 Plan Mode，覆盖配置
-    execution_config.plan_mode = plan_mode;
+    // 如果启用 Plan Mode，使用 Claude CLI 原生的 plan 权限模式
+    if plan_mode {
+        execution_config.permissions = ClaudePermissionConfig::plan_mode();
+    }
     
     log::info!("Using execution config: permissions_mode={:?}, dangerous_skip={}, plan_mode={}", 
         execution_config.permissions.permission_mode,
         execution_config.permissions.enable_dangerous_skip,
-        execution_config.plan_mode
+        plan_mode
     );
     
     // 使用新的参数构建函数（先映射模型名称）
@@ -1596,13 +1598,15 @@ pub async fn continue_claude_code(
             ClaudeExecutionConfig::default()
         });
     
-    // 如果启用 Plan Mode，覆盖配置
-    execution_config.plan_mode = plan_mode;
+    // 如果启用 Plan Mode，使用 Claude CLI 原生的 plan 权限模式
+    if plan_mode {
+        execution_config.permissions = ClaudePermissionConfig::plan_mode();
+    }
     
     log::info!("Continuing with execution config: permissions_mode={:?}, dangerous_skip={}, plan_mode={}", 
         execution_config.permissions.permission_mode,
         execution_config.permissions.enable_dangerous_skip,
-        execution_config.plan_mode
+        plan_mode
     );
     
     // 使用新的参数构建函数，添加 -c 标志用于继续对话（先映射模型名称）
@@ -1655,13 +1659,15 @@ pub async fn resume_claude_code(
             ClaudeExecutionConfig::default()
         });
     
-    // 如果启用 Plan Mode，覆盖配置
-    execution_config.plan_mode = plan_mode;
+    // 如果启用 Plan Mode，使用 Claude CLI 原生的 plan 权限模式
+    if plan_mode {
+        execution_config.permissions = ClaudePermissionConfig::plan_mode();
+    }
     
     log::info!("Resuming with execution config: permissions_mode={:?}, dangerous_skip={}, plan_mode={}", 
         execution_config.permissions.permission_mode,
         execution_config.permissions.enable_dangerous_skip,
-        execution_config.plan_mode
+        plan_mode
     );
     
     // 使用新的参数构建函数，添加 --resume 和 session_id（先映射模型名称）

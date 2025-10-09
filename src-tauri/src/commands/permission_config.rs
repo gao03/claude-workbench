@@ -15,6 +15,7 @@ pub enum PermissionMode {
     Interactive,
     AcceptEdits,
     ReadOnly,
+    Plan,  // Claude CLI 原生支持的 Plan Mode
 }
 
 impl Default for ClaudePermissionConfig {
@@ -37,9 +38,10 @@ impl Default for ClaudePermissionConfig {
 impl std::fmt::Display for PermissionMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PermissionMode::Interactive => write!(f, "interactive"),
+            PermissionMode::Interactive => write!(f, "default"),
             PermissionMode::AcceptEdits => write!(f, "acceptEdits"),
-            PermissionMode::ReadOnly => write!(f, "readOnly"),
+            PermissionMode::ReadOnly => write!(f, "bypassPermissions"),  // 使用 CLI 正确的参数
+            PermissionMode::Plan => write!(f, "plan"),  // Plan Mode
         }
     }
 }
@@ -49,19 +51,6 @@ pub const DEVELOPMENT_TOOLS: &[&str] = &["Bash", "Read", "Write", "Edit"];
 pub const SAFE_TOOLS: &[&str] = &["Read", "Search"];
 pub const ALL_TOOLS: &[&str] = &["Bash", "Read", "Write", "Edit", "WebFetch", "Task", "TodoWrite"];
 
-/// Plan Mode 允许的只读工具（用于安全的研究和规划阶段）
-pub const PLAN_MODE_TOOLS: &[&str] = &[
-    "Read",       // 读取文件
-    "LS",         // 列出目录
-    "Glob",       // 文件模式搜索
-    "Grep",       // 内容搜索
-    "Task",       // 研究子代理
-    "TodoRead",   // 读取任务
-    "TodoWrite",  // 写入任务（用于规划）
-    "WebFetch",   // Web内容获取
-    "WebSearch",  // Web搜索
-];
-
 /// Claude执行配置结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeExecutionConfig {
@@ -70,8 +59,6 @@ pub struct ClaudeExecutionConfig {
     pub max_tokens: Option<u32>,
     pub verbose: bool,
     pub permissions: ClaudePermissionConfig,
-    /// Plan Mode - 只读研究和规划阶段
-    pub plan_mode: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,7 +76,6 @@ impl Default for ClaudeExecutionConfig {
             max_tokens: None,
             verbose: true,
             permissions: ClaudePermissionConfig::default(),
-            plan_mode: false,
         }
     }
 }
@@ -174,15 +160,8 @@ pub fn build_execution_args(
         args.push(max_tokens.to_string());
     }
     
-    // Plan Mode 支持 - 如果启用，自动切换到只读权限配置
-    let permissions = if config.plan_mode {
-        ClaudePermissionConfig::plan_mode()
-    } else {
-        config.permissions.clone()
-    };
-    
     // 添加权限参数
-    args.extend(build_permission_args(&permissions));
+    args.extend(build_permission_args(&config.permissions));
     
     args
 }
@@ -237,18 +216,13 @@ impl ClaudePermissionConfig {
         }
     }
     
-    /// Plan Mode - 只读研究和规划模式
+    /// Plan Mode - 使用 Claude CLI 原生的 plan 权限模式
+    /// Plan Mode 自动提供只读工具访问权限，用于安全的研究和规划阶段
     pub fn plan_mode() -> Self {
         Self {
-            allowed_tools: PLAN_MODE_TOOLS.iter().map(|s| s.to_string()).collect(),
-            disallowed_tools: vec![
-                "Edit".to_string(),
-                "MultiEdit".to_string(),
-                "Write".to_string(),
-                "Bash".to_string(),
-                "NotebookEdit".to_string(),
-            ],
-            permission_mode: PermissionMode::ReadOnly,
+            allowed_tools: vec![],  // Claude CLI 的 plan 模式会自动处理工具权限
+            disallowed_tools: vec![],
+            permission_mode: PermissionMode::Plan,
             auto_approve_edits: false,
             enable_dangerous_skip: false,
         }
