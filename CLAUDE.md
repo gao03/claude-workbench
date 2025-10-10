@@ -2,271 +2,138 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-并行执行
+## Project Overview
+
+Claude Workbench is a professional desktop application for managing Claude CLI projects, built with Tauri 2 (Rust backend) and React/TypeScript frontend. It provides a visual interface for Claude sessions, API provider management, and project organization.
 
 ## Common Development Commands
 
-### Development
-- `bun run tauri:dev` - Start development mode with hot reload
-- `tsc` - Run TypeScript type checking (**MUST run before builds to catch type errors**)
-- `bun run build` - Build frontend assets
-- `bun run tauri:build` - Production build (optimized for size with full LTO)
-- `bun run tauri:build-fast` - Fast development build using dev-release profile (recommended for testing)
+### Core Development
+```bash
+# Install dependencies (use Bun for faster installs)
+bun install
 
-### Dependencies
-- `bun install` - Install all dependencies (**Bun is the preferred package manager**, not npm/yarn)
+# Start development mode with hot reload
+bun run tauri:dev
 
-## Architecture Overview
+# Build production version (optimized for size)
+bun run tauri:build
 
-This is a **Tauri 2 desktop application** (Windows/macOS/Linux) that provides a professional GUI wrapper for Claude CLI with advanced features: Provider/Proxy management, intelligent checkpointing, multi-tab sessions, MCP support, agent systems, and auto-context compaction.
+# Fast build for testing (larger but quicker)
+bun run tauri:build-fast
 
-### Core Architecture Pattern
-```
-React Frontend (TypeScript) ↔ Tauri IPC Bridge ↔ Rust Backend
-     │                              │                 │
-  UI Components              Command Handlers    Claude CLI Process
-  State Management            Database Ops        System Integration
-  API Calls                   File Operations     Platform APIs
-  Tab Management              Compression         Process Registry
+# Frontend-only development server
+bun run dev
+
+# Type checking
+tsc --noEmit
 ```
 
-### Key Backend Components (src-tauri/src/)
+### Testing & Debugging
+```bash
+# Run a specific Tauri command
+cargo run --manifest-path src-tauri/Cargo.toml
 
-**Core Systems**
-- **main.rs**: Application entry point with all command registrations
-- **commands/**: Domain-specific command handlers
-  - `claude.rs`: Claude CLI process lifecycle and execution
-  - `agents.rs` + `subagents.rs`: Agent system with GitHub integration
-  - `provider.rs`: **Provider/proxy configuration management (core feature)**
-  - `storage.rs`: SQLite database operations
-  - `translator.rs`: Translation service with caching
-  - `context_manager.rs` + `context_commands.rs`: Auto-compact context system
-  - `enhanced_hooks.rs`: Enhanced hooks automation
-  - `mcp.rs`: MCP server management
-  - `clipboard.rs`: Clipboard operations
-  - `slash_commands.rs`: Custom slash command management
-  - `permission_config.rs`: Permission configuration
-  - `usage.rs`: Usage tracking
+# Check Rust code for errors
+cd src-tauri && cargo check
 
-**Process & Storage**
-- **process/**: ProcessRegistry for tracking all running Claude sessions and agent executions
-- **checkpoint/**: Checkpoint system with content-addressable storage and zstd compression
+# Run Rust linting
+cd src-tauri && cargo clippy
 
-### Key Frontend Components (src/)
+# Format Rust code
+cd src-tauri && cargo fmt
+```
 
-**Core UI**
-- **App.tsx**: Main router and global state management
-- **lib/api.ts**: All Tauri IPC command invocations (single source of truth)
-- **components/**: React components (PascalCase naming)
-  - `TabManager.tsx` + `TabSessionWrapper.tsx`: Multi-tab session management
-  - `ProviderManager.tsx`: Provider switching UI (**core feature**)
-  - `CheckpointTimeline.tsx`: Timeline visualization and restoration
-  - `StorageTab.tsx`: Direct database inspection/editing
-  - `ClaudeCodeSession.tsx`: Main session UI with virtual scrolling for performance
-  - `message/StreamMessageV2.tsx`: Modern bubble-style message rendering
-- **contexts/**: React contexts (theme, translation, etc.)
-- **hooks/**: Custom hooks including `useTabs.tsx`, `useSessionSync.ts`
+## High-Level Architecture
 
-**Performance Architecture**:
-- **Virtual Scrolling**: Uses `@tanstack/react-virtual` for message list rendering
-  - Only renders visible messages + overscan buffer (8 items)
-  - Dynamic height measurement for variable-sized message bubbles
-  - Handles 1000+ messages without performance degradation
-  - Location: `ClaudeCodeSession.tsx:433-442`
-- **Smart Auto-Scroll**: User scroll detection prevents forced scrolling during manual navigation
-  - 50px bottom threshold to detect "at bottom" state
-  - Automatic resume when user scrolls back to bottom
-  - Location: `ClaudeCodeSession.tsx:558-636`
+### Frontend-Backend Communication Flow
+The application uses Tauri's IPC (Inter-Process Communication) system:
+1. **Frontend** (`src/lib/api.ts`): TypeScript API client with typed methods
+2. **IPC Bridge**: Tauri's `invoke()` function for type-safe calls
+3. **Backend** (`src-tauri/src/commands/`): Rust command handlers
+4. **Process Management** (`src-tauri/src/process/`): Claude CLI process spawning and monitoring
 
-### Database Architecture (SQLite)
-Core tables managed through `AgentDb` state wrapper:
-- **agents**: Agent definitions and configurations
-- **agent_runs**: Execution history and performance metrics
-- **app_settings**: Application-wide settings
-- **provider_configs**: Custom provider/proxy configurations (stored locally, never hardcoded)
+### Core Backend Modules
+- **commands/claude.rs**: Main Claude CLI integration - handles session execution, streaming, and cancellation
+- **commands/provider.rs**: API provider switching - manages environment variables for different Claude API endpoints
+- **commands/agents.rs**: Agent system - stores and executes AI agents with custom prompts
+- **commands/usage.rs**: Usage tracking - monitors token usage and costs across sessions
+- **commands/mcp.rs**: MCP (Model Context Protocol) server management
+- **checkpoint/**: Session state management - implements checkpointing and timeline branching
 
-## Code Conventions
+### Frontend Architecture
+- **Tab Management**: Multi-tab session support with background execution (`src/hooks/useTabs.tsx`)
+- **Streaming Output**: Real-time Claude response rendering with JSONL parsing
+- **Component Structure**:
+  - `TabManager.tsx`: Manages multiple Claude sessions in tabs
+  - `ClaudeCodeSession.tsx`: Individual session UI with streaming support
+  - `ProviderManager.tsx`: API provider configuration interface
+  - `UsageDashboard.tsx`: Token usage visualization
 
-### TypeScript/React
-- Strict TypeScript mode enabled - **run `tsc` before builds**
-- PascalCase for React components, camelCase for files/functions
-- Tailwind CSS 4 with atomic utility classes (OKLCH color space for theming)
-- React hooks + Context pattern for state management
-- All Tauri commands invoked through `lib/api.ts` (never invoke directly)
+### State Management Patterns
+- **Session State**: Managed per-tab with independent project contexts
+- **Output Caching**: Progressive message rendering optimization (`src/lib/outputCache.tsx`)
+- **Translation Cache**: Middleware for multi-language support (`src/lib/translationMiddleware.ts`)
 
-### Rust
-- Standard Rust conventions with `#[tauri::command]` macro for handlers
-- Error handling: `Result<T, String>` pattern for all commands
-- Async operations use tokio runtime
-- Database operations always go through `AgentDb` state wrapper
+### Database Schema
+SQLite database at `~/.claude/claude_workbench.db`:
+- `agents`: Stores AI agent configurations
+- `agent_runs`: Tracks agent execution history
+- `providers`: API provider configurations
+- `checkpoints`: Session state snapshots
+- `subagent_specialties`: Specialized agent routing
 
-### IPC Communication Pattern
-- **Frontend → Backend**: Use `api.ts` methods, never invoke directly
-- **Command naming**: `domain_action` pattern (e.g., `provider_switch_config`, `storage_list_tables`)
-- **Error handling**: All IPC calls must handle errors gracefully with user feedback
+## Critical Implementation Details
 
-## Critical System Details
+### Claude Process Management
+The backend spawns Claude CLI processes with:
+- Proper environment variable injection for API providers
+- Real-time output streaming via JSONL
+- Graceful cancellation with process cleanup
+- Session recovery from crashes
 
-### Provider/Proxy Management System ⭐ (Core Feature)
-**Purpose**: Silent switching between different Claude API providers/proxies without popups
-- **Configuration Storage**: Local SQLite database (never hardcoded in code)
-- **API Methods**: `getProviderPresets()`, `switchProviderConfig()`, `addProviderConfig()`, etc.
-- **Auto-Restart**: Automatically restarts Claude process when provider changes
-- **Environment**: Sets `ANTHROPIC_BASE_URL` and auth tokens at runtime
-- **Detection**: Intelligently identifies current active configuration
-- **Location**: `src-tauri/src/commands/provider.rs`, `src/components/ProviderManager.tsx`
+### API Provider Switching
+Silently switches Claude API endpoints by:
+1. Setting environment variables (`ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`, etc.)
+2. Restarting Claude processes to apply new configuration
+3. No system-wide environment pollution
 
-### Checkpoint System
-**Advanced features beyond basic snapshots**:
-- **Content-Addressable Storage**: Files stored by hash in content pool to prevent duplication
-- **Zstd Compression**: All messages and file snapshots compressed (see `Cargo.toml`)
-- **Timeline Branching**: Fork new sessions from any checkpoint
-- **Restore Modes**: messages-only, files-only, or both
-- **Auto-Checkpoint Strategies**: Configurable triggers (token count, message count, time-based)
-- **Diff Visualization**: Compare any two checkpoints with detailed diffs
-- **Location**: `src-tauri/src/checkpoint/`, API in `lib/api.ts` (checkpoint_* methods)
+### Performance Optimizations
+- **Chunked Rendering**: Large outputs rendered progressively to prevent UI freezing
+- **Virtual Scrolling**: Efficient rendering of long message histories
+- **Build Profiles**:
+  - `dev-release`: Fast builds for testing (2 min)
+  - `release`: Production builds optimized for size (10+ min)
 
-**Message-Level Operations** ⭐:
-- **Fine-Grained Undo/Redo**: Rewind to any message index, not just checkpoints
-  - `message_undo`: Undo N messages from current position
-  - `message_edit`: Edit specific message and regenerate from that point
-  - `message_delete`: Remove specific message from history
-  - `message_truncate_to_index`: Cut conversation at specific point
-- **Implementation**: Operates directly on Claude CLI's `.claude/sessions/<session_id>/messages.jsonl` file
-- **UI Integration**: Context menu on messages with keyboard shortcuts
-- **Location**: `src-tauri/src/commands/claude.rs`, `ClaudeCodeSession.tsx:163-278`
+### Security Considerations
+- API keys stored locally, never in code
+- Sandboxed file access through Tauri permissions
+- Process isolation for each Claude session
 
-### Multi-Tab Session Management ⭐ (Recently Refactored)
-**Major Architecture Improvements (v3.0.2)**:
-- **Phase 1 - Interface Simplification**: Unified `Tab` interface replaces dual `TabSessionData`/`TabSession` pattern, reducing complexity by 40%
-  - Single state enum: `state: 'idle' | 'streaming' | 'error'` (merged streamingStatus into state)
-  - Flattened error structure: `errorMessage?: string` (no nested error object)
-  - Computed `isActive` property from `activeTabId` (not stored in state)
-- **Phase 2 - Event-Driven Sync**: Replaced 5-second polling with real-time Tauri event listeners (`claude-session-state` events), improving responsiveness by 98%
-  - Events: `started`, `stopped` with session metadata
-  - Automatic tab state correction when Claude process state changes
-- **Phase 3 - Unified Initialization**: Single initialization path with `isActive` prop pattern
-  - **Critical Pattern**: `isActive` prop prevents multiple `ClaudeCodeSession` instances from setting up duplicate event listeners
-  - Only the active tab registers `claude-output:${sessionId}` listeners to prevent event conflicts
-  - Cleanup on tab switch: inactive tabs unregister listeners immediately
+## Common Development Patterns
 
-**Core Architecture**:
-- **Session Wrapper**: Each tab wrapped in `TabSessionWrapper` with isolated state
-- **Process Tracking**: Maps tab sessions to running Claude process IDs via `ProcessRegistry`
-- **State Persistence**: Auto-save to localStorage with validation and recovery
-- **Location**: `src/hooks/useTabs.tsx`, `src/hooks/useSessionSync.ts`, `src/components/ClaudeCodeSession.tsx:515-524`
+### Adding a New Tauri Command
+1. Create Rust handler in `src-tauri/src/commands/`
+2. Add to command module exports in `src-tauri/src/commands/mod.rs`
+3. Register in `src-tauri/src/main.rs` command list
+4. Add TypeScript types and API method in `src/lib/api.ts`
 
-### Auto-Compact Context Management
-**Intelligent token optimization**:
-- **Purpose**: Automatically compress conversation context when approaching token limits
-- **Strategies**: Configurable compaction strategies (aggressive, balanced, conservative)
-- **Monitoring**: Tracks token counts per session with threshold-based triggers
-- **Compression Ratio**: Reports saved tokens and processing time
-- **Manual Triggers**: Users can manually trigger compaction
-- **Location**: `src-tauri/src/commands/context_manager.rs`, `context_commands.rs`
+### Implementing New UI Features
+1. Create component in `src/components/`
+2. Add routing in `src/App.tsx` if needed
+3. Use existing UI components from `src/components/ui/`
+4. Follow existing patterns for API calls and state management
 
-### Translation/i18n System
-**Production-ready internationalization**:
-- **Framework**: i18next with browser language detection
-- **Caching**: Translation cache with statistics tracking
-- **Batch Support**: `translate_batch()` for multiple strings
-- **Language Detection**: Auto-detect source language
-- **Configuration**: Persistent config storage with API endpoints
-- **Location**: `src-tauri/src/commands/translator.rs`, `src/i18n/`
+### Working with Claude Sessions
+- Sessions are identified by UUID and stored in `~/.claude/projects/`
+- Each session has a JSONL file with message history
+- Project context is encoded in directory names
+- Checkpoints store file snapshots for timeline branching
 
-**Real-Time Translation Architecture** ⭐:
-- **Middleware Pattern**: `translationMiddleware` intercepts user input and Claude responses
-  - User input: Detects language and translates to English before sending to Claude CLI
-  - Claude response: Translates English responses back to user's language
-  - Slash commands: Automatically bypassed (sent as-is to preserve command syntax)
-- **Progressive Translation**: Historical messages translated in background with priority queue
-  - High priority: Last 10 messages (visible content)
-  - Normal priority: Older messages (lazy loading)
-  - Non-blocking: UI displays immediately, translations applied when ready
-  - Location: `src/lib/progressiveTranslation.ts`, `ClaudeCodeSession.tsx:1034-1090`
-- **Content Extraction Strategy**: 8 methods to extract translatable content from Claude SDK responses
-  - Handles: `content.text`, `message.content[]`, `result`, `error`, `summary` fields
-  - Preserves message structure after translation
-  - Location: `ClaudeCodeSession.tsx:704-1029`
+## Key Files to Understand
 
-### MCP (Model Context Protocol)
-- Full MCP server management with connection testing
-- Project-specific MCP configurations stored in database
-- Supports both local and remote MCP servers
-- Configuration UI in Settings tab
-
-### Agent System
-- Import agents from GitHub (getAsterisk/claudia repository)
-- Custom agent creation with `.claudia.json` format
-- Agent runs tracked with detailed metrics and output history
-- Subagents support for complex workflows
-
-### Enhanced Hooks System
-- Project-specific workflow automation
-- Pre-commit hooks and custom event triggers
-- Configuration stored at project or global level
-
-### Process Registry (Critical)
-**Central tracking for all background operations**:
-- Tracks all running Claude sessions with unique run_ids
-- Agent executions spawn separate tracked processes
-- Real-time output streaming support
-- Process cleanup on application shutdown
-- **Location**: `src-tauri/src/process/`
-
-## Build Profiles & Performance
-
-### Cargo Build Profiles (see `Cargo.toml`)
-- **release**: Production build optimized for size
-  - `opt-level = "z"` (optimize for size)
-  - Full LTO enabled
-  - Strips symbols, disables debug info
-  - Single codegen unit for maximum optimization
-  - **Use for**: Final production releases
-
-- **dev-release**: Fast development builds
-  - `opt-level = 2` (balanced performance)
-  - Thin LTO (faster than full)
-  - 16 codegen units (parallel compilation)
-  - Incremental compilation enabled
-  - Debug info included
-  - **Use for**: Testing builds without waiting for full optimization
-
-### Performance Considerations
-- **Compression**: Zstd library used for checkpoint compression (see `Cargo.toml` dependencies)
-- **Database**: SQLite bundled statically for maximum compatibility
-- **Async Runtime**: Tokio with full features for concurrent operations
-
-## Platform-Specific Notes
-
-### Windows
-- Claude CLI paths: Check `AppData/Roaming/npm/claude.cmd` or `.npm-global/bin/claude`
-- Binary detection looks for both `.exe` and `.cmd` extensions
-
-### macOS
-- Common paths: `/usr/local/bin/claude`, `/opt/homebrew/bin/claude`
-- Icon configuration required: `icon.icns` in `src-tauri/icons/`
-
-### Linux
-- Standard paths: `~/.local/bin/claude`, `~/.npm-global/bin/claude`
-
-## Development Tips
-
-### Debugging IPC Communication
-- All IPC calls go through `lib/api.ts` - add console logs there to trace command flow
-- Rust backend logs available via `env_logger` (see `main.rs`)
-
-### Database Inspection
-- Use the built-in Storage tab in Settings for direct table inspection/editing
-- Execute raw SQL queries through the SQL Query Editor
-- Database location: Platform-specific app data directory
-
-### Working with Checkpoints
-- Checkpoints stored in Claude CLI directory under `checkpoints/<project_id>/<session_id>/`
-- Content pool prevents file duplication across checkpoints
-- Messages stored as `.zst` compressed files
-
-### Translation Testing
-- Translation config persisted to file system
-- Cache cleared via `clear_translation_cache()` API method
-- Language detection available via `detect_text_language()`
+- **src/App.tsx**: Main application routing and view management
+- **src/lib/api.ts**: Complete TypeScript API interface (2900+ lines)
+- **src-tauri/src/commands/claude.rs**: Claude CLI integration logic
+- **src-tauri/src/main.rs**: Tauri application entry point and command registration
+- **src/components/TabManager.tsx**: Multi-session tab management
