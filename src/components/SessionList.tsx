@@ -1,28 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  FileText,
-  ArrowLeft,
-  Calendar,
-  Clock,
-  MessageSquare,
-  Plus,
-  Search,
-  Hash,
-  Activity,
-  Zap,
-  BarChart3
-} from "lucide-react";
+import { FileText, ArrowLeft, Calendar, Clock, MessageSquare, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { ClaudeMemoriesDropdown } from "@/components/ClaudeMemoriesDropdown";
 import { cn } from "@/lib/utils";
-import { formatUnixTimestamp, formatISOTimestamp, truncateText, getFirstLine, formatTimeAgo } from "@/lib/date-utils";
+import { formatUnixTimestamp, formatISOTimestamp, truncateText, getFirstLine } from "@/lib/date-utils";
 import type { Session, ClaudeMdFile } from "@/lib/api";
-import { api } from "@/lib/api";
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface SessionListProps {

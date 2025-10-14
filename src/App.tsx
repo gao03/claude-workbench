@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProjectList } from "@/components/ProjectList";
 import { SessionList } from "@/components/SessionList";
-import { EnhancedSessionList } from "@/components/EnhancedSessionList";
 import { RunningClaudeSessions } from "@/components/RunningClaudeSessions";
 import { Topbar } from "@/components/Topbar";
 import { MarkdownEditor } from "@/components/MarkdownEditor";
@@ -26,8 +25,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ProjectSettings } from '@/components/ProjectSettings';
 import { SubagentManager } from '@/components/SubagentManager';
 import { EnhancedHooksManager } from '@/components/EnhancedHooksManager';
-import { RecentSessions } from '@/components/RecentSessions';
-import { QuickSessionDialog } from '@/components/QuickSessionDialog';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type View =
@@ -84,7 +81,6 @@ function AppContent() {
   const [showNavigationConfirm, setShowNavigationConfirm] = useState(false);
   const [pendingView, setPendingView] = useState<View | null>(null);
   const [newSessionProjectPath, setNewSessionProjectPath] = useState<string>("");
-  const [showQuickSessionDialog, setShowQuickSessionDialog] = useState(false);
 
   // 🔧 NEW: Navigation history stack for smart back functionality
   const [navigationHistory, setNavigationHistory] = useState<View[]>(["welcome"]);
@@ -132,34 +128,6 @@ function AppContent() {
       window.removeEventListener('claude-not-found', handleClaudeNotFound as EventListener);
     };
   }, []);
-
-  // 添加全局快捷键支持
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+N 或 Cmd+N: 打开快速会话对话框
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault();
-        setShowQuickSessionDialog(true);
-      }
-
-      // Ctrl+Shift+F 或 Cmd+Shift+F: 聚焦到搜索
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'f') {
-        e.preventDefault();
-        // 可以触发搜索焦点事件
-        window.dispatchEvent(new CustomEvent('focus-search'));
-      }
-
-      // ESC: 关闭对话框
-      if (e.key === 'Escape') {
-        if (showQuickSessionDialog) {
-          setShowQuickSessionDialog(false);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showQuickSessionDialog]);
 
   /**
    * 从 ~/.claude/projects 目录加载所有项目
@@ -494,7 +462,7 @@ function AppContent() {
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <EnhancedSessionList
+                      <SessionList
                         sessions={sessions}
                         projectPath={selectedProject.path}
                         onBack={handleBack}
@@ -544,21 +512,6 @@ function AppContent() {
                           <Plus className="mr-2 h-4 w-4" />
                           {t('common.newProject')}
                         </Button>
-                      </motion.div>
-
-                      {/* Recent Sessions - Quick Access */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.1 }}
-                        className="mb-8"
-                      >
-                        <RecentSessions
-                          onSessionClick={(session) => {
-                            setSelectedSession(session);
-                            handleViewChange("claude-tab-manager");
-                          }}
-                        />
                       </motion.div>
 
                       {/* Running Claude Sessions */}
@@ -745,23 +698,6 @@ function AppContent() {
               />
             )}
           </ToastContainer>
-
-          {/* Quick Session Dialog */}
-          <QuickSessionDialog
-            open={showQuickSessionDialog}
-            onOpenChange={setShowQuickSessionDialog}
-            onCreateSession={(projectPath, template) => {
-              setNewSessionProjectPath(projectPath);
-              setSelectedSession(null);
-              handleViewChange("claude-tab-manager");
-              // 可以传递模板信息给会话组件
-              console.log("Creating session with template:", template);
-            }}
-            onOpenSession={(session) => {
-              setSelectedSession(session);
-              handleViewChange("claude-tab-manager");
-            }}
-          />
         </div>
       </OutputCacheProvider>
   );
