@@ -59,7 +59,6 @@ The application uses Tauri's IPC (Inter-Process Communication) system:
 - **commands/agents.rs**: Agent system - stores and executes AI agents with custom prompts
 - **commands/usage.rs**: Usage tracking - monitors token usage and costs across sessions
 - **commands/mcp.rs**: MCP (Model Context Protocol) server management
-- **checkpoint/**: Session state management - implements checkpointing and timeline branching
 
 ### Frontend Architecture
 - **Tab Management**: Multi-tab session support with background execution (`src/hooks/useTabs.tsx`)
@@ -80,7 +79,6 @@ SQLite database at `~/.claude/claude_workbench.db`:
 - `agents`: Stores AI agent configurations
 - `agent_runs`: Tracks agent execution history
 - `providers`: API provider configurations
-- `checkpoints`: Session state snapshots
 - `subagent_specialties`: Specialized agent routing
 
 ## Critical Implementation Details
@@ -128,7 +126,6 @@ Silently switches Claude API endpoints by:
 - Sessions are identified by UUID and stored in `~/.claude/projects/`
 - Each session has a JSONL file with message history
 - Project context is encoded in directory names
-- Checkpoints store file snapshots for timeline branching
 
 ## Key Files to Understand
 

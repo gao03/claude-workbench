@@ -19,8 +19,6 @@ export type HookEvent =
   | 'OnFileChange'         // 文件修改时触发
   | 'OnSessionStart'       // 会话开始时触发
   | 'OnSessionEnd'         // 会话结束时触发
-  | 'OnCheckpointCreate'   // 创建检查点时触发
-  | 'OnCheckpointRestore'  // 恢复检查点时触发
   | 'OnTabSwitch';         // 切换标签页时触发
 
 /**
@@ -94,8 +92,6 @@ export interface EnhancedHooksConfiguration {
   OnFileChange?: EnhancedHook[];
   OnSessionStart?: EnhancedHook[];
   OnSessionEnd?: EnhancedHook[];
-  OnCheckpointCreate?: EnhancedHook[];
-  OnCheckpointRestore?: EnhancedHook[];
   OnTabSwitch?: EnhancedHook[];
 }
 
@@ -131,8 +127,6 @@ export const HOOK_EVENT_DESCRIPTIONS: Record<HookEvent, string> = {
   'OnFileChange': '文件修改时触发，可用于自动保存或验证',
   'OnSessionStart': '会话开始时触发，可用于环境初始化',
   'OnSessionEnd': '会话结束时触发，可用于清理和总结',
-  'OnCheckpointCreate': '创建检查点时触发，可用于额外备份',
-  'OnCheckpointRestore': '恢复检查点时触发，可用于状态验证',
   'OnTabSwitch': '切换标签页时触发，可用于状态同步',
 };
 
@@ -141,7 +135,7 @@ export const HOOK_EVENT_DESCRIPTIONS: Record<HookEvent, string> = {
  */
 export const HOOK_EVENT_CATEGORIES = {
   'Session Lifecycle': ['OnSessionStart', 'OnSessionEnd'],
-  'Context Management': ['OnContextCompact', 'OnCheckpointCreate', 'OnCheckpointRestore'],
+  'Context Management': ['OnContextCompact'],
   'Agent Management': ['OnAgentSwitch', 'SubagentStop'],
   'User Interface': ['OnTabSwitch'],
   'File System': ['OnFileChange'],
@@ -162,8 +156,8 @@ export interface HookTemplate {
 export const HOOK_TEMPLATES: HookTemplate[] = [
   {
     name: '自动备份',
-    description: '在上下文压缩和检查点创建时自动备份',
-    events: ['OnContextCompact', 'OnCheckpointCreate'],
+    description: '在上下文压缩时自动备份',
+    events: ['OnContextCompact'],
     hooks: [
       {
         command: 'git add . && git commit -m "Auto backup: $(date)"',

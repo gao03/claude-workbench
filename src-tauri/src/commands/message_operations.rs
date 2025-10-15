@@ -1,171 +1,78 @@
-use anyhow::Result;
-use tauri::State;
+// Message operations have been deprecated along with the checkpoint system
+// These stub implementations return errors to maintain API compatibility
 
-use crate::checkpoint::manager::CheckpointManager;
-use crate::checkpoint::CheckpointResult;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use std::collections::HashMap;
-
-/// Global state for checkpoint managers (one per session)
-pub struct CheckpointManagerRegistry {
-    pub managers: Arc<RwLock<HashMap<String, Arc<CheckpointManager>>>>,
-}
-
-impl Default for CheckpointManagerRegistry {
-    fn default() -> Self {
-        Self {
-            managers: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-}
-
-/// Get or create a checkpoint manager for a session
-async fn get_checkpoint_manager(
-    registry: &State<'_, CheckpointManagerRegistry>,
-    session_id: &str,
-    project_id: &str,
-    project_path: &str,
-) -> Result<Arc<CheckpointManager>, String> {
-    let managers = registry.managers.read().await;
-    
-    if let Some(manager) = managers.get(session_id) {
-        return Ok(manager.clone());
-    }
-    
-    drop(managers);
-    
-    // Create new manager
-    let claude_dir = crate::commands::claude::get_claude_dir()
-        .map_err(|e| format!("Failed to get claude dir: {}", e))?;
-    
-    let manager = CheckpointManager::new(
-        project_id.to_string(),
-        session_id.to_string(),
-        std::path::PathBuf::from(project_path),
-        claude_dir,
-    )
-    .await
-    .map_err(|e| format!("Failed to create checkpoint manager: {}", e))?;
-    
-    let manager = Arc::new(manager);
-    
-    let mut managers = registry.managers.write().await;
-    managers.insert(session_id.to_string(), manager.clone());
-    
-    Ok(manager)
-}
-
-/// Undo the last N messages
+/// Undo the last N messages (deprecated)
 #[tauri::command]
 pub async fn message_undo(
-    session_id: String,
-    project_id: String,
-    project_path: String,
-    count: Option<usize>,
-    registry: State<'_, CheckpointManagerRegistry>,
-) -> Result<CheckpointResult, String> {
-    let manager = get_checkpoint_manager(&registry, &session_id, &project_id, &project_path).await?;
-    
-    let count = count.unwrap_or(1);
-    
-    manager
-        .undo_messages(count)
-        .await
-        .map_err(|e| format!("Failed to undo messages: {}", e))
+    _session_id: String,
+    _project_id: String,
+    _project_path: String,
+    _count: Option<usize>,
+) -> Result<serde_json::Value, String> {
+    Err("Message undo feature has been removed along with checkpoints".to_string())
 }
 
-/// Truncate messages to a specific index
+/// Truncate messages to a specific index (deprecated)
 #[tauri::command]
 pub async fn message_truncate_to_index(
-    session_id: String,
-    project_id: String,
-    project_path: String,
-    message_index: usize,
-    registry: State<'_, CheckpointManagerRegistry>,
-) -> Result<CheckpointResult, String> {
-    let manager = get_checkpoint_manager(&registry, &session_id, &project_id, &project_path).await?;
-    
-    manager
-        .truncate_to_message(message_index)
-        .await
-        .map_err(|e| format!("Failed to truncate messages: {}", e))
+    _session_id: String,
+    _project_id: String,
+    _project_path: String,
+    _message_index: usize,
+) -> Result<serde_json::Value, String> {
+    Err("Message truncate feature has been removed along with checkpoints".to_string())
 }
 
-/// Edit a specific message
+/// Edit a specific message (deprecated)
 #[tauri::command]
 pub async fn message_edit(
-    session_id: String,
-    project_id: String,
-    project_path: String,
-    message_index: usize,
-    new_content: String,
-    registry: State<'_, CheckpointManagerRegistry>,
-) -> Result<CheckpointResult, String> {
-    let manager = get_checkpoint_manager(&registry, &session_id, &project_id, &project_path).await?;
-    
-    manager
-        .edit_message(message_index, new_content)
-        .await
-        .map_err(|e| format!("Failed to edit message: {}", e))
+    _session_id: String,
+    _project_id: String,
+    _project_path: String,
+    _message_index: usize,
+    _new_content: String,
+) -> Result<serde_json::Value, String> {
+    Err("Message edit feature has been removed along with checkpoints".to_string())
 }
 
-/// Delete a specific message
+/// Delete a specific message (deprecated)
 #[tauri::command]
 pub async fn message_delete(
-    session_id: String,
-    project_id: String,
-    project_path: String,
-    message_index: usize,
-    registry: State<'_, CheckpointManagerRegistry>,
-) -> Result<CheckpointResult, String> {
-    let manager = get_checkpoint_manager(&registry, &session_id, &project_id, &project_path).await?;
-    
-    manager
-        .delete_message(message_index)
-        .await
-        .map_err(|e| format!("Failed to delete message: {}", e))
+    _session_id: String,
+    _project_id: String,
+    _project_path: String,
+    _message_index: usize,
+) -> Result<serde_json::Value, String> {
+    Err("Message delete feature has been removed along with checkpoints".to_string())
 }
 
-/// Get the current number of messages in a session
+/// Get the current number of messages in a session (deprecated)
 #[tauri::command]
 pub async fn message_get_count(
-    session_id: String,
-    project_id: String,
-    project_path: String,
-    registry: State<'_, CheckpointManagerRegistry>,
+    _session_id: String,
+    _project_id: String,
+    _project_path: String,
 ) -> Result<usize, String> {
-    let manager = get_checkpoint_manager(&registry, &session_id, &project_id, &project_path).await?;
-    
-    Ok(manager.get_message_count().await)
+    Err("Message count feature has been removed along with checkpoints".to_string())
 }
 
-/// Get a specific message by index
+/// Get a specific message by index (deprecated)
 #[tauri::command]
 pub async fn message_get_by_index(
-    session_id: String,
-    project_id: String,
-    project_path: String,
-    message_index: usize,
-    registry: State<'_, CheckpointManagerRegistry>,
+    _session_id: String,
+    _project_id: String,
+    _project_path: String,
+    _message_index: usize,
 ) -> Result<String, String> {
-    let manager = get_checkpoint_manager(&registry, &session_id, &project_id, &project_path).await?;
-    
-    manager
-        .get_message(message_index)
-        .await
-        .map_err(|e| format!("Failed to get message: {}", e))
+    Err("Message get feature has been removed along with checkpoints".to_string())
 }
 
-/// Get all messages in a session
+/// Get all messages in a session (deprecated)
 #[tauri::command]
 pub async fn message_get_all(
-    session_id: String,
-    project_id: String,
-    project_path: String,
-    registry: State<'_, CheckpointManagerRegistry>,
+    _session_id: String,
+    _project_id: String,
+    _project_path: String,
 ) -> Result<Vec<String>, String> {
-    let manager = get_checkpoint_manager(&registry, &session_id, &project_id, &project_path).await?;
-    
-    Ok(manager.get_all_messages().await)
+    Err("Message get all feature has been removed along with checkpoints".to_string())
 }

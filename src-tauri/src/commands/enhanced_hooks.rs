@@ -30,8 +30,6 @@ pub enum HookEvent {
     OnFileChange,         // 文件修改时触发
     OnSessionStart,       // 会话开始时触发
     OnSessionEnd,         // 会话结束时触发
-    OnCheckpointCreate,   // 创建检查点时触发
-    OnCheckpointRestore,  // 恢复检查点时触发
     OnTabSwitch,          // 切换标签页时触发
 }
 
@@ -48,8 +46,6 @@ impl HookEvent {
             HookEvent::OnFileChange => "OnFileChange",
             HookEvent::OnSessionStart => "OnSessionStart",
             HookEvent::OnSessionEnd => "OnSessionEnd",
-            HookEvent::OnCheckpointCreate => "OnCheckpointCreate",
-            HookEvent::OnCheckpointRestore => "OnCheckpointRestore",
             HookEvent::OnTabSwitch => "OnTabSwitch",
         }
     }
@@ -392,8 +388,6 @@ pub async fn trigger_hook_event(
         "OnFileChange" => HookEvent::OnFileChange,
         "OnSessionStart" => HookEvent::OnSessionStart,
         "OnSessionEnd" => HookEvent::OnSessionEnd,
-        "OnCheckpointCreate" => HookEvent::OnCheckpointCreate,
-        "OnCheckpointRestore" => HookEvent::OnCheckpointRestore,
         "OnTabSwitch" => HookEvent::OnTabSwitch,
         _ => return Err(format!("Unknown hook event: {}", event)),
     };

@@ -1,13 +1,11 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod checkpoint;
 mod claude_binary;
 mod commands;
 mod process;
 
 use std::sync::Arc;
-use checkpoint::state::CheckpointState;
 use commands::agents::{
     cleanup_finished_processes, create_agent, delete_agent, execute_agent, export_agent,
     export_agent_to_file, fetch_github_agent_content, fetch_github_agents, get_agent,
@@ -18,15 +16,13 @@ use commands::agents::{
     list_running_sessions, load_agent_session_history, set_claude_binary_path, stream_session_output, update_agent, AgentDb,
 };
 use commands::claude::{
-    cancel_claude_execution, check_auto_checkpoint, check_claude_version, cleanup_old_checkpoints,
-    cleanup_old_checkpoints_by_age, clear_checkpoint_manager, continue_claude_code, create_checkpoint, delete_project, execute_claude_code,
-    find_claude_md_files, fork_from_checkpoint, get_checkpoint_diff, get_checkpoint_settings,
-    get_checkpoint_state_stats, get_claude_session_output, get_claude_settings, get_project_sessions,
-    get_recently_modified_files, get_session_timeline, get_system_prompt, list_checkpoints,
+    cancel_claude_execution, check_claude_version,
+    continue_claude_code, delete_project, execute_claude_code,
+    find_claude_md_files, get_claude_session_output, get_claude_settings, get_project_sessions,
+    get_system_prompt,
     list_directory_contents, list_projects, list_running_claude_sessions, load_session_history,
-    open_new_session, read_claude_md_file, restore_checkpoint, resume_claude_code,
+    open_new_session, read_claude_md_file, resume_claude_code,
     save_claude_md_file, save_claude_settings, save_system_prompt, search_files,
-    track_checkpoint_message, track_session_messages, update_checkpoint_settings,
     get_hooks_config, update_hooks_config, validate_hook_command,
     get_claude_execution_config, update_claude_execution_config, reset_claude_execution_config,
     get_claude_permission_config, update_claude_permission_config, get_permission_presets,
@@ -71,7 +67,7 @@ use commands::enhanced_hooks::{
 };
 use commands::message_operations::{
     message_undo, message_truncate_to_index, message_edit, message_delete,
-    message_get_count, message_get_by_index, message_get_all, CheckpointManagerRegistry,
+    message_get_count, message_get_by_index, message_get_all,
 };
 use process::ProcessRegistryState;
 use std::sync::Mutex;
@@ -97,26 +93,7 @@ fn main() {
             let conn = init_database(&app.handle()).expect("Failed to initialize agents database");
             app.manage(AgentDb(Mutex::new(conn)));
 
-            // Initialize checkpoint state
-            let checkpoint_state = CheckpointState::new();
 
-            // Set the Claude directory path
-            if let Ok(claude_dir) = dirs::home_dir()
-                .ok_or_else(|| "Could not find home directory")
-                .and_then(|home| {
-                    let claude_path = home.join(".claude");
-                    claude_path
-                        .canonicalize()
-                        .map_err(|_| "Could not find ~/.claude directory")
-                })
-            {
-                let state_clone = checkpoint_state.clone();
-                tauri::async_runtime::spawn(async move {
-                    state_clone.set_claude_dir(claude_dir).await;
-                });
-            }
-
-            app.manage(checkpoint_state);
 
             // Initialize process registry
             app.manage(ProcessRegistryState::default());
@@ -143,8 +120,7 @@ fn main() {
                 commands::translator::init_translation_service_with_saved_config().await;
             });
 
-            // Initialize checkpoint manager registry for message operations
-            app.manage(CheckpointManagerRegistry::default());
+
 
             Ok(())
         })
@@ -174,7 +150,6 @@ fn main() {
             get_claude_session_output,
             list_directory_contents,
             search_files,
-            get_recently_modified_files,
             get_hooks_config,
             update_hooks_config,
             validate_hook_command,
@@ -193,22 +168,7 @@ fn main() {
             clear_custom_claude_path,
             enhance_prompt,
             enhance_prompt_with_gemini,
-            // Checkpoint Management
-            create_checkpoint,
-            restore_checkpoint,
-            list_checkpoints,
-            fork_from_checkpoint,
-            get_session_timeline,
-            update_checkpoint_settings,
-            get_checkpoint_diff,
-            track_checkpoint_message,
-            track_session_messages,
-            check_auto_checkpoint,
-            cleanup_old_checkpoints,
-            cleanup_old_checkpoints_by_age,
-            get_checkpoint_settings,
-            clear_checkpoint_manager,
-            get_checkpoint_state_stats,
+
             
             // Agent Management
             list_agents,

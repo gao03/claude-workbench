@@ -70,7 +70,6 @@
     "themeDark": "深色",
     "themeDescription": "选择界面主题",
     "claudeBinary": "Claude 二进制文件",
-    "checkpoints": "检查点",
     "storage": "存储"
   },
   "usage": {
@@ -128,18 +127,6 @@
       "claude45Sonnet": "Claude 4.5 Sonnet",
       "claude41Opus": "Claude 4.1 Opus"
     }
-  },
-  "timeline": {
-    "title": "时间线",
-    "checkpoint": "检查点",
-    "checkpoints": "检查点列表",
-    "createCheckpoint": "创建检查点",
-    "restoreCheckpoint": "恢复检查点",
-    "deleteCheckpoint": "删除检查点",
-    "forkSession": "分叉会话",
-    "diff": "差异对比",
-    "changes": "变更",
-    "noChanges": "无变更"
   },
   "files": {
     "title": "文件",
@@ -259,7 +246,6 @@
     "preview": "预览",
     "webPreview": "网页预览",
     "searchTodos": "搜索待办事项...",
-    "restoreCheckpoint": "恢复到检查点 \"{description}\"？当前状态将保存为新检查点。",
     "beforeMajorRefactoring": "例如，重大重构之前",
     "selectTable": "选择表",
     "searchInTable": "在表中搜索...",
@@ -276,14 +262,8 @@
     "invalidUrl": "无效的网址",
     "goBack": "返回",
     "goForward": "前进",
-    "failedToLoadTimeline": "加载时间线失败",
-    "failedToCreateCheckpoint": "创建检查点失败",
-    "failedToRestoreCheckpoint": "恢复检查点失败",
-    "failedToCompareCheckpoints": "比较检查点失败",
     "current": "当前",
     "noPrompt": "无提示词",
-    "loadingTimeline": "正在加载时间线...",
-    "noCheckpointsYet": "尚无检查点",
     "descriptionOptional": "描述（可选）",
     "failedToLoadTables": "加载表失败",
     "failedToLoadTableData": "加载表数据失败",

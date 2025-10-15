@@ -70,7 +70,6 @@
     "themeDark": "Dark",
     "themeDescription": "Choose interface theme",
     "claudeBinary": "Claude Binary",
-    "checkpoints": "Checkpoints",
     "storage": "Storage"
   },
   "usage": {

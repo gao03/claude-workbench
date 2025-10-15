@@ -5,15 +5,12 @@ import {
   FolderOpen,
   Copy,
   ChevronDown,
-  GitBranch,
   Settings,
   ChevronUp,
   X,
   Command,
   DollarSign,
-  Clock,
-  RotateCcw,
-  Save
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,11 +30,8 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { StreamMessageV2 } from "./message";
 import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { TimelineNavigator } from "./TimelineNavigator";
-import { CheckpointSettings } from "./CheckpointSettings";
-import { RewindDialog } from "./RewindDialog";
 import { SlashCommandsManager } from "./SlashCommandsManager";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SplitPane } from "@/components/ui/split-pane";
 import { WebviewPreview } from "./WebviewPreview";
@@ -103,14 +97,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   // const [totalTokens, setTotalTokens] = useState(0); // Removed token counter from header
   const [extractedSessionInfo, setExtractedSessionInfo] = useState<{ sessionId: string; projectId: string } | null>(null);
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
-  const [showTimeline, setShowTimeline] = useState(false);
-  const [timelineVersion, setTimelineVersion] = useState(0);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showForkDialog, setShowForkDialog] = useState(false);
   const [showSlashCommandsSettings, setShowSlashCommandsSettings] = useState(false);
-  const [showRewindDialog, setShowRewindDialog] = useState(false);
-  const [forkCheckpointId, setForkCheckpointId] = useState<string | null>(null);
-  const [forkSessionName, setForkSessionName] = useState("");
   const [lastEscapeTime, setLastEscapeTime] = useState(0);
 
   // Plan Mode state
@@ -299,30 +286,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   React.useEffect(() => {
     console.debug('[ClaudeCodeSession] Translation enabled state:', translationEnabled);
   }, [translationEnabled]);
-
-  // Auto-cleanup old checkpoints on session initialization
-  React.useEffect(() => {
-    const cleanupOldCheckpoints = async () => {
-      if (extractedSessionInfo && projectPath) {
-        try {
-          const removed = await api.cleanupOldCheckpointsByAge(
-            extractedSessionInfo.sessionId,
-            extractedSessionInfo.projectId,
-            projectPath,
-            30 // 30 days as per Claude Code documentation
-          );
-          if (removed > 0) {
-            console.info(`[Checkpoint] Auto-cleaned ${removed} checkpoints older than 30 days`);
-          }
-        } catch (err) {
-          console.warn('[Checkpoint] Failed to auto-cleanup old checkpoints:', err);
-          // Non-critical error, don't show to user
-        }
-      }
-    };
-
-    cleanupOldCheckpoints();
-  }, [extractedSessionInfo, projectPath]);
 
   // New state for preview feature
   const [showPreview, setShowPreview] = useState(false);
@@ -541,10 +504,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           event.stopPropagation();
 
           // Only show rewind dialog if we have session info
-          if (extractedSessionInfo && projectPath) {
-            console.log('[ClaudeCodeSession] Double ESC detected, opening rewind dialog');
-            setShowRewindDialog(true);
-          }
         }
 
         setLastEscapeTime(now);
@@ -1005,52 +964,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           console.log('[ClaudeCodeSession] ✅ Normalized top-level usage data:', processedMessage.usage);
         }
         setMessages((prev) => [...prev, processedMessage]);
-
-        // Track message for checkpointing
-        if (extractedSessionInfo) {
-          try {
-            await api.trackCheckpointMessage(
-              extractedSessionInfo.sessionId,
-              extractedSessionInfo.projectId,
-              projectPath,
-              payload
-            );
-
-            // ✅ FIX: Auto-checkpoint trigger after tool execution
-            // Check if this is a tool result message (indicating tool completion)
-            if (processedMessage.type === 'user' && 
-                processedMessage.message?.content?.some((c: any) => c.type === 'tool_result')) {
-              
-              console.log('[ClaudeCodeSession] Tool execution detected, checking auto-checkpoint...');
-              
-              try {
-                const shouldCheckpoint = await api.checkAutoCheckpoint(
-                  extractedSessionInfo.sessionId,
-                  extractedSessionInfo.projectId,
-                  projectPath,
-                  '' // Empty prompt for tool result
-                );
-                
-                if (shouldCheckpoint) {
-                  console.log('[ClaudeCodeSession] Creating auto-checkpoint after tool use...');
-                  await api.createCheckpoint(
-                    extractedSessionInfo.sessionId,
-                    extractedSessionInfo.projectId,
-                    projectPath,
-                    undefined,
-                    `自动检查点 - 工具执行后 (${new Date().toLocaleTimeString('zh-CN')})`
-                  );
-                  // Trigger timeline refresh
-                  setTimelineVersion(prev => prev + 1);
-                }
-              } catch (autoCheckpointError) {
-                console.warn('[ClaudeCodeSession] Auto-checkpoint failed:', autoCheckpointError);
-              }
-            }
-          } catch (err) {
-            console.error('[Checkpoint] Failed to track message:', err);
-          }
-        }
       } catch (usageError) {
         console.warn('[ClaudeCodeSession] Error normalizing usage data, adding message without usage:', usageError);
         // Remove problematic usage data and add message anyway
@@ -1668,7 +1581,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
           const specificCompleteUnlisten = await listen<boolean>(`claude-complete:${sid}`, (evt) => {
             console.log('[ClaudeCodeSession] Received claude-complete (scoped):', evt.payload);
-            processComplete(evt.payload);
+            processComplete();
           });
 
           // Replace existing unlisten refs with these new ones (after cleaning up)
@@ -1733,7 +1646,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         }
 
         // Helper to handle completion events (both generic and scoped)
-        const processComplete = async (success: boolean) => {
+        const processComplete = async () => {
           setIsLoading(false);
           // 🔧 FIX: Reset hasActiveSessionRef when session completes to show correct UI state
           hasActiveSessionRef.current = false;
@@ -1745,51 +1658,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           console.log('[ClaudeCodeSession] Session completed - reset session state for new input');
 
           // Session is now ready to accept new input - UI will show input field instead of loading
-
-          if (effectiveSession && success) {
-            try {
-              // ✅ FIX: Enhanced auto-checkpoint logic on session completion
-              const settings = await api.getCheckpointSettings(
-                effectiveSession.id,
-                effectiveSession.project_id,
-                projectPath
-              );
-
-              if (settings.auto_checkpoint_enabled) {
-                console.log('[Checkpoint] Checking if auto-checkpoint should be created...');
-                const shouldCreate = await api.checkAutoCheckpoint(
-                  effectiveSession.id,
-                  effectiveSession.project_id,
-                  projectPath,
-                  prompt
-                );
-
-                if (shouldCreate) {
-                  console.log('[Checkpoint] Creating auto-checkpoint...');
-
-                  // Generate meaningful description
-                  const timestamp = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-                  const promptPreview = prompt.substring(0, 60).replace(/\n/g, ' ').trim();
-                  const description = `${timestamp} - ${promptPreview}${prompt.length > 60 ? '...' : ''}`;
-
-                  await api.createCheckpoint(
-                    effectiveSession.id,
-                    effectiveSession.project_id,
-                    projectPath,
-                    messages.length,
-                    description
-                  );
-                  console.log('[Checkpoint] Auto-checkpoint created successfully:', description);
-                  // Reload timeline to show new checkpoint
-                  setTimelineVersion((v) => v + 1);
-                } else {
-                  console.log('[Checkpoint] Auto-checkpoint not needed');
-                }
-              }
-            } catch (err) {
-              console.error('Failed to auto-create checkpoint:', err);
-            }
-          }
 
           // Process queued prompts after completion
           if (queuedPromptsRef.current.length > 0) {
@@ -1810,7 +1678,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
         const genericCompleteUnlisten = await listen<boolean>('claude-complete', (evt) => {
           console.log('[ClaudeCodeSession] Received claude-complete (generic):', evt.payload);
-          processComplete(evt.payload);
+          processComplete();
         });
 
         // Store the generic unlisteners for now; they may be replaced later.
@@ -2005,13 +1873,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     await navigator.clipboard.writeText(markdown);
   };
 
-  const handleCheckpointSelect = async () => {
-    // Reload messages from the checkpoint
-    await loadSessionHistory();
-    // Ensure timeline reloads to highlight current checkpoint
-    setTimelineVersion((v) => v + 1);
-  };
-
   // Get conversation context for prompt enhancement
   const getConversationContext = (): string[] => {
     const contextMessages: string[] = [];
@@ -2127,44 +1988,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     }
   };
 
-  const handleFork = (checkpointId: string) => {
-    setForkCheckpointId(checkpointId);
-    setForkSessionName(`Fork-${new Date().toISOString().slice(0, 10)}`);
-    setShowForkDialog(true);
-  };
-
-  const handleConfirmFork = async () => {
-    if (!forkCheckpointId || !forkSessionName.trim() || !effectiveSession) return;
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const newSessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      await api.forkFromCheckpoint(
-        forkCheckpointId,
-        effectiveSession.id,
-        effectiveSession.project_id,
-        projectPath,
-        newSessionId,
-        forkSessionName
-      );
-      
-      // Open the new forked session
-      // You would need to implement navigation to the new session
-      console.log("Forked to new session:", newSessionId);
-      
-      setShowForkDialog(false);
-      setForkCheckpointId(null);
-      setForkSessionName("");
-    } catch (err) {
-      console.error("Failed to fork checkpoint:", err);
-      setError("分支检查点失败");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Handle URL detection from terminal output
   const handleLinkDetected = (url: string) => {
     if (!showPreview && !showPreviewPrompt) {
@@ -2209,13 +2032,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       
       // Reset session state on unmount
       setClaudeSessionId(null);
-      
-      // Clear checkpoint manager when session ends
-      if (effectiveSession) {
-        api.clearCheckpointManager(effectiveSession.id).catch(err => {
-          console.error("Failed to clear checkpoint manager:", err);
-        });
-      }
     };
   }, [effectiveSession, projectPath]);
 
@@ -2527,113 +2343,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               </DropdownMenu>
             )}
             <div className="flex items-center gap-2">
-              {showSettings && (
-                <CheckpointSettings
-                  sessionId={effectiveSession?.id || ''}
-                  projectId={effectiveSession?.project_id || ''}
-                  projectPath={projectPath}
-                />
-              )}
-              {/* ⭐ 创建检查点按钮 */}
-              {effectiveSession && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            const description = `手动检查点 - ${new Date().toLocaleString('zh-CN')}`;
-                            await api.createCheckpoint(
-                              effectiveSession.id,
-                              effectiveSession.project_id,
-                              projectPath,
-                              messages.length,
-                              description
-                            );
-                            setTimelineVersion(prev => prev + 1);
-                            // Show success message
-                            console.log('[Checkpoint] 手动检查点创建成功');
-                          } catch (err) {
-                            console.error('[Checkpoint] 创建失败:', err);
-                            alert('创建检查点失败: ' + err);
-                          }
-                        }}
-                        disabled={isLoading}
-                        className="h-8 px-3"
-                      >
-                        <Save className="h-4 w-4 mr-1.5" />
-                        <span className="text-xs">检查点</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      <p>创建检查点保存当前状态</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-
-              {/* Rewind 快捷按钮 */}
-              {effectiveSession && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowRewindDialog(true)}
-                        className="h-8 px-3"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      <p>恢复检查点 (ESC + ESC)</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-
-              {/* 合并的检查点功能按钮 */}
-              {effectiveSession && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8"
-                    >
-                      <GitBranch className="h-4 w-4 mr-2" />
-                      检查点
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem
-                      onClick={() => setShowRewindDialog(true)}
-                      className="text-xs"
-                    >
-                      <RotateCcw className="h-3 w-3 mr-2" />
-                      恢复检查点
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setShowSettings(!showSettings)}
-                      className="text-xs"
-                    >
-                      <Settings className="h-3 w-3 mr-2" />
-                      {showSettings ? '隐藏设置' : '显示设置'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setShowTimeline(!showTimeline)}
-                      className="text-xs"
-                    >
-                      <GitBranch className="h-3 w-3 mr-2" />
-                      {showTimeline ? '隐藏时间线' : '显示时间线'}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
               {messages.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -2671,8 +2380,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
         {/* Main Content Area */}
         <div className={cn(
-          "flex-1 overflow-hidden transition-all duration-300",
-          showTimeline && "sm:mr-96"
+          "flex-1 overflow-hidden transition-all duration-300"
         )}>
           {showPreview ? (
             // Split pane layout when preview is active
@@ -2862,8 +2570,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           )}
 
           <div className={cn(
-            "fixed bottom-0 left-0 right-0 transition-all duration-300 z-50",
-            showTimeline && "sm:right-96"
+            "fixed bottom-0 left-0 right-0 transition-all duration-300 z-50"
           )}>
             <FloatingPromptInput
               ref={floatingPromptRef}
@@ -2880,107 +2587,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           </div>
 
         </ErrorBoundary>
-
-        {/* Timeline */}
-        <AnimatePresence>
-          {showTimeline && effectiveSession && (
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 20, stiffness: 300 }}
-              className="fixed right-0 top-0 h-full w-full sm:w-96 bg-background border-l border-border shadow-xl z-30 overflow-hidden"
-            >
-              <div className="h-full flex flex-col">
-                {/* Timeline Header */}
-                <div className="flex items-center justify-between p-4 border-b border-border">
-                  <h3 className="text-lg font-semibold">Session Timeline</h3>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowTimeline(false)}
-                    className="h-8 w-8"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                {/* Timeline Content */}
-                <div className="flex-1 overflow-y-auto p-4">
-                  <TimelineNavigator
-                    sessionId={effectiveSession.id}
-                    projectId={effectiveSession.project_id}
-                    projectPath={projectPath}
-                    currentMessageIndex={messages.length - 1}
-                    onCheckpointSelect={handleCheckpointSelect}
-                    onFork={handleFork}
-                    refreshVersion={timelineVersion}
-                  />
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
-
-      {/* Fork Dialog */}
-      <Dialog open={showForkDialog} onOpenChange={setShowForkDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Fork Session</DialogTitle>
-            <DialogDescription>
-              Create a new session branch from the selected checkpoint.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="fork-name">New Session Name</Label>
-              <Input
-                id="fork-name"
-                placeholder="e.g., Alternative approach"
-                value={forkSessionName}
-                onChange={(e) => setForkSessionName(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter" && !isLoading) {
-                    handleConfirmFork();
-                  }
-                }}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowForkDialog(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmFork}
-              disabled={isLoading || !forkSessionName.trim()}
-            >
-              Create Fork
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Settings Dialog */}
-      {showSettings && effectiveSession && (
-        <Dialog open={showSettings} onOpenChange={setShowSettings}>
-          <DialogContent className="max-w-2xl">
-            <CheckpointSettings
-              sessionId={effectiveSession.id}
-              projectId={effectiveSession.project_id}
-              projectPath={projectPath}
-              onClose={() => setShowSettings(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* Slash Commands Settings Dialog */}
       {showSlashCommandsSettings && (
@@ -2997,41 +2604,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
             </div>
           </DialogContent>
         </Dialog>
-      )}
-
-      {/* Rewind Dialog - Triggered by double ESC */}
-      {showRewindDialog && effectiveSession && (
-        <RewindDialog
-          isOpen={showRewindDialog}
-          onClose={() => setShowRewindDialog(false)}
-          sessionId={effectiveSession.id}
-          projectId={effectiveSession.project_id}
-          projectPath={projectPath}
-          currentMessageIndex={messages.length}
-          onRestoreComplete={async () => {
-            // ✅ FIX: Comprehensive restore completion handling
-            console.log('[ClaudeCodeSession] Restore completed, syncing state...');
-            
-            // 1. Stop any active streaming (if applicable)
-            if (isLoading) {
-              setIsLoading(false);
-            }
-            
-            // 2. Clear current messages to force reload
-            setMessages([]);
-            
-            // 3. Reload session history
-            await loadSessionHistory();
-            
-            // 4. Increment timeline version to trigger refresh
-            setTimelineVersion(prev => prev + 1);
-            
-            // 5. Reset error state
-            setError(null);
-            
-            console.log('[ClaudeCodeSession] State sync completed');
-          }}
-        />
       )}
 
     </div>
