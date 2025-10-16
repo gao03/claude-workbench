@@ -38,9 +38,11 @@ import { WebviewPreview } from "./WebviewPreview";
 import { translationMiddleware, isSlashCommand, type TranslationResult } from '@/lib/translationMiddleware';
 import { progressiveTranslationManager, TranslationPriority, type TranslationState } from '@/lib/progressiveTranslation';
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { tokenExtractor } from '@/lib/tokenExtractor';
 // Note: smartFilterMessages available from @/lib/messageFilter for future optimization
 // import { smartFilterMessages } from '@/lib/messageFilter';
+import { useSessionCostCalculation } from '@/hooks/useSessionCostCalculation';
+import { useDisplayableMessages } from '@/hooks/useDisplayableMessages';
+import { extractMessageContent as extractContentUtil } from '@/lib/contentExtraction';
 
 import type { ClaudeStreamMessage } from '@/types/claude';
 
@@ -112,44 +114,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   // Queued prompts state
   const [queuedPrompts, setQueuedPrompts] = useState<Array<{ id: string; prompt: string; model: "sonnet" | "opus" | "sonnet1m" }>>([]);
 
-  // Calculate session cost
-  const sessionCost = useMemo(() => {
-    if (messages.length === 0) return 0;
-
-    let totalCost = 0;
-    const relevantMessages = messages.filter(m => m.type === 'assistant' || m.type === 'user');
-
-    relevantMessages.forEach(message => {
-      const tokens = tokenExtractor.extract(message);
-      // const model = (message as any).model || 'claude-3-5-sonnet-20241022';
-
-      // Simple cost calculation (per 1M tokens)
-      const pricing = {
-        input: 3.00,
-        output: 15.00,
-        cache_write: 3.75,
-        cache_read: 0.30
-      };
-
-      const inputCost = (tokens.input_tokens / 1_000_000) * pricing.input;
-      const outputCost = (tokens.output_tokens / 1_000_000) * pricing.output;
-      const cacheWriteCost = (tokens.cache_creation_tokens / 1_000_000) * pricing.cache_write;
-      const cacheReadCost = (tokens.cache_read_tokens / 1_000_000) * pricing.cache_read;
-
-      totalCost += inputCost + outputCost + cacheWriteCost + cacheReadCost;
-    });
-
-    return totalCost;
-  }, [messages.length]);
-
-  // Format cost display
-  const formatCost = (amount: number): string => {
-    if (amount === 0) return '$0.00';
-    if (amount < 0.01) {
-      return `$${(amount * 100).toFixed(3)}¢`;
-    }
-    return `$${amount.toFixed(4)}`;
-  };
+  // ✅ Refactored: Use custom Hook for session cost calculation
+  const { sessionCost, formatCost } = useSessionCostCalculation(messages);
 
   // ============================================================================
   // MESSAGE-LEVEL OPERATIONS (Fine-grained Undo/Redo)
@@ -339,68 +305,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     return null;
   }, [session, extractedSessionInfo, projectPath]);
 
-  // Filter out messages that shouldn't be displayed
-  const displayableMessages = useMemo(() => {
-    return messages.filter((message, index) => {
-      // Skip meta messages that don't have meaningful content
-      if (message.isMeta && !message.leafUuid && !message.summary) {
-        return false;
-      }
-
-      // Skip user messages that only contain tool results that are already displayed
-      if (message.type === "user" && message.message) {
-        if (message.isMeta) return false;
-
-        const msg = message.message;
-        if (!msg.content || (Array.isArray(msg.content) && msg.content.length === 0)) {
-          return false;
-        }
-
-        if (Array.isArray(msg.content)) {
-          let hasVisibleContent = false;
-          for (const content of msg.content) {
-            if (content.type === "text") {
-              hasVisibleContent = true;
-              break;
-            }
-            if (content.type === "tool_result") {
-              let willBeSkipped = false;
-              if (content.tool_use_id) {
-                // Look for the matching tool_use in previous assistant messages
-                for (let i = index - 1; i >= 0; i--) {
-                  const prevMsg = messages[i];
-                  if (prevMsg.type === 'assistant' && prevMsg.message?.content && Array.isArray(prevMsg.message.content)) {
-                    const toolUse = prevMsg.message.content.find((c: any) => 
-                      c.type === 'tool_use' && c.id === content.tool_use_id
-                    );
-                    if (toolUse) {
-                      const toolName = toolUse.name?.toLowerCase();
-                      const toolsWithWidgets = [
-                        'task', 'edit', 'multiedit', 'todowrite', 'ls', 'read', 
-                        'glob', 'bash', 'write', 'grep'
-                      ];
-                      if (toolsWithWidgets.includes(toolName) || toolUse.name?.startsWith('mcp__')) {
-                        willBeSkipped = true;
-                      }
-                      break;
-                    }
-                  }
-                }
-              }
-              if (!willBeSkipped) {
-                hasVisibleContent = true;
-                break;
-              }
-            }
-          }
-          if (!hasVisibleContent) {
-            return false;
-          }
-        }
-      }
-      return true;
-    });
-  }, [messages]);
+  // ✅ Refactored: Use custom Hook for message filtering
+  const displayableMessages = useDisplayableMessages(messages);
 
   const rowVirtualizer = useVirtualizer({
     count: displayableMessages.length,
@@ -1008,7 +914,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         const messageId = `${message.timestamp || Date.now()}_${index}`;
 
         // Extract text content for translation
-        let textContent = extractMessageContent(message);
+        let textContent = extractContentUtil(message).text;
 
         if (textContent.trim()) {
           initialStates[messageId] = {
@@ -1041,61 +947,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     } catch (error) {
       console.error('[ClaudeCodeSession] Failed to initialize progressive translation:', error);
     }
-  };
-
-  /**
-   * Extract translatable content from a message
-   */
-  const extractMessageContent = (message: ClaudeStreamMessage): string => {
-    // Method 1: Direct content string
-    if (typeof message.content === 'string' && message.content.trim()) {
-      return message.content;
-    }
-
-    // Method 2: Array content (Claude API format)
-    if (Array.isArray(message.content)) {
-      const arrayContent = message.content
-        .filter((item: any) => item && (item.type === 'text' || typeof item === 'string'))
-        .map((item: any) => {
-          if (typeof item === 'string') return item;
-          if (item.type === 'text') return item.text || '';
-          return item.content || item.text || '';
-        })
-        .join('\n');
-      if (arrayContent.trim()) {
-        return arrayContent;
-      }
-    }
-
-    // Method 3: Nested in message.content
-    if (message.message?.content) {
-      const messageContent: any = message.message.content;
-      if (typeof messageContent === 'string' && messageContent.trim()) {
-        return messageContent;
-      } else if (Array.isArray(messageContent)) {
-        const nestedContent = messageContent
-          .filter((item: any) => item && (item.type === 'text' || typeof item === 'string'))
-          .map((item: any) => {
-            if (typeof item === 'string') return item;
-            if (item.type === 'text') return item.text || '';
-            return item.content || item.text || '';
-          })
-          .join('\n');
-        if (nestedContent.trim()) {
-          return nestedContent;
-        }
-      }
-    }
-
-    // Method 4: Other fields
-    if ((message as any).result && typeof (message as any).result === 'string') {
-      return (message as any).result;
-    }
-    if ((message as any).summary && typeof (message as any).summary === 'string') {
-      return (message as any).summary;
-    }
-
-    return '';
   };
 
   /**
