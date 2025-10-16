@@ -1,484 +1,454 @@
-# Claude Workbench - 项目配置文档
+# CLAUDE.md
 
-## 一、项目基础信息
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**项目名称**: Claude Workbench
-**版本**: v3.0.2
-**许可证**: AGPL-3.0
-**类型**: React 18 + Tauri 2 桌面应用（Windows 优先）
+## 项目概述
 
-### 核心功能定位
+**Claude Workbench** 是一个专业的 Claude CLI 桌面管理工具，使用 **React 18 + Tauri 2** 构建，主要面向 Windows 平台。这是一个功能完整的桌面应用，提供可视化的 Claude 项目与会话管理、实时流式响应展示、MCP 服务器管理，以及核心创新特性 **Claude Code Hooks 配置管理**。
 
-Claude Workbench 是一个专业的 Claude CLI 桌面管理工具，提供：
-- Claude 项目与会话的可视化管理
-- 流式 Claude 响应展示与 Markdown 渲染
-- Agent 系统支持与 GitHub 集成
-- Model Context Protocol (MCP) 服务器管理
-- **Claude Code Hooks 配置管理**（核心创新特性）
+### 技术栈核心
+
+- **前端**: React 18.3.1 + TypeScript 5.9.2 + Tailwind CSS 4.1.8 + Vite 6.0.3
+- **后端**: Tauri 2.1.1 + Rust (高性能系统调用)
+- **UI 组件库**: Radix UI (多个组件) + Framer Motion 12.0
+- **国际化**: i18next 25.3.2 (中文优先)
+- **数据持久化**: SQLite (通过 Rust rusqlite)
 
 ---
 
-## 二、技术栈与架构
+## 开发命令
 
-### 2.1 前端技术栈
-```
-React 18.3.1          核心 UI 框架
-TypeScript 5.9.2      类型安全开发
-Tailwind CSS 4.1.8    实用优先的样式框架
-Vite 6.0.3            现代化打包工具
-Framer Motion 12.0    高级动画库
-i18next 25.3.2        国际化支持（中文优先）
-```
-
-**关键 UI 库**:
-- Radix UI (多个组件库)：Dialog、Dropdown、Select、Tabs、Tooltip 等
-- react-hook-form + zod：表单管理与验证
-- react-syntax-highlighter：代码高亮
-- @uiw/react-md-editor：Markdown 编辑器
-- lucide-react：图标库
-- @tanstack/react-virtual：虚拟列表（高性能）
-
-### 2.2 后端 & 桌面层
-```
-Tauri 2.1.1           Rust + WebView 桌面框架
-Rust                  高性能系统编程
-Windows API           原生 Windows 集成
-@anthropic-ai/sdk     Claude API 集成
-```
-
-**Tauri 插件**:
-- @tauri-apps/plugin-shell：shell 命令执行
-- @tauri-apps/plugin-dialog：文件对话框
-- @tauri-apps/plugin-global-shortcut：全局快捷键
-- @tauri-apps/plugin-opener：打开系统应用
-
-### 2.3 整体架构
-```
-┌──────────────────────────┐
-│   React 前端 UI 层        │
-│  • 组件库 (50+ 个)       │
-│  • 路由与视图管理         │
-│  • i18n 国际化            │
-└────────────┬─────────────┘
-             │ IPC 通信
-┌────────────▼─────────────┐
-│   Tauri 桥接层            │
-│  • 类型安全的 RPC         │
-│  • 事件系统               │
-└────────────┬─────────────┘
-             │
-┌────────────▼─────────────┐
-│   Rust 后端               │
-│  • Claude CLI 管理        │
-│  • 进程控制               │
-│  • Windows 系统调用       │
-└──────────────────────────┘
-```
-
----
-
-## 三、目录结构与职责
-
-### 3.1 核心目录
-```
-src/
-├── components/              # 50+ React 组件库
-│   ├── ui/                 # Radix UI 组件封装 (15+ 基础组件)
-│   ├── FloatingPromptInput/ # 浮动输入框 (复杂子模块)
-│   ├── message/            # 消息显示组件
-│   ├── *Manager.tsx        # 各类管理组件
-│   └── ...                 # 业务组件
-│
-├── lib/                    # 核心业务逻辑库
-│   ├── api.ts             # Claude API 与 IPC 通信接口
-│   ├── claudeSDK.ts       # Claude SDK 包装
-│   ├── hooksManager.ts    # Claude Code Hooks 配置管理 [核心]
-│   ├── hooksConverter.ts  # Hooks 格式转换 [核心]
-│   ├── tokenCounter.ts    # Token 计数逻辑
-│   ├── errorHandling.ts   # 统一错误处理
-│   └── ...                # 其他工具函数
-│
-├── types/                 # TypeScript 类型定义
-│   ├── hooks.ts          # Claude Code Hooks 类型定义 [核心]
-│   └── subagents.ts      # 子代理类型
-│
-├── hooks/                 # React Hooks 库
-│   ├── useSessionSync.ts # 会话同步逻辑
-│   ├── useTabs.tsx       # 标签页管理状态
-│   ├── useTranslation.ts # i18n Hook
-│   └── ...
-│
-├── contexts/              # React Context
-│   └── ThemeContext.tsx   # 主题切换管理
-│
-├── i18n/                  # 国际化配置
-│   └── index.ts          # i18next 初始化
-│
-├── assets/                # 静态资源
-│   ├── shimmer.css       # 加载动画
-│   └── nfo/              # NFO 音频文件
-│
-├── styles/                # 全局样式
-│   ├── tabs.css
-│   └── styles.css
-│
-├── App.tsx               # 主应用组件 [关键]
-└── main.tsx              # React 挂载点
-
-src-tauri/               # Rust 后端
-├── src/main.rs         # Tauri 主程序
-└── Cargo.toml          # Rust 依赖
-```
-
-### 3.2 关键模块职责
-
-**App.tsx - 主应用控制器**
-- 多视图状态管理（welcome/projects/editor/settings/mcp 等）
-- 导航历史跟踪与智能返回
-- 项目/会话生命周期管理
-- 流式状态与 Claude 交互状态
-
-**lib/hooksManager.ts - Hooks 管理核心**
-- 合并三级别 Hooks 配置（user/project/local）
-- 正则匹配器处理与优先级解决
-- 命令安全性检查（危险模式识别）
-- Hook 验证与错误报告
-
-**lib/hooksConverter.ts - Hooks 格式转换**
-- 旧格式 → 新 Matcher 格式转换
-- 版本兼容性处理
-- 配置序列化/反序列化
-
-**components/EnhancedHooksManager.tsx - Hooks UI 编辑器**
-- 交互式 Hooks 配置界面
-- 实时验证与错误提示
-- Hook 模板快速应用
-- 命令预览与调试
-
----
-
-## 四、开发命令清单
-
-### 4.1 常用命令
+### 前端开发
 ```bash
-# 前端开发
-npm run dev              # 启动 Vite 开发服务器 (http://localhost:1420)
-
-# Tauri 开发
-npm run tauri:dev       # 启动 Tauri 应用 (含热重载)
-npm run tauri:build-fast # 快速构建 dev-release 版本
-npm run tauri:build     # 生产构建
-
-# 构建
-npm run build           # TypeScript + Vite 完整构建
-npm run preview         # 预览打包结果
-
-# 其他
-npm run tauri           # 直接调用 Tauri CLI
+npm run dev              # 启动 Vite 开发服务器 (端口 1420)
+npm run build            # TypeScript 编译 + Vite 打包
+npm run preview          # 预览生产构建
 ```
 
-### 4.2 项目脚本配置 (package.json)
+### Tauri 应用开发
+```bash
+npm run tauri:dev        # 启动 Tauri 开发模式 (热重载)
+npm run tauri:build-fast # 快速构建 dev-release 版本 (开发测试用)
+npm run tauri:build      # 完整生产构建 (生成 MSI/NSIS 安装包)
+```
+
+**注意**: `npm run tauri:dev` 会自动启动 Vite 并打开桌面窗口，支持 HMR 热模块替换。
+
+---
+
+## 核心架构模式
+
+### 1. 三层架构设计
+
+```
+React 前端 UI 层 (src/)
+    ↕ IPC 通信 (Tauri API)
+Tauri 桥接层 (invoke/emit)
+    ↕ 类型安全 RPC
+Rust 后端层 (src-tauri/src/)
+    - Claude CLI 进程管理
+    - Windows API 系统调用
+    - SQLite 数据库操作
+```
+
+### 2. 状态管理架构
+
+**App.tsx** 作为主控制器，采用 React Hooks + Context API 混合模式:
+
+- **全局状态**: `useState` 管理视图导航、项目列表、流式状态
+- **Context**: `ThemeContext` (主题切换), `TabProvider` (多标签管理)
+- **导航历史栈**: `navigationHistory[]` 实现智能返回功能
+- **LocalStorage**: Claude CLI 配置、会话历史持久化
+
+**关键状态变量** (`App.tsx`):
+```typescript
+view: View                    // 当前视图 (10+ 种路由视图)
+projects: Project[]           // 项目列表
+selectedProject: Project      // 选中项目
+isClaudeStreaming: boolean    // 流式响应状态
+navigationHistory: View[]     // 导航历史栈
+```
+
+### 3. Claude Code Hooks 系统 (核心创新)
+
+**三级别配置合并机制** (`src/lib/hooksManager.ts:17-61`):
+```
+优先级: local > project > user
+
+user:    ~/.claude/CLAUDE.md           (全局配置)
+project: ./CLAUDE.md                   (项目配置)
+local:   ./.claude.md                  (本地临时配置)
+```
+
+**Matcher 匹配器格式** (所有 Hook 事件统一使用):
+```typescript
+{
+  matcher?: string,        // 正则表达式匹配工具名 (如 "Bash", "Edit|Write", "*")
+  hooks: HookCommand[]     // 要执行的命令数组
+}
+```
+
+**支持的 Hook 事件类型** (`src/types/hooks.ts:18-32`):
+- `PreToolUse` / `PostToolUse`: 工具执行前后
+- `Notification`: 通知事件
+- `UserPromptSubmit`: 用户提交输入
+- `Stop` / `SubagentStop`: 会话/子代理停止
+- `PreCompact`: 上下文压缩前
+- `SessionStart` / `SessionEnd`: 会话生命周期
+
+**安全性检查** (`src/lib/hooksManager.ts:164-197`):
+- 自动检测危险命令模式 (如 `rm -rf /`, fork bomb, sudo 提权)
+- 验证正则表达式语法
+- 检测未引用的 Shell 变量 (代码注入风险)
+
+### 4. IPC 通信模式
+
+**前端调用 Rust** (`src/lib/api.ts`):
+```typescript
+// 所有后端调用通过 Tauri invoke
+import { invoke } from "@tauri-apps/api/core";
+
+export const api = {
+  async listProjects(): Promise<Project[]> {
+    return await invoke<Project[]>("list_projects");
+  },
+  // ... 100+ API 方法
+}
+```
+
+**Rust 命令注册** (`src-tauri/src/main.rs:113-246`):
+```rust
+tauri::Builder::default()
+  .invoke_handler(tauri::generate_handler![
+    list_projects,
+    get_hooks_config,
+    execute_claude_code,
+    // ... 所有暴露的命令
+  ])
+```
+
+### 5. 视图路由系统
+
+**View 类型定义** (`src/App.tsx:28-39`):
+```typescript
+type View =
+  | "welcome"                  // 欢迎页
+  | "projects"                 // 项目列表
+  | "claude-code-session"      // Claude 互动窗口
+  | "claude-tab-manager"       // 多标签管理
+  | "editor"                   // CLAUDE.md 编辑器
+  | "settings"                 // 应用设置
+  | "mcp"                      // MCP 服务器管理
+  | "usage-dashboard"          // 使用统计
+  | "project-settings"         // 项目 Hooks 配置
+  | "enhanced-hooks-manager"   // Hooks 详细编辑器
+  | "claude-file-editor"       // CLAUDE.md 文件编辑
+```
+
+**导航保护机制** (`src/App.tsx:198-218`):
+- 检测活跃的 Claude 流式会话
+- 显示确认对话框防止意外中断
+- 维护导航历史栈实现智能返回
+
+---
+
+## 关键文件与职责
+
+### 前端核心模块
+
+#### `src/App.tsx` (722 行)
+- **职责**: 主应用控制器、视图路由管理、全局状态
+- **关键函数**:
+  - `handleViewChange()`: 视图切换 + 导航保护
+  - `handleSmartBack()`: 智能返回 (基于历史栈)
+  - `renderContent()`: 视图渲染分发器
+  - `loadProjects()`: 项目列表加载
+- **状态管理**: 10+ 种 `useState` + 导航历史栈
+
+#### `src/lib/hooksManager.ts` (217 行)
+- **职责**: Claude Code Hooks 配置管理核心
+- **关键方法**:
+  - `mergeConfigs()`: 三级别配置合并 (user/project/local)
+  - `mergeMatchers()`: Matcher 数组合并与去重
+  - `validateConfig()`: 配置验证 + 危险命令检测
+  - `checkDangerousPatterns()`: 安全性模式匹配
+- **安全特性**: 检测 10+ 种危险 Shell 命令模式
+
+#### `src/lib/api.ts` (2148 行)
+- **职责**: Tauri IPC 通信接口封装
+- **包含**: 100+ 个 `async invoke()` 方法
+- **模块分类**:
+  - 项目与会话管理 (20+ 方法)
+  - Claude CLI 执行 (流式输出处理)
+  - MCP 服务器管理 (10+ 方法)
+  - Hooks 配置 CRUD (5 方法)
+  - 使用统计与分析 (15+ 方法)
+  - Provider 代理商管理 (8 方法)
+  - 翻译服务 (7 方法)
+  - 自动压缩管理 (12+ 方法)
+
+#### `src/types/hooks.ts` (136 行)
+- **职责**: Claude Code Hooks 类型定义
+- **核心类型**:
+  - `HooksConfiguration`: 完整 Hooks 配置接口
+  - `HookMatcher`: 匹配器 + 命令集合
+  - `HookCommand`: 单个命令定义
+  - `COMMON_TOOL_MATCHERS`: 常用工具匹配器列表 (15+ 个)
+  - `HOOK_TEMPLATES`: 预定义模板库 (5 个模板)
+
+#### `src/lib/hooksConverter.ts`
+- **职责**: Hooks 格式转换 (旧格式 → 新 Matcher 格式)
+- **用途**: 版本兼容性处理、配置序列化/反序列化
+
+#### `src/components/EnhancedHooksManager.tsx`
+- **职责**: Hooks 配置交互式编辑器 UI
+- **功能**:
+  - 实时验证与错误提示
+  - Hook 模板快速应用
+  - 命令预览与调试
+  - 三级别配置切换 (user/project/local)
+
+### 后端核心模块
+
+#### `src-tauri/src/main.rs` (249 行)
+- **职责**: Tauri 应用入口、插件注册、命令注册
+- **初始化**:
+  - SQLite 数据库 (`init_database`)
+  - 进程注册表 (`ProcessRegistryState`)
+  - Claude 进程状态 (`ClaudeProcessState`)
+  - 自动压缩管理器 (`AutoCompactManager`)
+  - 翻译服务 (后台初始化)
+- **命令分类**: 100+ 个 Rust 命令通过 `invoke_handler` 暴露
+
+#### `src-tauri/src/commands/` 模块
+- `claude.rs`: Claude CLI 进程管理、会话执行
+- `mcp.rs`: MCP 服务器管理
+- `storage.rs`: SQLite 数据库操作
+- `usage.rs`: 使用统计分析
+- `provider.rs`: 代理商配置管理
+- `translator.rs`: 翻译服务 (AI 翻译接口)
+- `context_manager.rs`: 自动上下文压缩
+- `enhanced_hooks.rs`: Hooks 事件触发与执行
+
+#### `src-tauri/Cargo.toml` (81 行)
+- **依赖管理**: 40+ Rust crates
+- **构建配置**:
+  - `[profile.dev-release]`: 快速开发构建 (opt-level=2, thin LTO)
+  - `[profile.release]`: 生产优化 (opt-level="z", full LTO, strip=true)
+
+---
+
+## TypeScript 配置要点
+
+**`tsconfig.json`**:
 ```json
 {
-  "type": "module",        // ES Module 模式
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri",
-    "tauri:build": "tauri build",
-    "tauri:build-fast": "tauri build --profile dev-release",
-    "tauri:dev": "tauri dev"
+  "compilerOptions": {
+    "strict": true,              // 严格模式启用
+    "noUnusedLocals": true,      // 禁止未使用变量
+    "noUnusedParameters": true,  // 禁止未使用参数
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] }  // 路径别名
+  }
+}
+```
+
+**`vite.config.ts` 关键配置**:
+```typescript
+{
+  server: {
+    port: 1420,          // Tauri 固定端口
+    strictPort: true,    // 端口被占用则失败
+    hmr: { port: 1421 }  // WebSocket 热更新端口
+  },
+  build: {
+    chunkSizeWarningLimit: 2000,  // 2MB 块大小限制
+    manualChunks: {
+      'react-vendor': ['react', 'react-dom'],
+      'ui-vendor': [...],  // Radix UI 组件分块
+      'tauri': [...],      // Tauri 插件分块
+    }
   }
 }
 ```
 
 ---
 
-## 五、关键架构要点
+## 构建与打包流程
 
-### 5.1 视图路由系统
-```typescript
-type View =
-  | "welcome"                  // 欢迎页
-  | "projects"               // 项目列表
-  | "claude-code-session"    // Claude 互动窗口
-  | "claude-tab-manager"     // 多标签管理
-  | "editor"                 // CLAUDE.md 编辑器
-  | "settings"               // 应用设置
-  | "mcp"                    // MCP 服务器管理
-  | "usage-dashboard"        // 使用统计
-  | "project-settings"       // 项目 Hooks 配置
-  | "enhanced-hooks-manager" // Hooks 详细编辑器
-  | "claude-file-editor"    // CLAUDE.md 文件编辑
-```
-
-### 5.2 状态管理架构
-```
-App 组件
-├── 全局状态
-│   ├── view (当前视图)
-│   ├── projects[] (项目列表)
-│   ├── selectedProject (选中项目)
-│   ├── navigationHistory[] (导航历史)
-│   ├── isClaudeStreaming (流式状态)
-│   └── ...其他 UI 状态
-│
-├── Context API
-│   ├── ThemeContext (主题：亮/暗)
-│   └── TabProvider (标签页管理)
-│
-└── LocalStorage
-    └── Claude CLI 配置、会话历史
-
-自定义 Hooks
-├── useTabs (标签页状态)
-├── useSessionSync (会话同步)
-└── useTranslation (i18n)
-```
-
-### 5.3 Hooks 配置三级别系统
-```
-优先级: local > project > user
-
-user:    ~/.claude/CLAUDE.md (全局配置)
-project: ./CLAUDE.md (项目配置)
-local:   ./.claude.md (本地临时配置)
-
-合并规则:
-- 按事件类型合并
-- 相同 matcher 后者覆盖前者
-- 最终保留所有非重复 matcher
-```
-
-### 5.4 Hook 事件类型
-```typescript
-PreToolUse       // 工具执行前
-PostToolUse      // 工具执行后
-Notification     // 通知事件
-UserPromptSubmit // 用户输入提交
-Stop             // 会话停止
-SubagentStop     // 子代理停止
-PreCompact       // 压缩前
-SessionStart     // 会话开始
-SessionEnd       // 会话结束
-```
-
----
-
-## 六、开发工作流
-
-### 6.1 启动开发环境
+### 开发构建 (快速迭代)
 ```bash
-# 终端 1: 运行 Tauri 应用
-npm run tauri:dev
-
-# 应用会自动:
-# 1. 启动 Vite 开发服务器 (端口 1420)
-# 2. 编译 Rust 代码
-# 3. 打开桌面应用窗口
-# 4. 启用热模块重载 (HMR)
+npm run tauri:build-fast
 ```
+- 使用 `dev-release` profile (Cargo.toml:54-60)
+- 优化级别 `opt-level=2` (平衡速度与性能)
+- Thin LTO + 增量编译启用
+- 保留 debug 信息
 
-### 6.2 代码修改后自动重载
-- **前端文件** (src/*.tsx): Vite HMR 自动刷新
-- **Rust 代码** (src-tauri/src/*.rs): 自动重新编译
-- **Tauri 配置**: 需要重启应用
-
-### 6.3 构建与部署
+### 生产构建 (最小体积)
 ```bash
-# 完整生产构建
-npm run build && npm run tauri:build
+npm run tauri:build
+```
+- 使用 `release` profile (Cargo.toml:63-72)
+- 优化级别 `opt-level="z"` (最小体积)
+- Full LTO + Strip symbols
+- 生成 Windows 安装包: MSI + NSIS
 
-# 生成的文件:
-# - dist/                        (前端静态资源)
-# - src-tauri/target/release/   (Rust 二进制)
-# - MSI 安装包
-# - NSIS 安装包
+### 构建输出
+```
+dist/                     # Vite 前端打包结果
+src-tauri/target/release/ # Rust 二进制文件
+*.msi                     # Windows MSI 安装包
+*.exe                     # NSIS 安装包
 ```
 
 ---
 
-## 七、重要的修改文件说明
+## 关键开发注意事项
 
-### 7.1 最近修改的核心文件 (git status)
-```
-M src/components/HooksEditor.tsx     # Hooks 编辑器 UI 组件
-M src/lib/hooksConverter.ts          # Hooks 格式转换逻辑
-M src/lib/hooksManager.ts            # Hooks 配置管理核心
-M src/types/hooks.ts                 # Hooks 类型定义
-D CLAUDE.md                          # 项目配置文档 (被删除，待重建)
-```
+### 1. Hooks 配置最佳实践
 
-### 7.2 Hooks 系统核心改动说明
-
-**hooksManager.ts**:
-- `mergeConfigs()`: 三级别配置合并 (user/project/local)
-- `mergeMatchers()`: Matcher 数组合并与去重
-- `validateConfig()`: 配置验证 + 危险命令检测
-- `checkDangerousPatterns()`: 安全性检查
-
-**hooksConverter.ts**:
-- 新旧格式兼容性转换
-- Matcher 格式标准化
-
-**types/hooks.ts**:
-- `HookCommand`: 单个命令定义
-- `HookMatcher`: 匹配器与命令集合
-- `HooksConfiguration`: 完整配置接口
-- `COMMON_TOOL_MATCHERS[]`: 常用工具匹配器列表
-- `HOOK_TEMPLATES[]`: 预定义模板库
-
----
-
-## 八、编码规范与最佳实践
-
-### 8.1 TypeScript 配置
-```
-严格模式启用:
-- strict: true
-- noUnusedLocals: true
-- noUnusedParameters: true
-- noFallthroughCasesInSwitch: true
-
-路径别名:
-- @/* => src/*
+**危险命令会被自动检测**:
+```bash
+✗ rm -rf /          # 根目录删除
+✗ curl | bash       # 远程代码执行
+✗ sudo              # 提权命令
+✗ :(){ :|:& };:     # Fork bomb
 ```
 
-### 8.2 组件编写规范
+**推荐的安全模式**:
+```bash
+✓ jq -r '.field' < input.json     # JSON 提取
+✓ "$variable"                     # 引用变量 (防注入)
+✓ /specific/path                  # 精确路径
+✓ echo "验证输出"                  # 调试输出
+```
+
+### 2. 状态管理规范
+
+**遵循 React Hooks 规则**:
+- 仅在函数组件或自定义 Hook 内调用
+- 在函数顶部调用，不在循环/条件/嵌套函数中
+- `useCallback`/`useMemo` 的依赖项要完整
+- Hook 依赖列表不可省略
+
+**组件编写模式**:
 ```typescript
-// 使用函数组件 + React Hooks
 export function ComponentName({ prop1, prop2 }: Props) {
   const [state, setState] = useState<Type>(initial);
 
   useEffect(() => {
-    // 副作用
+    // 副作用逻辑
   }, [dependencies]);
 
   return <div>Content</div>;
 }
+```
 
-// 类型定义位置
-interface Props {
-  prop1: string;
-  prop2?: number;
+### 3. 样式规范
+
+**优先使用 Tailwind CSS 实用类**:
+```tsx
+<div className="flex items-center justify-center p-8 bg-gradient-to-br">
+  {/* 内容 */}
+</div>
+```
+
+**颜色变量约定**:
+- `bg-foreground`, `text-muted-foreground`
+- `bg-accent`, `text-accent-foreground`
+- `border-destructive`, `bg-destructive/10`
+
+### 4. IPC 调用模式
+
+**前端调用后端**:
+```typescript
+// 正确: 使用 api.ts 封装
+const projects = await api.listProjects();
+
+// 错误: 直接调用 invoke (难以维护)
+const projects = await invoke("list_projects");
+```
+
+**错误处理**:
+```typescript
+try {
+  const result = await api.someMethod();
+} catch (error) {
+  console.error("Failed to ...", error);
+  setToast({ message: "操作失败", type: "error" });
 }
 ```
 
-### 8.3 Hooks 使用规范
+### 5. 路径处理约定
+
+**Windows 路径兼容性**:
 ```typescript
-// 遵循 Hooks 规则:
-1. 仅在 React 函数组件或自定义 Hook 内调用
-2. 在函数顶部调用，不在循环/条件/嵌套函数中调用
-3. useCallback/useMemo 的依赖项要完整
-4. Hook 依赖列表不可省略
-```
+// Rust 侧使用 std::path::Path/PathBuf
+// 前端使用反斜杠 \\ 或正斜杠 / (Tauri 自动转换)
 
-### 8.4 样式规范
-```
-使用 Tailwind CSS:
-- 优先使用实用类
-- @apply 用于复杂组件样式
-- CSS-in-JS 用于动态样式
-- 颜色变量: bg-foreground, text-muted-foreground, etc.
-```
-
-### 8.5 Hooks 配置最佳实践
-```bash
-# 危险命令会被检测:
-✗ rm -rf /        # 根目录删除
-✗ rm -rf ~        # 主目录删除
-✗ curl | bash     # 远程代码执行
-✗ sudo            # 提权命令
-✗ fork bomb       # :(){ :|:& };:
-
-# 推荐的安全模式:
-✓ 使用 jq 提取值: $(jq -r .field)
-✓ 引用变量: "$variable" (带双引号)
-✓ 指定精确路径: /specific/path 而非 /
-✓ 使用 echo 检查: echo "验证输出"
+// 示例:
+const projectPath = "C:\\Users\\Admin\\Projects\\my-app";
+const projectPath = "C:/Users/Admin/Projects/my-app"; // 也可接受
 ```
 
 ---
 
-## 九、调试与问题排查
+## 常见问题排查
 
-### 9.1 常见问题
+### Q: Tauri 开发时窗口不显示
+**A**: `main.tsx` 有意设置 100ms 延迟，确保 React 挂载完成后再显示窗口。检查 `tauri.conf.json` 中 `visible: false` 配置。
 
-**Q: Tauri 开发时窗口不显示**
-```
-A: main.tsx 中有意为之的 100ms 延迟，确保 React 挂载完成后再显示窗口
-```
+### Q: HMR 热更新不工作
+**A**: 检查环境变量 `TAURI_DEV_HOST`，确认 `vite.config.ts` 中 WebSocket 代理配置正确 (端口 1421)。
 
-**Q: HMR 热更新不工作**
-```
-A: 检查环境变量 TAURI_DEV_HOST，vite.config.ts 已配置 WebSocket 代理
-```
+### Q: Rust 编译失败
+**A**:
+1. 运行 `npm run tauri:build-fast` (使用开发配置快速编译)
+2. 检查 Rust 版本: `rustc --version` (推荐 1.70+)
+3. 清理缓存: `cd src-tauri && cargo clean`
 
-**Q: 构建失败 - Rust 编译错误**
-```
-A: 运行: npm run tauri:build-fast (使用开发发布配置快速编译)
-```
+### Q: Hooks 配置不生效
+**A**:
+1. 检查文件位置 (CLAUDE.md, .claude.md)
+2. 验证 JSON 格式有效性
+3. 查看 `hooksManager.validateConfig()` 的错误信息
+4. 确认 Matcher 正则表达式正确
 
-**Q: Hooks 配置不生效**
-```
-A: 1. 检查文件位置 (CLAUDE.md, .claude.md)
-   2. 验证 JSON 格式有效性
-   3. 查看 hooksManager.validateConfig() 的错误信息
-   4. 确认 Matcher 正则表达式正确
-```
-
-### 9.2 开发调试技巧
-```typescript
-// 在 Rust 端输出日志
-println!("Debug: {:?}", value);
-
-// 在前端输出 Hooks 配置
-console.log('Hooks Config:', hooks);
-
-// 验证 Hooks 配置
-const result = HooksManager.validateConfig(config);
-console.log('Validation:', result.errors, result.warnings);
-```
+### Q: 前端构建包过大
+**A**: Vite 已配置 `manualChunks` 代码分割 (vite.config.ts:54-63)，检查是否误引入大型依赖。
 
 ---
 
-## 十、扩展开发指南
+## 扩展开发指南
 
-### 10.1 新增 Hook 事件类型
+### 新增 Hook 事件类型
+
+1. **修改类型定义** (`src/types/hooks.ts`):
 ```typescript
-// 1. 修改 src/types/hooks.ts
 export interface HooksConfiguration {
   NewEvent?: HookMatcher[];  // 新增事件
 }
+```
 
-// 2. 更新 hooksManager.ts 的 allEvents 数组
+2. **更新 HooksManager** (`src/lib/hooksManager.ts:27-37`):
+```typescript
 const allEvents: (keyof HooksConfiguration)[] = [
   'PreToolUse',
   'NewEvent',  // 新增
-  ...
+  // ...
 ];
-
-// 3. 在 Hook 触发器中调用
-await HooksManager.triggerHooks('NewEvent', data);
 ```
 
-### 10.2 新增 Hook 模板
+3. **在 Hooks 触发器中调用**:
 ```typescript
-// src/types/hooks.ts - HOOK_TEMPLATES 数组
-{
-  id: 'new-template',
-  name: 'Template Name',
-  description: 'Description',
-  event: 'PreToolUse',
-  matcher: 'Tool.*',
-  commands: ['command 1', 'command 2']
-}
+await HooksManager.triggerHooks('NewEvent', contextData);
 ```
 
-### 10.3 新增 UI 组件
+### 新增 UI 组件
+
+**组件位置**: `src/components/NewComponent.tsx`
 ```typescript
-// src/components/NewComponent.tsx
 import { FC } from 'react';
 import { Button } from '@/components/ui/button';
 
@@ -487,68 +457,50 @@ interface Props {
 }
 
 export const NewComponent: FC<Props> = ({ onBack }) => {
-  return <div>Content</div>;
+  return (
+    <div className="p-6">
+      {/* 组件内容 */}
+    </div>
+  );
 };
 ```
 
----
+### 新增 Tauri 命令
 
-## 十一、依赖版本说明
-
-### 核心依赖版本锁定
-```
-React:           18.3.1  (LTS 版本)
-TypeScript:      5.9.2
-Tauri:           2.1.1
-Vite:            6.0.3   (最新稳定版)
-Tailwind CSS:    4.1.8
-Node.js 需求:    18.0+
+1. **Rust 侧** (`src-tauri/src/commands/module.rs`):
+```rust
+#[tauri::command]
+pub async fn my_new_command(param: String) -> Result<String, String> {
+    // 实现逻辑
+    Ok("Success".to_string())
+}
 ```
 
-### 重要插件
+2. **注册命令** (`src-tauri/src/main.rs`):
+```rust
+.invoke_handler(tauri::generate_handler![
+    my_new_command,  // 新增
+    // ...
+])
 ```
-@anthropic-ai/sdk:      0.63.1  (Claude API)
-@tauri-apps/cli:        2       (Tauri 工具链)
-@hookform/resolvers:    3.9.1   (表单验证)
-```
 
----
-
-## 十二、相关文档链接
-
-- [Claude Code Hooks 官方文档](https://docs.claude.com/en/docs/claude-code/hooks)
-- [Tauri 文档](https://tauri.app/)
-- [React 18 文档](https://react.dev/)
-- [TypeScript 手册](https://www.typescriptlang.org/docs/)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [Vite 文档](https://vitejs.dev/)
-
----
-
-## 十三、项目维护信息
-
-**主要功能领域**:
-1. 项目与会话管理
-2. Claude API 交互与流式处理
-3. Claude Code Hooks 系统
-4. MCP 服务器管理
-5. 国际化与主题支持
-
-**核心代码维护者需要关注**:
-- src/lib/hooksManager.ts (Hooks 业务逻辑)
-- src/types/hooks.ts (类型定义)
-- src/components/EnhancedHooksManager.tsx (UI 层)
-- src/App.tsx (路由与状态)
-
-**最近修改记录**:
-```
-2025-10-17: 删除 CC Agent 功能，重新索引 hooksManager.ts
-2025-10-15: 修复 Rust 编译警告
-2025-10-14: 代码更新
+3. **前端调用** (`src/lib/api.ts`):
+```typescript
+async myNewCommand(param: string): Promise<string> {
+  return await invoke<string>("my_new_command", { param });
+}
 ```
 
 ---
 
-**文档版本**: 1.0.0 (2025-10-17)
+## 许可证与贡献
+
+- **许可证**: AGPL-3.0
+- **贡献指南**: 遵循现有代码风格、添加适当的类型注解、保持函数职责单一
+- **提交规范**: 使用清晰的中英文混合提交信息
+
+---
+
+**文档版本**: 1.0.0
 **最后更新**: 2025-10-17
 **维护状态**: 主动维护中
