@@ -42,6 +42,9 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 // import { smartFilterMessages } from '@/lib/messageFilter';
 import { useSessionCostCalculation } from '@/hooks/useSessionCostCalculation';
 import { useDisplayableMessages } from '@/hooks/useDisplayableMessages';
+import { useMessageOperations } from '@/hooks/useMessageOperations';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useSmartAutoScroll } from '@/hooks/useSmartAutoScroll';
 import { extractMessageContent as extractContentUtil } from '@/lib/contentExtraction';
 
 import type { ClaudeStreamMessage } from '@/types/claude';
@@ -103,11 +106,9 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const [extractedSessionInfo, setExtractedSessionInfo] = useState<{ sessionId: string; projectId: string } | null>(null);
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
   const [showSlashCommandsSettings, setShowSlashCommandsSettings] = useState(false);
-  const [lastEscapeTime, setLastEscapeTime] = useState(0);
 
   // Plan Mode state
   const [isPlanMode, setIsPlanMode] = useState(false);
-  const [lastShiftTabTime, setLastShiftTabTime] = useState(0);
   // const [planModeContent, setPlanModeContent] = useState<string | null>(null); // Reserved for future plan preview dialog
   // const [showPlanDialog, setShowPlanDialog] = useState(false); // Reserved for future plan approval flow
 
@@ -117,127 +118,36 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   // ✅ Refactored: Use custom Hook for session cost calculation
   const { sessionCost, formatCost } = useSessionCostCalculation(messages);
 
+  // ✅ Refactored: Use custom Hook for message filtering
+  const displayableMessages = useDisplayableMessages(messages);
+
+  // ✅ Refactored: Use custom Hook for message operations
+  const { handleMessageUndo, handleMessageEdit, handleMessageDelete, handleMessageTruncate } =
+    useMessageOperations({
+      sessionInfo: extractedSessionInfo,
+      projectPath,
+      messages,
+      setMessages,
+      setError
+    });
+
+  // ✅ Refactored: Use custom Hook for keyboard shortcuts
+  useKeyboardShortcuts({
+    isActive,
+    onTogglePlanMode: () => setIsPlanMode(prev => !prev)
+  });
+
+  // ✅ Refactored: Use custom Hook for smart auto-scroll
+  const { parentRef, userScrolled, setUserScrolled, setShouldAutoScroll } =
+    useSmartAutoScroll({
+      displayableMessages,
+      isLoading
+    });
+
   // ============================================================================
   // MESSAGE-LEVEL OPERATIONS (Fine-grained Undo/Redo)
   // ============================================================================
-
-  /**
-   * Undo messages up to a specific index
-   */
-  const handleMessageUndo = async (messageIndex: number) => {
-    if (!extractedSessionInfo || !projectPath) {
-      console.error('[MessageOps] Missing session info or project path');
-      return;
-    }
-
-    try {
-      console.log(`[MessageOps] Undoing to message index ${messageIndex}`);
-      
-      // Calculate how many messages to undo
-      const currentCount = messages.length;
-      const countToUndo = currentCount - messageIndex;
-      
-      await api.messageUndo(
-        extractedSessionInfo.sessionId,
-        extractedSessionInfo.projectId,
-        projectPath,
-        countToUndo
-      );
-      
-      // Reload messages
-      setMessages([]);
-      // Trigger session reload would be handled by parent if needed
-      console.log(`[MessageOps] Successfully undid ${countToUndo} messages`);
-    } catch (error) {
-      console.error('[MessageOps] Failed to undo messages:', error);
-      setError(error instanceof Error ? error.message : 'Failed to undo messages');
-    }
-  };
-
-  /**
-   * Edit a specific message
-   */
-  const handleMessageEdit = async (messageIndex: number, newContent: string) => {
-    if (!extractedSessionInfo || !projectPath) {
-      console.error('[MessageOps] Missing session info or project path');
-      return;
-    }
-
-    try {
-      console.log(`[MessageOps] Editing message index ${messageIndex}`);
-      
-      await api.messageEdit(
-        extractedSessionInfo.sessionId,
-        extractedSessionInfo.projectId,
-        projectPath,
-        messageIndex,
-        newContent
-      );
-      
-      // Clear messages and reload
-      setMessages([]);
-      console.log('[MessageOps] Message edited, ready to regenerate');
-    } catch (error) {
-      console.error('[MessageOps] Failed to edit message:', error);
-      setError(error instanceof Error ? error.message : 'Failed to edit message');
-    }
-  };
-
-  /**
-   * Delete a specific message
-   */
-  const handleMessageDelete = async (messageIndex: number) => {
-    if (!extractedSessionInfo || !projectPath) {
-      console.error('[MessageOps] Missing session info or project path');
-      return;
-    }
-
-    try {
-      console.log(`[MessageOps] Deleting message index ${messageIndex}`);
-      
-      await api.messageDelete(
-        extractedSessionInfo.sessionId,
-        extractedSessionInfo.projectId,
-        projectPath,
-        messageIndex
-      );
-      
-      // Reload messages
-      setMessages([]);
-      console.log('[MessageOps] Message deleted successfully');
-    } catch (error) {
-      console.error('[MessageOps] Failed to delete message:', error);
-      setError(error instanceof Error ? error.message : 'Failed to delete message');
-    }
-  };
-
-  /**
-   * Truncate messages to a specific index
-   */
-  const handleMessageTruncate = async (messageIndex: number) => {
-    if (!extractedSessionInfo || !projectPath) {
-      console.error('[MessageOps] Missing session info or project path');
-      return;
-    }
-
-    try {
-      console.log(`[MessageOps] Truncating to message index ${messageIndex}`);
-      
-      await api.messageTruncateToIndex(
-        extractedSessionInfo.sessionId,
-        extractedSessionInfo.projectId,
-        projectPath,
-        messageIndex
-      );
-      
-      // Reload messages
-      setMessages([]);
-      console.log('[MessageOps] Messages truncated successfully');
-    } catch (error) {
-      console.error('[MessageOps] Failed to truncate messages:', error);
-      setError(error instanceof Error ? error.message : 'Failed to truncate messages');
-    }
-  };
+  // Operations extracted to useMessageOperations Hook
 
   // Progressive translation state
   const [translationStates, setTranslationStates] = useState<TranslationState>({});
@@ -268,15 +178,9 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   
   // Add collapsed state for queued prompts
   const [queuedPromptsCollapsed, setQueuedPromptsCollapsed] = useState(false);
-  
-  
-  // Enhanced scroll management
-  const [userScrolled, setUserScrolled] = useState(false);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastScrollPositionRef = useRef(0);
-  
-  const parentRef = useRef<HTMLDivElement>(null);
+
+  // ✅ Scroll management (userScrolled, shouldAutoScroll, parentRef) extracted to useSmartAutoScroll Hook
+
   const unlistenRefs = useRef<UnlistenFn[]>([]);
   const hasActiveSessionRef = useRef(false);
   const floatingPromptRef = useRef<FloatingPromptInputRef>(null);
@@ -304,9 +208,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     }
     return null;
   }, [session, extractedSessionInfo, projectPath]);
-
-  // ✅ Refactored: Use custom Hook for message filtering
-  const displayableMessages = useDisplayableMessages(messages);
 
   const rowVirtualizer = useVirtualizer({
     count: displayableMessages.length,
@@ -401,145 +302,9 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     // Note: When tab becomes active, listeners will be set up by handleSendPrompt
   }, [isActive]);
 
-  // Double ESC key detection for rewind dialog
-  useEffect(() => {
-    const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isActive) {
-        const now = Date.now();
+  // ✅ Keyboard shortcuts (ESC, Shift+Tab) extracted to useKeyboardShortcuts Hook
 
-        // Check if this is a double ESC within 300ms
-        if (now - lastEscapeTime < 300) {
-          event.preventDefault();
-          event.stopPropagation();
-
-          // Only show rewind dialog if we have session info
-        }
-
-        setLastEscapeTime(now);
-      }
-    };
-
-    if (isActive) {
-      document.addEventListener('keydown', handleEscapeKey, { capture: true });
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey, { capture: true });
-    };
-  }, [lastEscapeTime, isActive, extractedSessionInfo, projectPath]);
-
-  // Shift+Tab double press detection for Plan Mode toggle
-  useEffect(() => {
-    const handlePlanModeToggle = (event: KeyboardEvent) => {
-      if (event.key === 'Tab' && event.shiftKey && isActive) {
-        const now = Date.now();
-
-        // Check if this is a double Shift+Tab within 500ms
-        if (now - lastShiftTabTime < 500) {
-          event.preventDefault();
-          event.stopPropagation();
-
-          // Toggle Plan Mode
-          setIsPlanMode(prev => {
-            const newState = !prev;
-            console.log(`[PlanMode] ${newState ? 'Enabled' : 'Disabled'} Plan Mode`);
-            return newState;
-          });
-        }
-
-        setLastShiftTabTime(now);
-      }
-    };
-
-    if (isActive) {
-      document.addEventListener('keydown', handlePlanModeToggle, { capture: true });
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handlePlanModeToggle, { capture: true });
-    };
-  }, [lastShiftTabTime, isActive]);
-
-  // Smart scroll detection - detect when user manually scrolls
-  useEffect(() => {
-    const scrollElement = parentRef.current;
-    if (!scrollElement) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollElement;
-      const currentScrollPosition = scrollTop;
-      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50; // 50px threshold
-
-      // Detect if this was a user-initiated scroll
-      const scrollDifference = Math.abs(currentScrollPosition - lastScrollPositionRef.current);
-      if (scrollDifference > 5) { // Only count significant scroll movements
-        const wasUserScroll = !shouldAutoScroll || scrollDifference > 100;
-
-        if (wasUserScroll) {
-          setUserScrolled(!isAtBottom);
-          setShouldAutoScroll(isAtBottom);
-        }
-      }
-
-      lastScrollPositionRef.current = currentScrollPosition;
-
-      // Reset user scroll state after inactivity
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-      scrollTimeoutRef.current = setTimeout(() => {
-        if (isAtBottom) {
-          setUserScrolled(false);
-          setShouldAutoScroll(true);
-        }
-      }, 2000);
-    };
-
-    scrollElement.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      scrollElement.removeEventListener('scroll', handleScroll);
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, [shouldAutoScroll]);
-
-  // Smart auto-scroll for new messages
-  useEffect(() => {
-    if (displayableMessages.length > 0 && shouldAutoScroll && !userScrolled) {
-      const timeoutId = setTimeout(() => {
-        if (parentRef.current) {
-          const scrollElement = parentRef.current;
-          scrollElement.scrollTo({
-            top: scrollElement.scrollHeight,
-            behavior: 'smooth'
-          });
-        }
-      }, 100);
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [displayableMessages.length, shouldAutoScroll, userScrolled]);
-
-  // Enhanced streaming scroll - only when user hasn't manually scrolled away
-  useEffect(() => {
-    if (isLoading && displayableMessages.length > 0 && shouldAutoScroll && !userScrolled) {
-      const scrollToBottom = () => {
-        if (parentRef.current) {
-          const scrollElement = parentRef.current;
-          scrollElement.scrollTo({
-            top: scrollElement.scrollHeight,
-            behavior: 'smooth'
-          });
-        }
-      };
-
-      // More frequent updates during streaming for better UX
-      const intervalId = setInterval(scrollToBottom, 300);
-      
-      return () => clearInterval(intervalId);
-    }
-  }, [isLoading, displayableMessages.length, shouldAutoScroll, userScrolled]);
+  // ✅ Smart scroll management (3 useEffect blocks) extracted to useSmartAutoScroll Hook
 
   // Token calculation removed - no longer displayed in header
   // useEffect(() => {

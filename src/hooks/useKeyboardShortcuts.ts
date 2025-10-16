@@ -1,0 +1,91 @@
+/**
+ * 键盘快捷键 Hook
+ *
+ * 从 ClaudeCodeSession 提取（原 405-462 行）
+ * 处理双击 ESC 和 Shift+Tab 的快捷键检测
+ */
+
+import { useEffect, useState } from 'react';
+
+interface KeyboardShortcutsConfig {
+  /** 是否激活（用于多标签管理） */
+  isActive: boolean;
+  /** 切换 Plan Mode */
+  onTogglePlanMode: () => void;
+}
+
+/**
+ * 键盘快捷键 Hook
+ *
+ * @param config - 配置对象
+ *
+ * @example
+ * useKeyboardShortcuts({
+ *   isActive: true,
+ *   onTogglePlanMode: () => setIsPlanMode(prev => !prev)
+ * });
+ */
+export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
+  const { isActive, onTogglePlanMode } = config;
+
+  const [lastEscapeTime, setLastEscapeTime] = useState(0);
+  const [lastShiftTabTime, setLastShiftTabTime] = useState(0);
+
+  // Double ESC key detection for future rewind dialog
+  // NOTE: Currently placeholder - rewind dialog UI not implemented yet
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isActive) {
+        const now = Date.now();
+
+        // Check if this is a double ESC within 300ms
+        if (now - lastEscapeTime < 300) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          // TODO: Show rewind dialog when UI is implemented
+          console.log('[KeyboardShortcuts] Double ESC detected - rewind dialog placeholder');
+        }
+
+        setLastEscapeTime(now);
+      }
+    };
+
+    if (isActive) {
+      document.addEventListener('keydown', handleEscapeKey, { capture: true });
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey, { capture: true });
+    };
+  }, [lastEscapeTime, isActive]);
+
+  // Shift+Tab double press detection for Plan Mode toggle
+  useEffect(() => {
+    const handlePlanModeToggle = (event: KeyboardEvent) => {
+      if (event.key === 'Tab' && event.shiftKey && isActive) {
+        const now = Date.now();
+
+        // Check if this is a double Shift+Tab within 500ms
+        if (now - lastShiftTabTime < 500) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          // Toggle Plan Mode
+          onTogglePlanMode();
+          console.log('[KeyboardShortcuts] Shift+Tab detected - toggling Plan Mode');
+        }
+
+        setLastShiftTabTime(now);
+      }
+    };
+
+    if (isActive) {
+      document.addEventListener('keydown', handlePlanModeToggle, { capture: true });
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handlePlanModeToggle, { capture: true });
+    };
+  }, [lastShiftTabTime, isActive, onTogglePlanMode]);
+}
