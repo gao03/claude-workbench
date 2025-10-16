@@ -20,7 +20,7 @@ import {
   WebFetchWidget,
   BashOutputWidget,
   MCPWidget,
-} from '@/components/message/ToolWidgets';
+} from '@/components/ToolWidgets';
 
 /**
  * 工具适配器工厂
