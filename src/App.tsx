@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Loader2, Bot, FolderCode } from "lucide-react";
+import { Plus, Loader2, FolderCode } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { OutputCacheProvider } from "@/lib/outputCache";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { Topbar } from "@/components/Topbar";
 import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { ClaudeFileEditor } from "@/components/ClaudeFileEditor";
 import { Settings } from "@/components/Settings";
-import { CCAgents } from "@/components/CCAgents";
 import { ClaudeCodeSession } from "@/components/ClaudeCodeSession";
 import { TabManager } from "@/components/TabManager";
 import { TabProvider, useTabs } from "@/hooks/useTabs";
@@ -23,7 +22,6 @@ import { ClaudeBinaryDialog } from "@/components/ClaudeBinaryDialog";
 import { Toast, ToastContainer } from "@/components/ui/toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ProjectSettings } from '@/components/ProjectSettings';
-import { SubagentManager } from '@/components/SubagentManager';
 import { EnhancedHooksManager } from '@/components/EnhancedHooksManager';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -35,15 +33,9 @@ type View =
   | "claude-code-session"
   | "claude-tab-manager"
   | "settings"
-  | "cc-agents"
-  | "create-agent"
-  | "github-agents"
-  | "agent-execution"
-  | "agent-run-view"
   | "mcp"
   | "usage-dashboard"
   | "project-settings"
-  | "subagent-manager"
   | "enhanced-hooks-manager";
 
 /**
@@ -310,75 +302,100 @@ function AppContent() {
     switch (view) {
       case "welcome":
         return (
-          <div className="flex items-center justify-center p-4" style={{ height: "100%" }}>
-            <div className="w-full max-w-4xl">
-              {/* Welcome Header */}
+          <div className="flex items-center justify-center p-8 min-h-full bg-gradient-to-br from-background via-background to-background/95">
+            <div className="w-full max-w-6xl">
+              {/* Welcome Header with Modern Gradient Text */}
               <motion.div
-                initial={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0, y: -30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mb-12 text-center"
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="mb-16 text-center"
               >
-                <h1 className="text-4xl font-bold tracking-tight">
-                  <span className="rotating-symbol"></span>
-                  {t('app.title')} - {t('app.subtitle')}
-                </h1>
+                <div className="mb-4 flex items-center justify-center gap-3">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    className="text-6xl"
+                  >
+                    ◐
+                  </motion.div>
+                  <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">
+                    {t('app.title')}
+                  </h1>
+                </div>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  className="text-xl text-muted-foreground mt-2"
+                >
+                  {t('app.subtitle')}
+                </motion.p>
               </motion.div>
 
-              {/* Navigation Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                {/* CC Agents Card */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                >
-                  <Card 
-                    className="h-64 cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg border border-border/50 shimmer-hover trailing-border"
-                    onClick={() => handleViewChange("cc-agents")}
-                  >
-                    <div className="h-full flex flex-col items-center justify-center p-8">
-                      <Bot className="h-16 w-16 mb-4 text-primary" />
-                      <h2 className="text-xl font-semibold">{t('navigation.ccAgents')}</h2>
-                    </div>
-                  </Card>
-                </motion.div>
-
+              {/* Navigation Card - Direct to Projects */}
+              <div className="grid grid-cols-1 max-w-2xl mx-auto">
                 {/* CC Projects Card */}
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ 
+                    duration: 0.5, 
+                    delay: 0.3,
+                    ease: [0.22, 1, 0.36, 1]
+                  }}
                 >
                   <Card 
-                    className="h-64 cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg border border-border/50 shimmer-hover trailing-border"
+                    variant="interactive"
+                    padding="none"
+                    glow
+                    className="h-72 overflow-hidden group"
                     onClick={() => handleViewChange("projects")}
                   >
-                    <div className="h-full flex flex-col items-center justify-center p-8">
-                      <FolderCode className="h-16 w-16 mb-4 text-primary" />
-                      <h2 className="text-xl font-semibold">{t('navigation.ccProjects')}</h2>
+                    <div className="h-full flex flex-col items-center justify-center p-10 relative">
+                      {/* Background Gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      
+                      {/* Icon with Floating Animation */}
+                      <motion.div
+                        animate={{ y: [0, -10, 0] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                        className="relative z-10"
+                      >
+                        <div className="p-6 rounded-2xl bg-accent/10 group-hover:bg-accent/20 transition-colors duration-300">
+                          <FolderCode className="h-20 w-20 text-accent-foreground" strokeWidth={1.5} />
+                        </div>
+                      </motion.div>
+
+                      {/* Text */}
+                      <div className="mt-6 relative z-10 text-center">
+                        <h2 className="text-2xl font-bold mb-2 group-hover:text-accent-foreground transition-colors">
+                          {t('navigation.ccProjects')}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          Browse and manage your projects
+                        </p>
+                      </div>
+
+                      {/* Decorative Elements */}
+                      <div className="absolute top-4 right-4 w-20 h-20 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-colors" />
+                      <div className="absolute bottom-4 left-4 w-16 h-16 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
                     </div>
                   </Card>
                 </motion.div>
-
               </div>
+
+              {/* Subtle Bottom Hint */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8, duration: 0.6 }}
+                className="mt-12 text-center text-sm text-muted-foreground"
+              >
+                Click a card to get started
+              </motion.div>
             </div>
           </div>
-        );
-
-      case "cc-agents":
-        return (
-          <CCAgents
-            onBack={handleSmartBack}
-            onNavigate={(view) => handleViewChange(view as View)}
-          />
-        );
-
-      case "subagent-manager":
-        return (
-          <SubagentManager
-            onBack={handleSmartBack}
-          />
         );
 
       case "enhanced-hooks-manager":

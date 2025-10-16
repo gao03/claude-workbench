@@ -472,256 +472,13 @@ impl PreCommitCodeReviewHook {
         Self { config, _app: app }
     }
 
-    /// 执行提交前代码审查
-    pub async fn execute(&self, project_path: &str, db: &State<'_, crate::commands::agents::AgentDb>) -> Result<CommitDecision, String> {
-        info!("🔍 开始执行提交前代码审查 - 项目路径: {}", project_path);
-
-        if !self.config.enabled {
-            debug!("提交前代码审查已禁用，允许提交");
-            return Ok(CommitDecision::Allow {
-                message: "代码审查已禁用".to_string(),
-                suggestions: vec![],
-            });
-        }
-
-        // 1. 获取git staged文件
-        let staged_files = self.get_staged_files(project_path).await?;
-
-        if staged_files.is_empty() {
-            info!("没有staged文件，允许提交");
-            return Ok(CommitDecision::Allow {
-                message: "没有代码变更需要审查".to_string(),
-                suggestions: vec![],
-            });
-        }
-
-        info!("发现{}个staged文件", staged_files.len());
-
-        // 2. 过滤需要审查的文件
-        let files_to_review = self.filter_files_for_review(&staged_files)?;
-
-        if files_to_review.is_empty() {
-            info!("没有需要审查的代码文件，允许提交");
-            return Ok(CommitDecision::Allow {
-                message: "没有需要审查的代码文件".to_string(),
-                suggestions: vec![],
-            });
-        }
-
-        info!("需要审查{}个文件", files_to_review.len());
-
-        // 3. 执行代码审查
-        let review_result = self.perform_code_review(&files_to_review, db).await?;
-
-        // 4. 基于审查结果做出决策
-        let decision = self.make_commit_decision(&review_result)?;
-
-        info!("代码审查完成 - 决策: {:?}", decision);
-        Ok(decision)
-    }
-
-    /// 获取git staged文件列表
-    async fn get_staged_files(&self, project_path: &str) -> Result<Vec<String>, String> {
-        let output = std::process::Command::new("git")
-            .arg("diff")
-            .arg("--cached")
-            .arg("--name-only")
-            .current_dir(project_path)
-            .output()
-            .map_err(|e| format!("获取staged文件失败: {}", e))?;
-
-        if !output.status.success() {
-            return Err(format!("git命令执行失败: {}", String::from_utf8_lossy(&output.stderr)));
-        }
-
-        let files = String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .map(|line| {
-                let file_path = line.trim();
-                if file_path.starts_with('/') {
-                    file_path.to_string()
-                } else {
-                    format!("{}/{}", project_path, file_path)
-                }
-            })
-            .filter(|f| !f.is_empty())
-            .collect();
-
-        Ok(files)
-    }
-
-    /// 过滤需要审查的文件
-    fn filter_files_for_review(&self, files: &[String]) -> Result<Vec<String>, String> {
-        let mut filtered_files = Vec::new();
-
-        for file in files {
-            // 检查文件是否存在
-            if !std::path::Path::new(file).exists() {
-                debug!("跳过不存在的文件: {}", file);
-                continue;
-            }
-
-            // 检查排除模式
-            let mut should_exclude = false;
-            for pattern in &self.config.exclude_patterns {
-                if self.matches_pattern(file, pattern) {
-                    debug!("根据模式 '{}' 排除文件: {}", pattern, file);
-                    should_exclude = true;
-                    break;
-                }
-            }
-
-            if should_exclude {
-                continue;
-            }
-
-            // 检查文件扩展名 - 只审查代码文件
-            if self.is_code_file(file) {
-                filtered_files.push(file.clone());
-            } else {
-                debug!("跳过非代码文件: {}", file);
-            }
-
-            // 限制文件数量
-            if filtered_files.len() >= self.config.max_files_to_review {
-                warn!("达到最大审查文件数量限制: {}", self.config.max_files_to_review);
-                break;
-            }
-        }
-
-        Ok(filtered_files)
-    }
-
-    /// 检查文件是否匹配模式
-    fn matches_pattern(&self, file: &str, pattern: &str) -> bool {
-        // 简单的glob模式匹配
-        if pattern.contains("**") {
-            let prefix = pattern.split("**").next().unwrap_or("");
-            return file.contains(prefix);
-        }
-
-        if pattern.contains("*") {
-            let parts: Vec<&str> = pattern.split('*').collect();
-            if parts.len() == 2 {
-                return file.starts_with(parts[0]) && file.ends_with(parts[1]);
-            }
-        }
-
-        file.contains(pattern)
-    }
-
-    /// 检查是否为代码文件
-    fn is_code_file(&self, file: &str) -> bool {
-        let code_extensions = [
-            ".js", ".jsx", ".ts", ".tsx", ".py", ".rs", ".go", ".java", ".c", ".cpp",
-            ".h", ".hpp", ".cs", ".php", ".rb", ".swift", ".kt", ".scala", ".clj",
-            ".sql", ".json", ".yaml", ".yml", ".toml", ".xml", ".html", ".css", ".scss",
-        ];
-
-        code_extensions.iter().any(|ext| file.to_lowercase().ends_with(ext))
-    }
-
-    /// 执行代码审查
-    async fn perform_code_review(&self, files: &[String], db: &State<'_, crate::commands::agents::AgentDb>) -> Result<crate::commands::subagents::CodeReviewResult, String> {
-        info!("正在审查{}个文件，范围: {}", files.len(), self.config.review_scope);
-
-        // 直接调用code-reviewer专业化Agent
-        crate::commands::subagents::execute_code_review(
-            db.clone(),
-            files.to_vec(),
-            Some(self.config.review_scope.clone())
-        ).await
-    }
-
-    /// 基于审查结果做出提交决策
-    fn make_commit_decision(&self, review_result: &crate::commands::subagents::CodeReviewResult) -> Result<CommitDecision, String> {
-        let critical_issues = review_result.issues.iter()
-            .filter(|issue| issue.severity == "critical")
-            .count();
-
-        let major_issues = review_result.issues.iter()
-            .filter(|issue| issue.severity == "major")
-            .count();
-
-        // 决策逻辑
-        if self.config.block_critical_issues && critical_issues > 0 {
-            return Ok(CommitDecision::Block {
-                reason: format!("发现{}个严重安全问题，必须修复后才能提交", critical_issues),
-                details: review_result.clone(),
-                suggestions: self.generate_fix_suggestions(review_result),
-            });
-        }
-
-        if self.config.block_major_issues && major_issues > 0 {
-            return Ok(CommitDecision::Block {
-                reason: format!("发现{}个重要问题，建议修复后再提交", major_issues),
-                details: review_result.clone(),
-                suggestions: self.generate_fix_suggestions(review_result),
-            });
-        }
-
-        if review_result.overall_score < self.config.quality_threshold {
-            return Ok(CommitDecision::Block {
-                reason: format!("代码质量评分 {:.1} 低于阈值 {:.1}",
-                    review_result.overall_score, self.config.quality_threshold),
-                details: review_result.clone(),
-                suggestions: self.generate_fix_suggestions(review_result),
-            });
-        }
-
-        // 允许提交，但可能带有警告
-        let message = if review_result.overall_score >= 8.0 {
-            format!("🎉 代码质量优秀 (评分: {:.1}/10.0)！", review_result.overall_score)
-        } else {
-            format!("✅ 代码审查通过 (评分: {:.1}/10.0)", review_result.overall_score)
-        };
-
-        let suggestions = if self.config.show_suggestions && review_result.overall_score < 9.0 {
-            self.generate_improvement_suggestions(review_result)
-        } else {
-            vec![]
-        };
-
-        Ok(CommitDecision::Allow { message, suggestions })
-    }
-
-    /// 生成修复建议
-    fn generate_fix_suggestions(&self, review_result: &crate::commands::subagents::CodeReviewResult) -> Vec<String> {
-        let mut suggestions = Vec::new();
-
-        // 添加通用建议
-        suggestions.extend(review_result.recommendations.clone());
-
-        // 添加基于问题类型的具体建议
-        let critical_count = review_result.issues.iter().filter(|i| i.severity == "critical").count();
-        let security_count = review_result.issues.iter().filter(|i| i.category == "security").count();
-
-        if critical_count > 0 {
-            suggestions.push("🚨 建议运行安全扫描工具进行深度检查".to_string());
-        }
-
-        if security_count > 0 {
-            suggestions.push("🔒 建议查阅OWASP安全指南".to_string());
-            suggestions.push("🛡️ 考虑增加安全测试用例".to_string());
-        }
-
-        suggestions
-    }
-
-    /// 生成改进建议
-    fn generate_improvement_suggestions(&self, review_result: &crate::commands::subagents::CodeReviewResult) -> Vec<String> {
-        let mut suggestions = Vec::new();
-
-        if review_result.overall_score < 8.0 {
-            suggestions.push("💡 建议提交后进行代码重构优化".to_string());
-        }
-
-        let style_issues = review_result.issues.iter().filter(|i| i.category == "style").count();
-        if style_issues > 0 {
-            suggestions.push("🎨 建议配置代码格式化工具".to_string());
-        }
-
-        suggestions
+    /// 执行提交前代码审查 (Disabled - agent functionality removed)
+    pub async fn execute(&self, _project_path: &str) -> Result<CommitDecision, String> {
+        // Agent functionality removed - always allow commits
+        Ok(CommitDecision::Allow {
+            message: "代码审查功能已禁用 (Agent functionality removed)".to_string(),
+            suggestions: vec![],
+        })
     }
 }
 
@@ -734,20 +491,21 @@ pub enum CommitDecision {
     },
     Block {
         reason: String,
-        details: crate::commands::subagents::CodeReviewResult,
+        details: String, // Changed from CodeReviewResult - agent functionality removed
         suggestions: Vec<String>,
     },
 }
 
-/// 执行提交前代码审查Hook
+/// 执行提交前代码审查Hook (Disabled - agent functionality removed)
 #[tauri::command]
 pub async fn execute_pre_commit_review(
-    app: tauri::AppHandle,
-    db: State<'_, crate::commands::agents::AgentDb>,
-    project_path: String,
-    config: Option<PreCommitCodeReviewConfig>,
+    _app: tauri::AppHandle,
+    _project_path: String,
+    _config: Option<PreCommitCodeReviewConfig>,
 ) -> Result<CommitDecision, String> {
-    let hook_config = config.unwrap_or_default();
-    let hook = PreCommitCodeReviewHook::new(app, hook_config);
-    hook.execute(&project_path, &db).await
+    // Agent functionality has been removed - return allow decision
+    Ok(CommitDecision::Allow {
+        message: "代码审查功能已禁用 (Agent functionality removed)".to_string(),
+        suggestions: vec![],
+    })
 }

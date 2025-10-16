@@ -4,8 +4,9 @@ import { FileText, Settings, BarChart3, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClaudeStatusIndicator } from "@/components/ClaudeStatusIndicator";
 import { cn } from "@/lib/utils";
-import type { ClaudeStreamMessage } from "@/components/AgentExecution";
 import { useTranslation } from "@/hooks/useTranslation";
+
+import type { ClaudeStreamMessage } from '@/types/claude';
 
 interface TopbarProps {
   /**
@@ -39,7 +40,8 @@ interface TopbarProps {
 }
 
 /**
- * Topbar component with status indicator and navigation buttons
+ * 🎨 Modern Topbar Component - Material 3 Inspired
+ * Features: Gradient background, glassmorphism, smooth animations
  * 
  * @example
  * <Topbar
@@ -71,26 +73,44 @@ export const Topbar: React.FC<TopbarProps> = ({
   
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20 }}
+      initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ 
+        duration: 0.4,
+        ease: [0.22, 1, 0.36, 1]
+      }}
       className={cn(
-        "flex items-center justify-between px-4 py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        "flex items-center justify-between px-6 py-3.5",
+        "border-b border-border/60",
+        "bg-gradient-to-b from-background via-background to-muted/20",
+        "backdrop-blur-lg supports-[backdrop-filter]:bg-background/80",
+        "shadow-sm",
         className
       )}
     >
       {/* Status Indicator */}
-      {statusIndicator}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.1, duration: 0.3 }}
+      >
+        {statusIndicator}
+      </motion.div>
       
       {/* Action Buttons */}
-      <div className="flex items-center space-x-2">
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.15, duration: 0.3 }}
+        className="flex items-center gap-1.5"
+      >
         <Button
           variant="ghost"
           size="sm"
           onClick={onUsageClick}
-          className="text-xs"
+          className="text-sm font-medium px-3 hover:bg-muted/70 hover:scale-105 transition-all rounded-lg"
         >
-          <BarChart3 className="mr-2 h-3 w-3" />
+          <BarChart3 className="mr-2 h-4 w-4" strokeWidth={2} />
           {t('navigation.usage')}
         </Button>
         
@@ -98,9 +118,9 @@ export const Topbar: React.FC<TopbarProps> = ({
           variant="ghost"
           size="sm"
           onClick={onClaudeClick}
-          className="text-xs"
+          className="text-sm font-medium px-3 hover:bg-muted/70 hover:scale-105 transition-all rounded-lg"
         >
-          <FileText className="mr-2 h-3 w-3" />
+          <FileText className="mr-2 h-4 w-4" strokeWidth={2} />
           CLAUDE.md
         </Button>
         
@@ -108,23 +128,25 @@ export const Topbar: React.FC<TopbarProps> = ({
           variant="ghost"
           size="sm"
           onClick={onMCPClick}
-          className="text-xs"
+          className="text-sm font-medium px-3 hover:bg-muted/70 hover:scale-105 transition-all rounded-lg"
         >
-          <Network className="mr-2 h-3 w-3" />
+          <Network className="mr-2 h-4 w-4" strokeWidth={2} />
           {t('navigation.mcpManager')}
         </Button>
         
+        {/* 分隔线 */}
+        <div className="h-6 w-px bg-border/50 mx-1" />
         
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={onSettingsClick}
-          className="text-xs"
+          className="text-sm font-medium px-3 shadow-sm hover:shadow-md hover:scale-105 transition-all rounded-lg"
         >
-          <Settings className="mr-2 h-3 w-3" />
+          <Settings className="mr-2 h-4 w-4" strokeWidth={2} />
           {t('navigation.settings')}
         </Button>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }; 

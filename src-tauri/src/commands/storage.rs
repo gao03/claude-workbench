@@ -3,8 +3,44 @@ use rusqlite::{params, Connection, Result as SqliteResult, types::ValueRef};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as JsonValue};
 use std::collections::HashMap;
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
-use super::agents::AgentDb;
+
+// Database wrapper for storage operations
+pub struct AgentDb(pub Mutex<Connection>);
+
+/// Initialize the database
+pub fn init_database(app: &AppHandle) -> SqliteResult<Connection> {
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .expect("Failed to get app data dir");
+    std::fs::create_dir_all(&app_dir).expect("Failed to create app data dir");
+
+    let db_path = app_dir.join("agents.db");
+    let conn = Connection::open(db_path)?;
+
+    // Create usage_entries table for token usage tracking
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS usage_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            model TEXT NOT NULL,
+            input_tokens INTEGER DEFAULT 0,
+            output_tokens INTEGER DEFAULT 0,
+            cache_creation_tokens INTEGER DEFAULT 0,
+            cache_read_tokens INTEGER DEFAULT 0,
+            total_tokens INTEGER DEFAULT 0,
+            cost REAL DEFAULT 0.0,
+            project_path TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )",
+        [],
+    )?;
+
+    Ok(conn)
+}
 
 /// Represents metadata about a database table
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -512,5 +548,4 @@ fn json_to_sql_value(value: &JsonValue) -> Result<Box<dyn rusqlite::ToSql>, Stri
     }
 }
 
-/// Initialize the agents database (re-exported from agents module)
-use super::agents::init_database; 
+ 

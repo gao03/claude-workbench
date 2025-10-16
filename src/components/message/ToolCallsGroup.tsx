@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, CheckCircle2, XCircle, Loader2, Settings } f
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { ClaudeStreamMessage } from "../AgentExecution";
+import type { ClaudeStreamMessage } from '@/types/claude';
 
 interface ToolCallsGroupProps {
   /** 消息数据 */

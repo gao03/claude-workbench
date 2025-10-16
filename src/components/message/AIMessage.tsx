@@ -5,7 +5,7 @@ import { MessageContent } from "./MessageContent";
 import { ToolCallsGroup } from "./ToolCallsGroup";
 import { cn } from "@/lib/utils";
 import { tokenExtractor } from "@/lib/tokenExtractor";
-import type { ClaudeStreamMessage } from "../AgentExecution";
+import type { ClaudeStreamMessage } from '@/types/claude';
 
 interface AIMessageProps {
   /** 消息数据 */

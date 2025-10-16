@@ -23,9 +23,10 @@ import {
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { tokenExtractor } from "@/lib/tokenExtractor";
-import type { ClaudeStreamMessage } from "@/components/AgentExecution";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSessionActivityStatus } from "@/hooks/useSessionActivityStatus";
+
+import type { ClaudeStreamMessage } from '@/types/claude';
 
 // Global state to prevent multiple simultaneous checks
 let isChecking = false;

@@ -1,71 +1,162 @@
 @import "tailwindcss";
 
+/* ========================================
+   🎨 MODERN DESIGN SYSTEM - Material 3 Inspired
+   ======================================== */
+
 /* Default (Dark) theme configuration */
 :root,
 .dark {
-  /* Colors */
-  --color-background: oklch(0.12 0.01 240);
-  --color-foreground: oklch(0.98 0.01 240);
-  --color-card: oklch(0.14 0.01 240);
-  --color-card-foreground: oklch(0.98 0.01 240);
-  --color-popover: oklch(0.12 0.01 240);
-  --color-popover-foreground: oklch(0.98 0.01 240);
-  --color-primary: oklch(0.98 0.01 240);
-  --color-primary-foreground: oklch(0.17 0.01 240);
-  --color-secondary: oklch(0.16 0.01 240);
-  --color-secondary-foreground: oklch(0.98 0.01 240);
-  --color-muted: oklch(0.16 0.01 240);
-  --color-muted-foreground: oklch(0.68 0.01 240);
-  --color-accent: oklch(0.16 0.01 240);
-  --color-accent-foreground: oklch(0.98 0.01 240);
-  --color-destructive: oklch(0.6 0.2 25);
-  --color-destructive-foreground: oklch(0.98 0.01 240);
-  --color-border: oklch(0.16 0.01 240);
-  --color-input: oklch(0.16 0.01 240);
-  --color-ring: oklch(0.52 0.015 240);
+  /* 🎨 Primary Colors - More vibrant and expressive */
+  --color-background: oklch(0.13 0.015 240);
+  --color-foreground: oklch(0.98 0.005 240);
+  --color-card: oklch(0.16 0.018 240);
+  --color-card-foreground: oklch(0.98 0.005 240);
+  --color-popover: oklch(0.14 0.016 240);
+  --color-popover-foreground: oklch(0.98 0.005 240);
+  
+  /* 🌟 Brand Colors - Vibrant blue accent */
+  --color-primary: oklch(0.65 0.22 250);
+  --color-primary-hover: oklch(0.70 0.24 250);
+  --color-primary-active: oklch(0.60 0.20 250);
+  --color-primary-foreground: oklch(0.98 0.005 240);
+  
+  /* 📦 Secondary Colors */
+  --color-secondary: oklch(0.20 0.02 240);
+  --color-secondary-hover: oklch(0.24 0.025 240);
+  --color-secondary-foreground: oklch(0.96 0.005 240);
+  
+  /* 🔇 Muted Colors */
+  --color-muted: oklch(0.18 0.015 240);
+  --color-muted-hover: oklch(0.22 0.018 240);
+  --color-muted-foreground: oklch(0.70 0.012 240);
+  
+  /* ✨ Accent Colors */
+  --color-accent: oklch(0.22 0.025 280);
+  --color-accent-hover: oklch(0.26 0.03 280);
+  --color-accent-foreground: oklch(0.98 0.005 240);
+  
+  /* ⚠️ Status Colors */
+  --color-destructive: oklch(0.62 0.25 25);
+  --color-destructive-hover: oklch(0.58 0.28 25);
+  --color-destructive-foreground: oklch(0.98 0.005 240);
+  
+  --color-success: oklch(0.68 0.20 145);
+  --color-success-hover: oklch(0.64 0.22 145);
+  --color-warning: oklch(0.75 0.18 75);
+  --color-info: oklch(0.65 0.22 250);
+  
+  /* 🎨 UI Elements */
+  --color-border: oklch(0.24 0.018 240);
+  --color-border-hover: oklch(0.30 0.022 240);
+  --color-input: oklch(0.18 0.015 240);
+  --color-ring: oklch(0.65 0.22 250);
   
   /* Additional colors for status messages */
   --color-green-500: oklch(0.72 0.20 142);
   --color-green-600: oklch(0.64 0.22 142);
 
-  /* Border radius */
-  --radius-sm: 0.25rem;
-  --radius-base: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  /* 📐 Border Radius - Softer, more modern */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-full: 9999px;
 
-  /* Fonts - Added Chinese font support */
+  /* 🔤 Typography */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", "Microsoft YaHei", "微软雅黑", "SimSun", "宋体", "Arial Unicode MS", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, "Microsoft YaHei Mono", "微软雅黑", monospace;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
 
-  /* Transitions */
-  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  /* 📏 Spacing Scale - Consistent rhythm */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+
+  /* 🎭 Shadows - Enhanced depth perception */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+
+  /* ⚡ Transitions - Smooth & expressive (Material 3 Motion) */
+  --duration-instant: 75ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+  --duration-slower: 500ms;
+  
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
 }
 
-/* Light theme configuration */
+/* ========================================
+   🌞 LIGHT THEME - Clean & Modern
+   ======================================== */
 .light {
-  /* Colors - Enhanced contrast for better readability */
-  --color-background: oklch(0.99 0.005 240);
-  --color-foreground: oklch(0.08 0.01 240);
-  --color-card: oklch(0.97 0.005 240);
-  --color-card-foreground: oklch(0.08 0.01 240);
-  --color-popover: oklch(0.99 0.005 240);
-  --color-popover-foreground: oklch(0.08 0.01 240);
-  --color-primary: oklch(0.10 0.01 240);
-  --color-primary-foreground: oklch(0.99 0.005 240);
-  --color-secondary: oklch(0.94 0.005 240);
-  --color-secondary-foreground: oklch(0.08 0.01 240);
-  --color-muted: oklch(0.94 0.005 240);
-  --color-muted-foreground: oklch(0.40 0.01 240);
-  --color-accent: oklch(0.94 0.005 240);
-  --color-accent-foreground: oklch(0.08 0.01 240);
-  --color-destructive: oklch(0.6 0.2 25);
-  --color-destructive-foreground: oklch(0.99 0.005 240);
-  --color-border: oklch(0.85 0.005 240);
-  --color-input: oklch(0.96 0.005 240);
-  --color-ring: oklch(0.52 0.015 240);
+  /* 🎨 Primary Colors */
+  --color-background: oklch(0.99 0.002 240);
+  --color-foreground: oklch(0.12 0.015 240);
+  --color-card: oklch(0.98 0.003 240);
+  --color-card-foreground: oklch(0.12 0.015 240);
+  --color-popover: oklch(0.99 0.002 240);
+  --color-popover-foreground: oklch(0.12 0.015 240);
+  
+  /* 🌟 Brand Colors - Vibrant blue accent */
+  --color-primary: oklch(0.55 0.24 250);
+  --color-primary-hover: oklch(0.50 0.26 250);
+  --color-primary-active: oklch(0.45 0.22 250);
+  --color-primary-foreground: oklch(0.99 0.002 240);
+  
+  /* 📦 Secondary Colors */
+  --color-secondary: oklch(0.94 0.006 240);
+  --color-secondary-hover: oklch(0.90 0.008 240);
+  --color-secondary-foreground: oklch(0.12 0.015 240);
+  
+  /* 🔇 Muted Colors */
+  --color-muted: oklch(0.95 0.005 240);
+  --color-muted-hover: oklch(0.91 0.008 240);
+  --color-muted-foreground: oklch(0.48 0.015 240);
+  
+  /* ✨ Accent Colors */
+  --color-accent: oklch(0.93 0.008 280);
+  --color-accent-hover: oklch(0.89 0.012 280);
+  --color-accent-foreground: oklch(0.12 0.015 240);
+  
+  /* ⚠️ Status Colors */
+  --color-destructive: oklch(0.58 0.26 25);
+  --color-destructive-hover: oklch(0.53 0.28 25);
+  --color-destructive-foreground: oklch(0.99 0.002 240);
+  
+  --color-success: oklch(0.60 0.22 145);
+  --color-success-hover: oklch(0.55 0.24 145);
+  --color-warning: oklch(0.70 0.20 75);
+  --color-info: oklch(0.55 0.24 250);
+  
+  /* 🎨 UI Elements */
+  --color-border: oklch(0.88 0.006 240);
+  --color-border-hover: oklch(0.82 0.009 240);
+  --color-input: oklch(0.96 0.004 240);
+  --color-ring: oklch(0.55 0.24 250);
 
   /* Additional colors for status messages */
   --color-green-500: oklch(0.58 0.20 142);

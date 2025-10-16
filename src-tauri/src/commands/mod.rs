@@ -1,8 +1,7 @@
-pub mod agents;
+pub mod storage;
 pub mod claude;
 pub mod mcp;
 pub mod usage;
-pub mod storage;
 pub mod slash_commands;
 pub mod clipboard;
 pub mod provider;
@@ -10,6 +9,5 @@ pub mod permission_config;
 pub mod translator;
 pub mod context_manager;
 pub mod context_commands;
-pub mod subagents;
 pub mod enhanced_hooks;
 pub mod message_operations;

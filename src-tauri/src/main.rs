@@ -5,16 +5,9 @@ mod claude_binary;
 mod commands;
 mod process;
 
-use std::sync::Arc;
-use commands::agents::{
-    cleanup_finished_processes, create_agent, delete_agent, execute_agent, export_agent,
-    export_agent_to_file, fetch_github_agent_content, fetch_github_agents, get_agent,
-    get_agent_run, get_agent_run_with_real_time_metrics, get_claude_binary_path,
-    get_live_session_output, get_session_output, get_session_status, import_agent,
-    import_agent_from_file, import_agent_from_github, init_database, kill_agent_session,
-    list_agent_runs, list_agent_runs_with_metrics, list_agents, list_claude_installations,
-    list_running_sessions, load_agent_session_history, set_claude_binary_path, stream_session_output, update_agent, AgentDb,
-};
+use std::sync::{Arc, Mutex};
+
+use commands::storage::{init_database, AgentDb};
 use commands::claude::{
     cancel_claude_execution, check_claude_version,
     continue_claude_code, delete_project, execute_claude_code,
@@ -57,11 +50,7 @@ use commands::translator::{
     clear_translation_cache, get_translation_cache_stats, detect_text_language,
     init_translation_service_command,
 };
-use commands::subagents::{
-    init_subagent_system, list_subagent_specialties, route_to_subagent,
-    update_subagent_specialty, get_routing_history, provide_routing_feedback,
-    execute_code_review,
-};
+
 use commands::enhanced_hooks::{
     trigger_hook_event, test_hook_condition, execute_pre_commit_review,
 };
@@ -70,7 +59,6 @@ use commands::message_operations::{
     message_get_count, message_get_by_index, message_get_all,
 };
 use process::ProcessRegistryState;
-use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStatePlugin;
 
@@ -89,11 +77,9 @@ fn main() {
                 .build()
         )
         .setup(|app| {
-            // Initialize agents database
-            let conn = init_database(&app.handle()).expect("Failed to initialize agents database");
+            // Initialize database for storage operations
+            let conn = init_database(&app.handle()).expect("Failed to initialize database");
             app.manage(AgentDb(Mutex::new(conn)));
-
-
 
             // Initialize process registry
             app.manage(ProcessRegistryState::default());
@@ -169,45 +155,7 @@ fn main() {
             enhance_prompt,
             enhance_prompt_with_gemini,
 
-            
-            // Agent Management
-            list_agents,
-            create_agent,
-            update_agent,
-            delete_agent,
-            get_agent,
-            execute_agent,
-            list_agent_runs,
-            get_agent_run,
-            list_agent_runs_with_metrics,
-            get_agent_run_with_real_time_metrics,
-            list_running_sessions,
-            kill_agent_session,
-            get_session_status,
-            cleanup_finished_processes,
-            get_session_output,
-            get_live_session_output,
-            stream_session_output,
-            load_agent_session_history,
-            get_claude_binary_path,
-            set_claude_binary_path,
-            list_claude_installations,
-            export_agent,
-            export_agent_to_file,
-            import_agent,
-            import_agent_from_file,
-            fetch_github_agents,
-            fetch_github_agent_content,
-            import_agent_from_github,
 
-            // Subagent Management & Specialization
-            init_subagent_system,
-            list_subagent_specialties,
-            route_to_subagent,
-            update_subagent_specialty,
-            get_routing_history,
-            provide_routing_feedback,
-            execute_code_review,
 
             // Enhanced Hooks Automation
             trigger_hook_event,

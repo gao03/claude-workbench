@@ -2,7 +2,7 @@ import React from "react";
 import { UserMessage } from "./UserMessage";
 import { AIMessage } from "./AIMessage";
 import { StreamMessage as LegacyStreamMessage } from "../StreamMessage";
-import type { ClaudeStreamMessage } from "../AgentExecution";
+import type { ClaudeStreamMessage } from '@/types/claude';
 
 interface StreamMessageV2Props {
   message: ClaudeStreamMessage;

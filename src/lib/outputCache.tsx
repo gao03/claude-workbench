@@ -1,27 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { api } from './api';
-
-// Use the same message interface as AgentExecution for consistency
-export interface ClaudeStreamMessage {
-  type: "system" | "assistant" | "user" | "result";
-  subtype?: string;
-  message?: {
-    content?: any[];
-    usage?: {
-      input_tokens: number;
-      output_tokens: number;
-      cache_creation_tokens?: number;
-      cache_read_tokens?: number;
-    };
-  };
-  usage?: {
-    input_tokens: number;
-    output_tokens: number;
-    cache_creation_tokens?: number;
-    cache_read_tokens?: number;
-  };
-  [key: string]: any;
-}
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import type { ClaudeStreamMessage } from '@/types/claude';
 
 interface CachedSessionOutput {
   output: string;
@@ -56,8 +34,7 @@ interface OutputCacheProviderProps {
 
 export function OutputCacheProvider({ children }: OutputCacheProviderProps) {
   const [cache, setCache] = useState<Map<number, CachedSessionOutput>>(new Map());
-  const [isPolling, setIsPolling] = useState(false);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const isPolling = false; // Polling disabled
 
   const getCachedOutput = useCallback((sessionId: number): CachedSessionOutput | null => {
     return cache.get(sessionId) || null;
@@ -91,95 +68,16 @@ export function OutputCacheProvider({ children }: OutputCacheProviderProps) {
     }
   }, []);
 
-  const parseOutput = useCallback((rawOutput: string): ClaudeStreamMessage[] => {
-    if (!rawOutput) return [];
+  
 
-    const lines = rawOutput.split('\n').filter(line => line.trim());
-    const parsedMessages: ClaudeStreamMessage[] = [];
-
-    for (const line of lines) {
-      try {
-        const message = JSON.parse(line) as ClaudeStreamMessage;
-        parsedMessages.push(message);
-      } catch (err) {
-        console.error("Failed to parse message:", err, line);
-        // Add a fallback message for unparseable content
-        parsedMessages.push({
-          type: 'result',
-          subtype: 'error',
-          error: 'Failed to parse message',
-          raw_content: line
-        });
-      }
-    }
-
-    return parsedMessages;
+  // Removed agent session polling - no longer supported
+  const startBackgroundPolling = useCallback(() => {
+    // No-op: polling disabled
   }, []);
 
-  const updateSessionCache = useCallback(async (sessionId: number, status: string) => {
-    try {
-      const rawOutput = await api.getSessionOutput(sessionId);
-      const messages = parseOutput(rawOutput);
-      
-      setCachedOutput(sessionId, {
-        output: rawOutput,
-        messages,
-        lastUpdated: Date.now(),
-        status
-      });
-    } catch (error) {
-      console.warn(`Failed to update cache for session ${sessionId}:`, error);
-    }
-  }, [parseOutput, setCachedOutput]);
-
-  const pollRunningSessions = useCallback(async () => {
-    try {
-      const runningSessions = await api.listRunningAgentSessions();
-      
-      // Update cache for all running sessions
-      for (const session of runningSessions) {
-        if (session.id && session.status === 'running') {
-          await updateSessionCache(session.id, session.status);
-        }
-      }
-
-      // Clean up cache for sessions that are no longer running
-      const runningIds = new Set(runningSessions.map(s => s.id).filter(Boolean));
-      setCache(prev => {
-        const updated = new Map();
-        for (const [sessionId, data] of prev) {
-          if (runningIds.has(sessionId) || data.status !== 'running') {
-            updated.set(sessionId, data);
-          }
-        }
-        return updated;
-      });
-    } catch (error) {
-      console.warn('Failed to poll running sessions:', error);
-    }
-  }, [updateSessionCache]);
-
-  const startBackgroundPolling = useCallback(() => {
-    if (pollingInterval) return;
-
-    setIsPolling(true);
-    const interval = setInterval(pollRunningSessions, 3000); // Poll every 3 seconds
-    setPollingInterval(interval);
-  }, [pollingInterval, pollRunningSessions]);
-
   const stopBackgroundPolling = useCallback(() => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
-    setIsPolling(false);
-  }, [pollingInterval]);
-
-  // Auto-start polling when provider mounts
-  useEffect(() => {
-    startBackgroundPolling();
-    return () => stopBackgroundPolling();
-  }, [startBackgroundPolling, stopBackgroundPolling]);
+    // No-op: polling disabled
+  }, []);
 
   const value: OutputCacheContextType = {
     getCachedOutput,

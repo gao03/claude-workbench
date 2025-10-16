@@ -3,7 +3,7 @@ import { MessageBubble } from "./MessageBubble";
 import { MessageHeader } from "./MessageHeader";
 import { MessageActions } from "../MessageActions";
 import { cn } from "@/lib/utils";
-import type { ClaudeStreamMessage } from "../AgentExecution";
+import type { ClaudeStreamMessage } from '@/types/claude';
 
 interface UserMessageProps {
   /** 消息数据 */

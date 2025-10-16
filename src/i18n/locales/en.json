@@ -4,7 +4,7 @@
     "subtitle": "Professional desktop application and toolkit for Claude CLI"
   },
   "navigation": {
-    "ccAgents": "CC Agents",
+
     "ccProjects": "CC Projects",
     "settings": "Settings",
     "usage": "Usage Dashboard",
@@ -36,21 +36,7 @@
     "upload": "Upload",
     "download": "Download"
   },
-  "agents": {
-    "title": "CC Agents",
-    "createAgent": "Create Agent",
-    "agentName": "Agent Name",
-    "agentDescription": "Agent Description",
-    "systemPrompt": "System Prompt",
-    "model": "Model",
-    "icon": "Icon",
-    "sandbox": "Sandbox Profile",
-    "execution": "Execution",
-    "runs": "Runs",
-    "history": "History",
-    "noAgents": "No agents created yet",
-    "createFirst": "Create your first CC Agent to get started"
-  },
+
   "projects": {
     "title": "CC Projects",
     "projectName": "Project Name",

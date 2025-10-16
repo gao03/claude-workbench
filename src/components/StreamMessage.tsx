@@ -14,8 +14,9 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { tokenExtractor } from "@/lib/tokenExtractor";
-import type { ClaudeStreamMessage } from "./AgentExecution";
 import { MessageActions } from "./MessageActions";
+
+import type { ClaudeStreamMessage } from '@/types/claude';
 
 // Utility function to format timestamp to hh:mm:ss format
 const formatTimestamp = (timestamp: string | undefined): string => {

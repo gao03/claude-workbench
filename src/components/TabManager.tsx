@@ -161,58 +161,77 @@ export const TabManager: React.FC<TabManagerProps> = ({
   return (
     <TooltipProvider>
       <div className={cn("h-full flex flex-col bg-background", className)}>
-        {/* 标签页栏 */}
-        <div className="flex-shrink-0 border-b bg-muted/20">
-          <div className="flex items-center h-12 px-4">
-            {/* 返回按钮 */}
+        {/* 🎨 现代化标签页栏 */}
+        <div className="flex-shrink-0 border-b border-border/60 bg-gradient-to-b from-muted/30 to-background/50 backdrop-blur-sm">
+          <div className="flex items-center h-14 px-4 gap-3">
+            {/* 返回按钮 - 更现代的设计 */}
             <Button
               variant="ghost"
               size="sm"
               onClick={onBack}
-              className="mr-3 px-2"
+              className="px-3 hover:bg-muted/80 transition-colors"
             >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              返回
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              <span className="font-medium">返回</span>
             </Button>
+
+            {/* 分隔线 */}
+            <div className="h-6 w-px bg-border/50" />
 
             {/* 标签页容器 */}
             <div
               ref={tabsContainerRef}
-              className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-none"
+              className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-thin"
             >
               <AnimatePresence mode="popLayout">
                 {tabs.map((tab, index) => (
                   <motion.div
                     key={tab.id}
                     layout
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.2 }}
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ 
+                      duration: 0.2,
+                      ease: [0.22, 1, 0.36, 1]
+                    }}
                     className={cn(
-                      "group relative flex items-center gap-2 px-3 py-1.5 rounded-t-lg border-b-2 min-w-0 max-w-[200px] cursor-pointer",
-                      "transition-colors duration-200",
+                      "group relative flex items-center gap-2.5 px-4 py-2 rounded-xl min-w-0 max-w-[220px] cursor-pointer",
+                      "transition-all duration-300 ease-out",
                       tab.isActive
-                        ? "bg-background border-primary text-foreground"
-                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-                      draggedTab === tab.id && "opacity-50",
-                      dragOverIndex === index && draggedTab !== tab.id && "ring-2 ring-primary/50" // 🔧 NEW: 拖拽悬停高亮
+                        ? "bg-background shadow-md border-2 border-primary/20 text-foreground scale-105"
+                        : "bg-muted/40 border-2 border-transparent text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:scale-[1.02]",
+                      draggedTab === tab.id && "opacity-40 scale-95",
+                      dragOverIndex === index && draggedTab !== tab.id && "ring-2 ring-primary/50 ring-offset-2" // 🔧 NEW: 拖拽悬停高亮
                     )}
                     onClick={() => switchToTab(tab.id)}
                     draggable
                     onDragStart={() => handleTabDragStart(tab.id)}
                     onDragEnd={handleTabDragEnd}
-                    onDragOver={(e) => handleTabDragOver(e, index)} // 🔧 NEW: 拖拽悬停
-                    onDrop={(e) => handleTabDrop(e, index)} // 🔧 NEW: 拖拽放置
+                    onDragOver={(e) => handleTabDragOver(e, index)}
+                    onDrop={(e) => handleTabDrop(e, index)}
                   >
-                    {/* 会话状态指示器 */}
+                    {/* 活跃标签页顶部指示条 */}
+                    {tab.isActive && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-primary to-accent rounded-t-xl"
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    )}
+
+                    {/* 会话状态指示器 - 更大更明显 */}
                     <div className="flex-shrink-0">
                       {tab.state === 'streaming' ? (
-                        <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          className="h-2.5 w-2.5 bg-success rounded-full shadow-lg shadow-success/50"
+                        />
                       ) : tab.hasUnsavedChanges ? (
-                        <div className="h-2 w-2 bg-orange-500 rounded-full" />
+                        <div className="h-2.5 w-2.5 bg-warning rounded-full shadow-lg shadow-warning/50" />
                       ) : (
-                        <MessageSquare className="h-3.5 w-3.5" />
+                        <MessageSquare className="h-4 w-4 opacity-70" />
                       )}
                     </div>
 
@@ -221,29 +240,37 @@ export const TabManager: React.FC<TabManagerProps> = ({
                       {tab.title}
                     </span>
 
-                    {/* 关闭按钮 */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-shrink-0 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 hover:bg-destructive/20 hover:text-destructive transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCloseTab(tab.id);
-                      }}
+                    {/* 关闭按钮 - 更平滑的显示 */}
+                    <motion.div
+                      initial={false}
+                      animate={{ opacity: tab.isActive ? 1 : 0 }}
+                      whileHover={{ opacity: 1 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex-shrink-0"
                     >
-                      <X className="h-3 w-3" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive rounded-lg transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCloseTab(tab.id);
+                        }}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </motion.div>
                   </motion.div>
                 ))}
               </AnimatePresence>
 
-              {/* 新建标签页按钮 */}
+              {/* 新建标签页按钮 - 更突出的设计 */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-shrink-0 h-8 w-8 p-0 ml-1"
+                    variant="secondary"
+                    size="icon-sm"
+                    className="flex-shrink-0 rounded-lg shadow-sm hover:shadow-md transition-all"
                     onClick={() => createNewTab()}
                   >
                     <Plus className="h-4 w-4" />
@@ -253,10 +280,17 @@ export const TabManager: React.FC<TabManagerProps> = ({
               </Tooltip>
             </div>
 
-            {/* 标签页菜单 */}
+            {/* 分隔线 */}
+            <div className="h-6 w-px bg-border/50" />
+
+            {/* 标签页菜单 - 更现代的图标按钮 */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon-sm" 
+                  className="rounded-lg hover:bg-muted/70 transition-colors"
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -317,36 +351,74 @@ export const TabManager: React.FC<TabManagerProps> = ({
             );
           })}
 
-          {/* 🔧 IMPROVED: 无标签页时的增强占位符 */}
+          {/* 🎨 现代化空状态设计 */}
           {tabs.length === 0 && (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              <div className="text-center space-y-4">
-                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <div>
-                  <p className="text-lg font-medium mb-2">暂无活跃会话</p>
-                  <p className="text-sm mb-6">所有标签页已关闭</p>
-                </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-center h-full"
+            >
+              <div className="text-center max-w-md px-8">
+                {/* 图标 */}
+                <motion.div
+                  initial={{ y: -20 }}
+                  animate={{ y: 0 }}
+                  transition={{ 
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 20,
+                    delay: 0.1
+                  }}
+                  className="mb-6"
+                >
+                  <div className="inline-flex p-6 rounded-2xl bg-muted/50 border border-border/50">
+                    <MessageSquare className="h-16 w-16 text-muted-foreground/70" strokeWidth={1.5} />
+                  </div>
+                </motion.div>
 
-                {/* 🔧 NEW: Explicit actions for creating new sessions */}
-                <div className="space-y-2">
+                {/* 标题和描述 */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="mb-8"
+                >
+                  <h3 className="text-2xl font-bold mb-3 text-foreground">
+                    暂无活跃会话
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    所有标签页已关闭。创建新会话开始工作，或返回主界面查看项目。
+                  </p>
+                </motion.div>
+
+                {/* 操作按钮 */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="flex flex-col gap-3"
+                >
                   <Button
+                    size="lg"
                     onClick={() => createNewTab()}
-                    className="w-full"
+                    className="w-full shadow-md hover:shadow-lg"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-5 w-5 mr-2" />
                     创建新会话
                   </Button>
                   <Button
+                    size="lg"
                     variant="outline"
                     onClick={onBack}
                     className="w-full"
                   >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    <ArrowLeft className="h-5 w-5 mr-2" />
                     返回主界面
                   </Button>
-                </div>
+                </motion.div>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
 

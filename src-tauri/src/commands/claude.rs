@@ -4,7 +4,7 @@ use super::permission_config::{
     ClaudePermissionConfig, ClaudeExecutionConfig, PermissionMode,
     build_execution_args, DEVELOPMENT_TOOLS, SAFE_TOOLS, ALL_TOOLS
 };
-use super::agents::{AgentDb, insert_usage_entry};
+// Agent functionality removed
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -1989,28 +1989,8 @@ async fn spawn_claude_process(app: AppHandle, mut cmd: Command, prompt: String, 
                         };
 
                         if let Some(session_id_str) = &session_id_for_update {
-                            // Store real-time usage data in database
-                            if let Some(agent_db) = app_handle.try_state::<AgentDb>() {
-                                let timestamp = chrono::Utc::now().to_rfc3339();
-                                let model = msg.get("model")
-                                    .and_then(|m| m.as_str())
-                                    .unwrap_or(&model_clone);
-
-                                if let Err(e) = insert_usage_entry(
-                                    &agent_db,
-                                    session_id_str,
-                                    &timestamp,
-                                    model,
-                                    input_tokens,
-                                    output_tokens,
-                                    cache_creation_tokens,
-                                    cache_read_tokens,
-                                    Some(&project_path_clone),
-                                ) {
-                                    log::warn!("Failed to store usage data in database: {}", e);
-                                }
-                            }
-
+                            // Agent database functionality removed - usage tracking disabled
+                            
                             // Update auto-compact manager with token count
                             if auto_compact_available {
                                 if let Some(auto_compact_state) = app_handle.try_state::<crate::commands::context_manager::AutoCompactState>() {

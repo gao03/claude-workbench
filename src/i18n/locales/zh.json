@@ -4,7 +4,7 @@
     "subtitle": "专业的 Claude CLI 桌面应用和开发工具包"
   },
   "navigation": {
-    "ccAgents": "CC 智能体",
+
     "ccProjects": "CC 项目",
     "settings": "设置",
     "usage": "使用统计",
@@ -36,21 +36,7 @@
     "upload": "上传",
     "download": "下载"
   },
-  "agents": {
-    "title": "CC 智能体",
-    "createAgent": "创建智能体",
-    "agentName": "智能体名称",
-    "agentDescription": "智能体描述",
-    "systemPrompt": "系统提示词",
-    "model": "模型",
-    "icon": "图标",
-    "sandbox": "沙箱配置",
-    "execution": "执行",
-    "runs": "运行记录",
-    "history": "历史记录",
-    "noAgents": "尚未创建任何智能体",
-    "createFirst": "创建您的第一个 CC 智能体开始使用"
-  },
+
   "projects": {
     "title": "CC 项目",
     "projectName": "项目名称",
@@ -185,22 +171,19 @@
     "openFile": "打开文件"
   },
   "tooltips": {
-    "createAgent": "创建新的 CC 智能体",
-    "runAgent": "运行选定的智能体",
+
     "stopExecution": "停止当前执行",
-    "exportAgent": "导出智能体配置",
-    "importAgent": "导入智能体配置",
+
     "refreshList": "刷新列表",
     "openSettings": "打开设置",
     "viewUsage": "查看使用统计",
     "manageMCP": "管理 MCP 服务器"
   },
   "placeholders": {
-    "searchAgents": "搜索智能体...",
+
     "searchProjects": "搜索项目...",
     "enterPrompt": "输入您的提示词...",
-    "agentName": "输入智能体名称",
-    "agentDescription": "描述智能体的功能和用途",
+
     "systemPrompt": "定义智能体的行为和能力",
     "serverName": "输入服务器名称",
     "serverUrl": "输入服务器地址"
@@ -220,19 +203,12 @@
     "saveSettings": "保存设置",
     "about": "关于",
     "basicInformation": "基本信息",
-    "agentNameRequired": "智能体名称是必需的",
     "systemPromptRequired": "系统提示词是必需的",
-    "failedToCreateAgent": "创建智能体失败",
-    "failedToUpdateAgent": "更新智能体失败",
     "unsavedChanges": "您有未保存的更改。确定要离开吗？",
-    "editAgent": "编辑 CC 智能体",
-    "createAgent": "创建 CC 智能体",
-    "updateAgent": "更新您的 Claude Code 智能体",
-    "createNewAgent": "创建新的 Claude Code 智能体",
+
     "saving": "保存中...",
     "save": "保存",
-    "agentName": "智能体名称",
-    "agentIcon": "智能体图标",
+
     "model": "模型",
     "claude45Sonnet": "Claude 4.5 Sonnet",
     "claude41Opus": "Claude 4.1 Opus",
@@ -241,7 +217,7 @@
     "defaultTaskOptional": "默认任务（可选）",
     "defaultTaskDescription": "执行智能体时将用作默认任务占位符",
     "systemPrompt": "系统提示词",
-    "defineAgentBehavior": "定义您的 CC 智能体的行为和能力",
+
     "enterUrl": "输入网址...",
     "preview": "预览",
     "webPreview": "网页预览",
@@ -249,7 +225,7 @@
     "beforeMajorRefactoring": "例如，重大重构之前",
     "selectTable": "选择表",
     "searchInTable": "在表中搜索...",
-    "sqlQuery": "SELECT * FROM agents LIMIT 10;",
+    "sqlQuery": "SELECT * FROM usage_entries LIMIT 10;",
     "searchCommands": "搜索命令...",
     "commandName": "例如，review, fix-issue",
     "commandCategory": "例如，frontend, backend",

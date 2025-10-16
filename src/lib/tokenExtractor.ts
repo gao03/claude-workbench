@@ -18,8 +18,7 @@
  */
 
 // 导入现有类型定义
-import type { ClaudeStreamMessage } from '@/components/AgentExecution';
-
+import type { ClaudeStreamMessage } from '@/types/claude';
 /**
  * 扩展消息类型以支持所有token字段变体
  */
