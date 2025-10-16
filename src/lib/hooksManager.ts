@@ -8,7 +8,6 @@ import {
   HookValidationResult,
   HookValidationError,
   HookValidationWarning,
-  HookCommand,
 } from '@/types/hooks';
 
 export class HooksManager {
@@ -23,14 +22,23 @@ export class HooksManager {
   ): HooksConfiguration {
     const merged: HooksConfiguration = {};
     
-    // Events with matchers (tool-related)
-    const matcherEvents: (keyof HooksConfiguration)[] = ['PreToolUse', 'PostToolUse'];
-    
-    // Events without matchers (non-tool-related)
-    const directEvents: (keyof HooksConfiguration)[] = ['Notification', 'Stop', 'SubagentStop'];
+    // All events now use matcher format (but matcher field is optional for some)
+    // According to Claude Code docs: https://docs.claude.com/en/docs/claude-code/hooks
+    const allEvents: (keyof HooksConfiguration)[] = [
+      'PreToolUse', 
+      'PostToolUse',
+      'Notification',
+      'UserPromptSubmit',
+      'Stop',
+      'SubagentStop',
+      'PreCompact',
+      'SessionStart',
+      'SessionEnd'
+    ];
 
-    // Merge events with matchers
-    for (const event of matcherEvents) {
+    // Merge all events using matcher format
+    // All events now support matcher format according to official docs
+    for (const event of allEvents) {
       // Start with user hooks
       let matchers = [...((user[event] as HookMatcher[] | undefined) || [])];
       
@@ -46,31 +54,6 @@ export class HooksManager {
       
       if (matchers.length > 0) {
         (merged as any)[event] = matchers;
-      }
-    }
-    
-    // Merge events without matchers
-    for (const event of directEvents) {
-      // Combine all hooks from all levels (local takes precedence)
-      const hooks: HookCommand[] = [];
-      
-      // Add user hooks
-      if (user[event]) {
-        hooks.push(...(user[event] as HookCommand[]));
-      }
-      
-      // Add project hooks
-      if (project[event]) {
-        hooks.push(...(project[event] as HookCommand[]));
-      }
-      
-      // Add local hooks (highest priority)
-      if (local[event]) {
-        hooks.push(...(local[event] as HookCommand[]));
-      }
-      
-      if (hooks.length > 0) {
-        (merged as any)[event] = hooks;
       }
     }
     
@@ -115,19 +98,26 @@ export class HooksManager {
       return { valid: true, errors, warnings };
     }
 
-    // Events with matchers
-    const matcherEvents = ['PreToolUse', 'PostToolUse'] as const;
-    
-    // Events without matchers
-    const directEvents = ['Notification', 'Stop', 'SubagentStop'] as const;
+    // All events now use matcher format according to official docs
+    const allEvents = [
+      'PreToolUse',
+      'PostToolUse',
+      'Notification',
+      'UserPromptSubmit',
+      'Stop',
+      'SubagentStop',
+      'PreCompact',
+      'SessionStart',
+      'SessionEnd'
+    ] as const;
 
-    // Validate events with matchers
-    for (const event of matcherEvents) {
+    // Validate all events using matcher format
+    for (const event of allEvents) {
       const matchers = hooks[event];
       if (!matchers || !Array.isArray(matchers)) continue;
 
       for (const matcher of matchers) {
-        // Validate regex pattern if provided
+        // Validate regex pattern if provided (optional for some events)
         if (matcher.matcher) {
           try {
             new RegExp(matcher.matcher);
@@ -161,29 +151,6 @@ export class HooksManager {
             })));
           }
         }
-      }
-    }
-
-    // Validate events without matchers
-    for (const event of directEvents) {
-      const directHooks = hooks[event];
-      if (!directHooks || !Array.isArray(directHooks)) continue;
-
-      for (const hook of directHooks) {
-        if (!hook.command || !hook.command.trim()) {
-          errors.push({
-            event,
-            message: 'Empty command'
-          });
-        }
-
-        // Check for dangerous patterns
-        const dangers = this.checkDangerousPatterns(hook.command || '');
-        warnings.push(...dangers.map(d => ({
-          event,
-          command: hook.command || '',
-          message: d
-        })));
       }
     }
 
