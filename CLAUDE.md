@@ -4,235 +4,258 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Claude Workbench is a React 18 + Tauri 2 desktop application for managing Claude CLI projects and sessions. The core innovation is the **Claude Code Hooks Configuration System** with three-level priority (user/project/local).
+Claude Workbench is a React 18 + Tauri 2 desktop application for managing Claude CLI projects and sessions. Built with TypeScript, Tailwind CSS, and Rust backend.
 
-**Architecture**:
-```
-React 18 UI Layer (50+ components)
-    ↓ IPC (Type-safe RPC)
-Tauri 2 Bridge Layer
-    ↓
-Rust Backend (Process management + Claude CLI)
-```
-
----
+**Version**: v3.0.2 | **License**: AGPL-3.0
 
 ## Development Commands
 
-### Quick Start
+### Essential Commands
 ```bash
-npm run tauri:dev           # Full development mode (Vite + Tauri + HMR)
-                            # Opens desktop app with hot reload
-                            # DevTools: Ctrl+Shift+I
+npm run tauri:dev        # Start Tauri app with hot reload (primary dev command)
+npm run dev              # Start Vite dev server only (port 1420)
+npm run tauri:build-fast # Quick dev-release build
+npm run tauri:build      # Production build (generates NSIS/MSI installers)
+npm run build            # TypeScript + Vite build
+npm run preview          # Preview production build
 ```
 
-### Build & Release
-```bash
-npm run build               # TypeScript + Vite build (prerequisite)
-npm run tauri:build         # Full production build (MSI/NSIS installers)
-npm run tauri:build-fast    # Fast dev-release build for testing
-```
+### Development Workflow
+1. Run `npm run tauri:dev` - automatically starts Vite, compiles Rust, and opens desktop app
+2. Frontend changes: Hot Module Reload (HMR) via Vite
+3. Rust changes: Auto-recompile on save
+4. Tauri config changes: Requires restart
 
-### Frontend Only
-```bash
-npm run dev                 # Vite dev server only (http://localhost:1420)
-npm run preview             # Preview built assets
-```
+## Architecture Overview
 
----
+### Tech Stack
+- **Frontend**: React 18.3.1, TypeScript 5.9.2, Vite 6.0.3, Tailwind CSS 4.1.8
+- **Desktop**: Tauri 2.1.1 (Rust + WebView)
+- **UI Libraries**: Radix UI (headless components), Framer Motion, react-hook-form + zod
+- **Backend**: Rust 2021, Tokio, SQLite (rusqlite), reqwest
 
-## Core Architecture
-
-### Key Modules
-
-| Module | Path | Responsibility |
-|--------|------|----------------|
-| **Main App** | `src/App.tsx` | View routing, global state, navigation history |
-| **Hooks Core** | `src/lib/hooksManager.ts` | 3-level config merge, validation, security checks |
-| **Hooks Converter** | `src/lib/hooksConverter.ts` | Old→New format compatibility |
-| **Type Definitions** | `src/types/hooks.ts` | Hooks interfaces + templates (9 event types) |
-| **Hooks UI** | `src/components/EnhancedHooksManager.tsx` | Interactive config editor with live validation |
-| **IPC Bridge** | `src/lib/api.ts` | Claude API + Tauri RPC communication |
-
-### Hooks System Architecture
-
-**3-Level Configuration Priority** (higher level overrides lower):
-```
-1. User:    ~/.claude/CLAUDE.md         (Global defaults)
-2. Project: ./CLAUDE.md                 (Project-specific)
-3. Local:   ./.claude.md                (Temporary overrides) ← Highest
-```
-
-**9 Hook Event Types**:
-- Tool-level: `PreToolUse`, `PostToolUse` (with matchers)
-- Event-level: `Notification` (optional matcher), `UserPromptSubmit`, `Stop`, `SubagentStop`, `PreCompact`, `SessionStart`, `SessionEnd`
-
-**Key Functions**:
-- `mergeConfigs(user, project, local)` - Merges configs with priority resolution
-- `validateConfig(hooks)` - Validates regex + detects 10+ dangerous patterns
-- `triggerHooks(eventType, data)` - Executes matching hooks
-
-**Security Checks** (automatic warnings):
-```bash
-✗ rm -rf / or ~           # Root/home deletion
-✗ curl | bash             # Remote code execution
-✗ sudo                    # Privilege escalation
-✗ Unquoted $variables     # Code injection risks
-```
-
----
-
-## Code Conventions
-
-### TypeScript Strict Mode
-- All strict checks enabled (no rule disabling)
-- Path alias: `@/*` → `src/*`
-- Complete dependency arrays in hooks (no exhaustive-deps disable)
-
-### React Component Pattern
-```typescript
-export function ComponentName({ prop }: Props) {
-  const [state, setState] = useState<Type>(initial);
-
-  useEffect(() => {
-    // Side effects
-  }, [complete, dependency, list]);  // Never omit dependencies
-
-  return <div>Content</div>;
-}
-
-interface Props {
-  prop: string;
-}
-```
-
-### State Management
-- **App.tsx**: Global state (view, projects, sessions, streaming status)
-- **Context API**: `ThemeContext`, `TabProvider`
-- **LocalStorage**: Claude config, session history
-- **Custom Hooks**: `useTranslation`, `useTabs`, `useSessionSync`
-
-### Hooks Security Best Practices
-```bash
-# Safe patterns:
-✓ jq extraction: $(jq -r .field)
-✓ Quoted variables: "$variable"
-✓ Specific paths: /path/to/file (not /)
-✓ Verification: echo "Debug: $value"
-
-# Dangerous patterns (auto-detected):
-✗ rm -rf / or ~
-✗ curl | bash
-✗ sudo commands
-✗ Unquoted $variables
-✗ Fork bombs: :(){ :|:& };:
-```
-
----
-
-## Build Configuration
-
-### Vite Optimization (vite.config.ts)
-- Port: 1420 (strict, fails if occupied)
-- HMR: WebSocket on 1421
-- Chunk splitting: `react-vendor`, `ui-vendor`, `editor-vendor`, `tauri`, `utils`
-- Warning limit: 2000 KB
-
-### Tauri Security (tauri.conf.json)
-- CSP: Strict (asset:, ipc:, blob:, data: only)
-- FS scope: `$HOME/**`, `$TEMP/**`
-- HTTP scope: `https://api.siliconflow.cn/**`
-
----
-
-## Tech Stack
-
-```
-React:              18.3.1
-TypeScript:         5.9.2 (strict mode)
-Tauri:              2.1.1 (plugins: shell, dialog, opener)
-Vite:               6.0.3
-Tailwind CSS:       4.1.8
-Framer Motion:      12.0
-@anthropic-ai/sdk:  0.63.1
-Node.js:            18.0+ required
-```
-
----
-
-## Common Development Scenarios
-
-### Debugging Hooks Configuration
-```typescript
-// Validate hooks config
-const result = await HooksManager.validateConfig(hooks);
-console.log('Errors:', result.errors);
-console.log('Warnings:', result.warnings);
-
-// Check merged config
-const merged = HooksManager.mergeConfigs(userConfig, projectConfig, localConfig);
-console.log('Final config:', merged);
-```
-
-### Adding New Hook Event Type
-1. Add to `HooksConfiguration` interface in `src/types/hooks.ts`
-2. Update `allEvents` array in `src/lib/hooksManager.ts`
-3. Call `triggerHooks(newEvent, data)` where appropriate
-
-### Modifying UI Components
-- Base components: `src/components/ui/*` (Radix UI wrappers)
-- Business components: `src/components/*Manager.tsx`
-- Follow function component + hooks pattern
-- Use Tailwind CSS utility classes
-
----
-
-## Troubleshooting
-
-**Window not showing on dev start**:
-- `main.tsx` has intentional 100ms delay for React mount completion
-
-**HMR not working**:
-- Check `TAURI_DEV_HOST` environment variable
-- Verify Vite WebSocket proxy on port 1421
-
-**Rust compilation errors**:
-- Try `npm run tauri:build-fast` for faster dev-release build
-
-**Hooks not triggering**:
-1. Verify file location (CLAUDE.md vs .claude.md)
-2. Check JSON format validity
-3. Test regex patterns in matcher
-4. Review `validateConfig()` error messages
-
----
-
-## Project Structure
-
+### Project Structure
 ```
 src/
-├── components/              # 50+ React components
-│   ├── ui/                 # Radix UI base components (15+)
-│   └── *Manager.tsx        # Business logic components
-├── lib/                    # Core business logic
-│   ├── hooksManager.ts    # Hooks config management [CORE]
-│   ├── hooksConverter.ts  # Format conversion [CORE]
-│   └── api.ts             # IPC communication
-├── types/                 # TypeScript definitions
-│   └── hooks.ts           # Hooks interfaces [CORE]
-├── hooks/                 # React custom hooks
-├── contexts/              # React Context providers
-├── i18n/                  # Internationalization (Chinese-first)
-├── App.tsx               # Main application [CRITICAL]
-└── main.tsx              # React entry point
+├── components/          # 50+ React components
+│   ├── ui/             # Radix UI wrappers (Button, Dialog, Select, etc.)
+│   ├── EnhancedHooksManager.tsx  # Claude Code Hooks editor [CRITICAL]
+│   └── *Manager.tsx    # Feature managers (MCP, Projects, Sessions)
+├── lib/                # Core business logic
+│   ├── api.ts         # IPC communication layer (100+ commands)
+│   ├── hooksManager.ts     # Hooks config management [CRITICAL]
+│   ├── hooksConverter.ts   # Hooks format conversion [CRITICAL]
+│   ├── claudeSDK.ts   # Claude API wrapper
+│   └── tokenCounter.ts
+├── types/
+│   ├── hooks.ts       # Hook type definitions [CRITICAL]
+│   └── subagents.ts
+├── hooks/             # Custom React hooks
+│   ├── useTabs.tsx    # Tab state management
+│   └── useSessionSync.ts
+├── contexts/          # React Context
+│   └── ThemeContext.tsx
+├── i18n/              # i18next internationalization
+└── App.tsx            # Main app controller [CRITICAL]
 
 src-tauri/
-├── src/main.rs           # Tauri backend
-└── Cargo.toml            # Rust dependencies
+├── src/main.rs        # Rust backend entry
+├── Cargo.toml         # 45+ Rust dependencies
+└── tauri.conf.json    # App configuration
 ```
 
----
+## Core System: Claude Code Hooks
 
-**Version**: 3.0.2
-**License**: AGPL-3.0
-**Last Updated**: 2025-10-17
+**Priority**: This is the project's most innovative feature.
+
+### Three-Level Configuration System
+```
+Priority: local > project > user
+Files:
+  user:    ~/.claude/CLAUDE.md
+  project: ./CLAUDE.md
+  local:   ./.claude.md
+```
+
+### Key Files
+- **`lib/hooksManager.ts`**: Config merging, matcher priority resolution, dangerous command detection
+- **`lib/hooksConverter.ts`**: Old/new format compatibility
+- **`types/hooks.ts`**: 9 hook event types, HookMatcher interface, 5 predefined templates
+- **`components/EnhancedHooksManager.tsx`**: Interactive hooks editor UI
+
+### Hook Event Types
+```typescript
+PreToolUse, PostToolUse, Notification, UserPromptSubmit,
+Stop, SubagentStop, PreCompact, SessionStart, SessionEnd
+```
+
+### Dangerous Command Detection
+System automatically flags:
+- `rm -rf /` or `rm -rf ~`
+- `curl ... | bash` (remote code execution)
+- `sudo` commands
+- Fork bombs: `:(){ :|:& };:`
+- Commands without proper quoting
+
+## State Management
+
+### App.tsx - Central State Hub
+Manages 11 view routes:
+```
+welcome → projects → claude-code-session → editor/settings/mcp
+                          ↓
+                   claude-tab-manager
+                          ↓
+            project-settings → enhanced-hooks-manager
+```
+
+**Key State**:
+- `view`: Current route
+- `projects[]`: Project list
+- `selectedProject`: Active project
+- `navigationHistory[]`: Smart back navigation stack
+- `isClaudeStreaming`: Streaming status
+
+### Context Providers
+- `ThemeContext`: Light/dark theme switching
+- `TabProvider`: Multi-tab session management
+
+### Custom Hooks
+- `useTabs`: Tab lifecycle (open/close/switch)
+- `useSessionSync`: Session synchronization
+- `useTranslation`: i18next integration
+
+## IPC Communication
+
+**File**: `src/lib/api.ts` (2147 lines)
+
+100+ typed commands via Tauri's `invoke()`:
+```typescript
+// Examples
+await listProjects()
+await createProject(name, path)
+await openSession(projectId, sessionId)
+await getHooksConfig(level)  // user/project/local
+await validateHooksConfig(config)
+await runMCPCommand(serverId, command)
+```
+
+All commands are type-safe with TypeScript interfaces.
+
+## Building and Testing
+
+### Build Profiles
+```toml
+[profile.dev-release]  # Fast iteration builds
+opt-level = 2
+debug = true
+
+[profile.release]      # Production builds
+opt-level = "z"        # Size optimization
+lto = true
+```
+
+### Build Output
+- **Frontend**: `dist/` (Vite static assets)
+- **Rust**: `src-tauri/target/release/`
+- **Installers**: NSIS/MSI (Windows), DMG/APP (macOS)
+
+### TypeScript Configuration
+- **Strict mode**: Enabled (`strict: true`)
+- **Path aliases**: `@/*` → `src/*`
+- **Target**: ES2020
+- **No unused locals/parameters**: Enforced
+
+## Code Splitting Strategy (vite.config.ts)
+
+```javascript
+manualChunks: {
+  'react-vendor': ['react', 'react-dom'],
+  'ui-vendor': ['@radix-ui/*'],
+  'editor-vendor': ['@uiw/react-md-editor'],
+  'tauri-vendor': ['@tauri-apps/api'],
+  'utils': ['clsx', 'lucide-react']
+}
+```
+
+## Important Development Notes
+
+### Hooks System Development
+When modifying Hooks:
+1. **Types first**: Update `types/hooks.ts`
+2. **Manager logic**: Modify `lib/hooksManager.ts` (merging/validation)
+3. **UI updates**: Edit `components/EnhancedHooksManager.tsx`
+4. **Test validation**: Ensure `validateConfig()` catches errors
+5. **Check security**: Verify dangerous command detection works
+
+### IPC Command Development
+1. Define Rust command in `src-tauri/src/main.rs`
+2. Add TypeScript interface in `src/lib/api.ts`
+3. Export typed function from `api.ts`
+4. Use in components with autocomplete support
+
+### Component Development
+- Use functional components + hooks (no class components)
+- Prefer Radix UI primitives over custom implementations
+- Use Tailwind utility classes (avoid CSS-in-JS unless dynamic)
+- Follow React hooks rules (top-level, no conditionals)
+
+### Navigation Flow
+Use `setNavigationHistory()` to enable smart back button:
+```typescript
+setNavigationHistory(prev => [...prev, currentView]);
+setView(newView);
+```
+
+## Debugging
+
+### Frontend Debugging
+- React DevTools: Inspect component tree
+- Console logs: `console.log('Debug:', value)`
+- Network: Check IPC calls in browser DevTools
+
+### Rust Debugging
+- Logs: `println!("Debug: {:?}", value);`
+- Enable debug mode: `tauri.conf.json` → `build.devPath`
+
+### Common Issues
+- **Hooks not triggering**: Check file location and JSON validity
+- **IPC failures**: Verify command exists in Rust backend
+- **Build errors**: Try `npm run tauri:build-fast` for faster iteration
+- **HMR not working**: Check Vite WebSocket connection (port 1421)
+
+## Project Conventions
+
+### File Naming
+- Components: PascalCase (e.g., `EnhancedHooksManager.tsx`)
+- Utilities: camelCase (e.g., `hooksManager.ts`)
+- Types: camelCase files (e.g., `hooks.ts`) with PascalCase interfaces
+
+### Import Aliases
+```typescript
+import { api } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+```
+
+### i18n Support
+Primary language: Chinese (zh)
+Fallback: English (en)
+
+All user-facing strings should use:
+```typescript
+const { t } = useTranslation();
+<div>{t('key.path')}</div>
+```
+
+## Recent Changes
+
+**Last Modified** (2025-10-17):
+- Navigation history stack improvements
+- Hooks system refinements
+- Hooks format conversion updates
+
+**Critical Files Recently Changed**:
+- `src/App.tsx`
+- `src/lib/hooksManager.ts`
+- `src/lib/hooksConverter.ts`
+- `src/types/hooks.ts`
