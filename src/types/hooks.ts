@@ -13,12 +13,22 @@ export interface HookMatcher {
   hooks: HookCommand[];
 }
 
+// Official Claude Code hooks configuration format
+// According to: https://docs.claude.com/en/docs/claude-code/hooks
 export interface HooksConfiguration {
+  // Events with matchers (tool-related)
   PreToolUse?: HookMatcher[];
   PostToolUse?: HookMatcher[];
-  Notification?: HookCommand[];
-  Stop?: HookCommand[];
-  SubagentStop?: HookCommand[];
+  
+  // Events without matchers (can still use matcher format, but matcher field is optional)
+  // They use HookMatcher[] format for consistency with official docs
+  Notification?: HookMatcher[];
+  UserPromptSubmit?: HookMatcher[];
+  Stop?: HookMatcher[];
+  SubagentStop?: HookMatcher[];
+  PreCompact?: HookMatcher[];
+  SessionStart?: HookMatcher[];
+  SessionEnd?: HookMatcher[];
 }
 
 export type HookEvent = keyof HooksConfiguration;
@@ -52,6 +62,7 @@ export type HookScope = 'user' | 'project' | 'local';
 
 // Common tool matchers for autocomplete
 export const COMMON_TOOL_MATCHERS = [
+  '*', // Match all tools
   'Task',
   'Bash',
   'Glob',

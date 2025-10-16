@@ -33,29 +33,66 @@ export function convertToEnhanced(config: HooksConfiguration): EnhancedHooksConf
     );
   }
 
-  // 处理简单命令事件
+  // 处理简单命令事件 - 现在也是 HookMatcher[] 格式
   if (config.Notification) {
-    enhanced.Notification = config.Notification.map(hook => ({
-      command: hook.command,
-      timeout: hook.timeout || 60,
-      retry: 1,
-    }));
+    enhanced.Notification = config.Notification.flatMap(matcher =>
+      matcher.hooks.map(hook => ({
+        command: hook.command,
+        timeout: hook.timeout || 60,
+        retry: 1,
+      }))
+    );
   }
 
   if (config.Stop) {
-    enhanced.Stop = config.Stop.map(hook => ({
-      command: hook.command,
-      timeout: hook.timeout || 60,
-      retry: 1,
-    }));
+    enhanced.Stop = config.Stop.flatMap(matcher =>
+      matcher.hooks.map(hook => ({
+        command: hook.command,
+        timeout: hook.timeout || 60,
+        retry: 1,
+      }))
+    );
   }
 
   if (config.SubagentStop) {
-    enhanced.SubagentStop = config.SubagentStop.map(hook => ({
-      command: hook.command,
-      timeout: hook.timeout || 60,
-      retry: 1,
-    }));
+    enhanced.SubagentStop = config.SubagentStop.flatMap(matcher =>
+      matcher.hooks.map(hook => ({
+        command: hook.command,
+        timeout: hook.timeout || 60,
+        retry: 1,
+      }))
+    );
+  }
+  
+  // 处理新增的事件
+  if (config.UserPromptSubmit) {
+    enhanced.OnSessionStart = config.UserPromptSubmit.flatMap(matcher =>
+      matcher.hooks.map(hook => ({
+        command: hook.command,
+        timeout: hook.timeout || 60,
+        retry: 1,
+      }))
+    );
+  }
+  
+  if (config.SessionStart) {
+    enhanced.OnSessionStart = config.SessionStart.flatMap(matcher =>
+      matcher.hooks.map(hook => ({
+        command: hook.command,
+        timeout: hook.timeout || 60,
+        retry: 1,
+      }))
+    );
+  }
+  
+  if (config.SessionEnd) {
+    enhanced.OnSessionEnd = config.SessionEnd.flatMap(matcher =>
+      matcher.hooks.map(hook => ({
+        command: hook.command,
+        timeout: hook.timeout || 60,
+        retry: 1,
+      }))
+    );
   }
 
   return enhanced;
@@ -88,29 +125,35 @@ export function convertFromEnhanced(enhanced: EnhancedHooksConfiguration): Hooks
     }];
   }
 
-  // 处理简单命令事件
+  // 处理简单命令事件 - 转换为 HookMatcher[] 格式
   if (enhanced.Notification && enhanced.Notification.length > 0) {
-    config.Notification = enhanced.Notification.map(hook => ({
-      type: 'command' as const,
-      command: hook.command,
-      timeout: hook.timeout,
-    }));
+    config.Notification = [{
+      hooks: enhanced.Notification.map(hook => ({
+        type: 'command' as const,
+        command: hook.command,
+        timeout: hook.timeout,
+      }))
+    }];
   }
 
   if (enhanced.Stop && enhanced.Stop.length > 0) {
-    config.Stop = enhanced.Stop.map(hook => ({
-      type: 'command' as const,
-      command: hook.command,
-      timeout: hook.timeout,
-    }));
+    config.Stop = [{
+      hooks: enhanced.Stop.map(hook => ({
+        type: 'command' as const,
+        command: hook.command,
+        timeout: hook.timeout,
+      }))
+    }];
   }
 
   if (enhanced.SubagentStop && enhanced.SubagentStop.length > 0) {
-    config.SubagentStop = enhanced.SubagentStop.map(hook => ({
-      type: 'command' as const,
-      command: hook.command,
-      timeout: hook.timeout,
-    }));
+    config.SubagentStop = [{
+      hooks: enhanced.SubagentStop.map(hook => ({
+        type: 'command' as const,
+        command: hook.command,
+        timeout: hook.timeout,
+      }))
+    }];
   }
 
   return config;

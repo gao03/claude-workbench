@@ -118,7 +118,8 @@ export class HooksManager {
 
       for (const matcher of matchers) {
         // Validate regex pattern if provided (optional for some events)
-        if (matcher.matcher) {
+        // Special cases: "*" and empty string are valid (match all tools)
+        if (matcher.matcher && matcher.matcher !== '*' && matcher.matcher.trim() !== '') {
           try {
             new RegExp(matcher.matcher);
           } catch (e) {
