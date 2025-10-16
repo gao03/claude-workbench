@@ -39,6 +39,8 @@ import { translationMiddleware, isSlashCommand, type TranslationResult } from '@
 import { progressiveTranslationManager, TranslationPriority, type TranslationState } from '@/lib/progressiveTranslation';
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { tokenExtractor } from '@/lib/tokenExtractor';
+// Note: smartFilterMessages available from @/lib/messageFilter for future optimization
+// import { smartFilterMessages } from '@/lib/messageFilter';
 
 import type { ClaudeStreamMessage } from '@/types/claude';
 

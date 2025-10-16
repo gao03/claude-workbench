@@ -6,7 +6,11 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import "./assets/shimmer.css";
 import "./styles.css";
 import "./i18n"; // Initialize i18n
+import { initializeToolRegistry } from "./lib/toolRegistryInit"; // Initialize tool registry
 import { getCurrentWindow } from '@tauri-apps/api/window';
+
+// 初始化工具注册中心
+initializeToolRegistry();
 
 // 防止窗口闪烁的React包装组件
 const AppWrapper: React.FC = () => {

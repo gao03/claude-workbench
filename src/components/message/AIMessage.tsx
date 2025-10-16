@@ -57,20 +57,48 @@ const hasToolCalls = (message: ClaudeStreamMessage): boolean => {
 };
 
 /**
- * AI消息组件
- * 左对齐卡片样式，支持工具调用展示
+ * 检测消息中是否有思考块
+ */
+const hasThinkingBlock = (message: ClaudeStreamMessage): boolean => {
+  if (!message.message?.content) return false;
+
+  const content = message.message.content;
+  if (!Array.isArray(content)) return false;
+
+  return content.some((item: any) => item.type === 'thinking');
+};
+
+/**
+ * 提取思考块内容
+ */
+const extractThinkingContent = (message: ClaudeStreamMessage): string => {
+  if (!message.message?.content) return '';
+
+  const content = message.message.content;
+  if (!Array.isArray(content)) return '';
+
+  const thinkingBlocks = content.filter((item: any) => item.type === 'thinking');
+  return thinkingBlocks.map((item: any) => item.thinking || '').join('\n\n');
+};
+
+/**
+ * AI消息组件（重构版）
+ * 左对齐卡片样式，支持工具调用展示和思考块
  */
 export const AIMessage: React.FC<AIMessageProps> = ({
   message,
   streamMessages = [],
   isStreaming = false,
-  className
+  className,
+  onLinkDetected
 }) => {
   const text = extractAIText(message);
   const hasTools = hasToolCalls(message);
+  const hasThinking = hasThinkingBlock(message);
+  const thinkingContent = hasThinking ? extractThinkingContent(message) : '';
 
-  // 如果既没有文本又没有工具调用，不渲染
-  if (!text && !hasTools) return null;
+  // 如果既没有文本又没有工具调用又没有思考块，不渲染
+  if (!text && !hasTools && !hasThinking) return null;
 
   // 格式化时间戳
   const formatTimestamp = (timestamp: string | undefined): string => {
@@ -140,18 +168,39 @@ export const AIMessage: React.FC<AIMessageProps> = ({
         {/* 消息内容 */}
         {text && (
           <div className="px-4 pb-3">
-            <MessageContent 
-              content={text} 
-              isStreaming={isStreaming && !hasTools}
+            <MessageContent
+              content={text}
+              isStreaming={isStreaming && !hasTools && !hasThinking}
             />
+          </div>
+        )}
+
+        {/* 思考块区域 */}
+        {hasThinking && thinkingContent && (
+          <div className="mx-4 mb-3 border-l-2 border-purple-500/30 bg-purple-500/5 rounded">
+            <details className="group">
+              <summary className="cursor-pointer px-3 py-2 text-xs text-purple-700 dark:text-purple-300 font-medium hover:bg-purple-500/10 transition-colors select-none flex items-center gap-2">
+                <span className="inline-block transition-transform group-open:rotate-90">▶</span>
+                <span>思考过程</span>
+                <span className="ml-auto text-[10px] text-muted-foreground">
+                  {thinkingContent.length} 字符
+                </span>
+              </summary>
+              <div className="px-3 pb-3 pt-1">
+                <div className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">
+                  {thinkingContent}
+                </div>
+              </div>
+            </details>
           </div>
         )}
 
         {/* 工具调用区域 */}
         {hasTools && (
-          <ToolCallsGroup 
-            message={message} 
+          <ToolCallsGroup
+            message={message}
             streamMessages={streamMessages}
+            onLinkDetected={onLinkDetected}
           />
         )}
       </MessageBubble>
