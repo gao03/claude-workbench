@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::process::Command;
 use log::{info, warn, error, debug};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter};
 
 /// 扩展的Hook事件类型
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -462,11 +462,13 @@ impl Default for PreCommitCodeReviewConfig {
 }
 
 /// 提交前代码审查Hook - 智能化自动化场景的具体实现
+#[allow(dead_code)]
 pub struct PreCommitCodeReviewHook {
     config: PreCommitCodeReviewConfig,
     _app: AppHandle, // 保留用于未来扩展，如通知用户等
 }
 
+#[allow(dead_code)]
 impl PreCommitCodeReviewHook {
     pub fn new(app: AppHandle, config: PreCommitCodeReviewConfig) -> Self {
         Self { config, _app: app }

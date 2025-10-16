@@ -1980,8 +1980,8 @@ async fn spawn_claude_process(app: AppHandle, mut cmd: Command, prompt: String, 
                         let total_tokens = (input_tokens + output_tokens) as usize;
 
                         // Extract cache tokens if available
-                        let cache_creation_tokens = usage.get("cache_creation_input_tokens").and_then(|t| t.as_u64());
-                        let cache_read_tokens = usage.get("cache_read_input_tokens").and_then(|t| t.as_u64());
+                        let _cache_creation_tokens = usage.get("cache_creation_input_tokens").and_then(|t| t.as_u64());
+                        let _cache_read_tokens = usage.get("cache_read_input_tokens").and_then(|t| t.as_u64());
 
                         // Store usage data in database for real-time token statistics
                         let session_id_for_update = {
