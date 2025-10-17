@@ -192,7 +192,7 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
 
       {/* 折叠摘要或完整内容 */}
       {isCollapsed ? (
-        <CollapsedSummary stats={stats} toolCalls={toolCalls} toolResults={toolResults} />
+        <CollapsedSummary toolCalls={toolCalls} toolResults={toolResults} />
       ) : (
         <div className="space-y-2 p-4 bg-background">
           {toolCalls.map((tool, index) => (
@@ -215,12 +215,11 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
  * 折叠时的摘要显示
  */
 interface CollapsedSummaryProps {
-  stats: any;
   toolCalls: ToolCall[];
   toolResults: Map<string, ToolResult>;
 }
 
-const CollapsedSummary: React.FC<CollapsedSummaryProps> = ({ stats, toolCalls, toolResults }) => {
+const CollapsedSummary: React.FC<CollapsedSummaryProps> = ({ toolCalls, toolResults }) => {
   return (
     <div className="px-4 py-3 bg-background/50 border-t border-border space-y-2">
       {/* 显示前3个工具 */}

@@ -64,13 +64,14 @@ export function isEmptyUserMessage(message: ClaudeStreamMessage): boolean {
   }
 
   // 数组内容为空
-  if (Array.isArray(content) && content.length === 0) {
-    return true;
+  if (Array.isArray(content)) {
+    return content.length === 0;
   }
 
   // 字符串内容为空或只有空白字符
-  if (typeof content === 'string' && content.trim() === '') {
-    return true;
+  if (typeof content === 'string') {
+    const strContent = content as string;
+    return strContent.trim() === '';
   }
 
   return false;

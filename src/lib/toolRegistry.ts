@@ -5,7 +5,7 @@
  * 支持 MCP 工具的正则匹配和优先级解决
  */
 
-import { FC, ReactElement } from 'react';
+import { FC } from 'react';
 
 /**
  * 工具渲染 Props 统一接口

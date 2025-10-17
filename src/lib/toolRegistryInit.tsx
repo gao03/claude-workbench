@@ -95,6 +95,7 @@ export function initializeToolRegistry(): void {
     {
       name: 'multiedit',
       render: createToolAdapter(MultiEditWidget, (props) => ({
+        file_path: props.input?.file_path || '',
         edits: props.input?.edits || [],
         result: props.result,
       })),
@@ -140,7 +141,7 @@ export function initializeToolRegistry(): void {
     {
       name: 'write',
       render: createToolAdapter(WriteWidget, (props) => ({
-        file_path: props.input?.file_path || '',
+        filePath: props.input?.file_path || '',
         content: props.input?.content || '',
         result: props.result,
       })),
