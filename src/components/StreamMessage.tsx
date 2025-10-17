@@ -14,7 +14,6 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { tokenExtractor } from "@/lib/tokenExtractor";
-import { MessageActions } from "./MessageActions";
 
 import type { ClaudeStreamMessage } from '@/types/claude';
 
@@ -70,34 +69,17 @@ interface StreamMessageProps {
   streamMessages: ClaudeStreamMessage[];
   onLinkDetected?: (url: string) => void;
   claudeSettings?: { showSystemInitialization?: boolean };
-  // Message operations
-  messageIndex?: number;
-  sessionId?: string | null;
-  projectId?: string | null;
-  projectPath?: string | null;
-  onMessageUndo?: (messageIndex: number) => Promise<void>;
-  onMessageEdit?: (messageIndex: number, newContent: string) => Promise<void>;
-  onMessageDelete?: (messageIndex: number) => Promise<void>;
-  onMessageTruncate?: (messageIndex: number) => Promise<void>;
 }
 
 /**
  * Component to render a single Claude Code stream message
  */
-const StreamMessageComponent: React.FC<StreamMessageProps> = ({ 
-  message, 
-  className, 
-  streamMessages, 
-  onLinkDetected, 
-  claudeSettings,
-  messageIndex,
-  sessionId,
-  projectId,
-  projectPath,
-  onMessageUndo,
-  onMessageEdit,
-  onMessageDelete,
-  onMessageTruncate
+const StreamMessageComponent: React.FC<StreamMessageProps> = ({
+  message,
+  className,
+  streamMessages,
+  onLinkDetected,
+  claudeSettings
 }) => {
   const { theme } = useTheme();
   // State to track tool results mapped by tool call ID
@@ -396,19 +378,8 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
 
       // Handle different message structures
       const msg = message.message || message;
-      
+
       let renderedSomething = false;
-      
-      // Extract message content for MessageActions
-      let messageContent = '';
-      if (typeof msg.content === 'string') {
-        messageContent = msg.content;
-      } else if (Array.isArray(msg.content)) {
-        const textContent = msg.content.find((c: any) => c.type === 'text');
-        if (textContent) {
-          messageContent = textContent.text || '';
-        }
-      }
 
       const renderedCard = (
         <Card className={cn("border-muted-foreground/20 bg-muted/20 group", className)}>
@@ -423,21 +394,6 @@ const StreamMessageComponent: React.FC<StreamMessageProps> = ({
                       <span className="text-xs text-muted-foreground font-mono">
                         {formatTimestamp(message.sentAt)}
                       </span>
-                    )}
-                    {/* Message Actions */}
-                    {messageIndex !== undefined && sessionId && projectId && projectPath && (
-                      <MessageActions
-                        messageIndex={messageIndex}
-                        messageType="user"
-                        messageContent={messageContent}
-                        sessionId={sessionId}
-                        projectId={projectId}
-                        projectPath={projectPath}
-                        onUndo={onMessageUndo}
-                        onEdit={onMessageEdit}
-                        onDelete={onMessageDelete}
-                        onTruncate={onMessageTruncate}
-                      />
                     )}
                   </div>
                 </div>

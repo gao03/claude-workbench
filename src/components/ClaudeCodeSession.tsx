@@ -567,10 +567,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                   onLinkDetected={handleLinkDetected}
                   claudeSettings={claudeSettings}
                   isStreaming={virtualItem.index === displayableMessages.length - 1 && isLoading}
-                  messageIndex={virtualItem.index}
-                  sessionId={extractedSessionInfo?.sessionId || null}
-                  projectId={extractedSessionInfo?.projectId || null}
-                  projectPath={projectPath || null}
                 />
               </motion.div>
             );

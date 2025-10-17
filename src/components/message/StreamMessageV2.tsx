@@ -11,15 +11,6 @@ interface StreamMessageV2Props {
   onLinkDetected?: (url: string) => void;
   claudeSettings?: { showSystemInitialization?: boolean };
   isStreaming?: boolean;
-  // Message operations
-  messageIndex?: number;
-  sessionId?: string | null;
-  projectId?: string | null;
-  projectPath?: string | null;
-  onMessageUndo?: (messageIndex: number) => Promise<void>;
-  onMessageEdit?: (messageIndex: number, newContent: string) => Promise<void>;
-  onMessageDelete?: (messageIndex: number) => Promise<void>;
-  onMessageTruncate?: (messageIndex: number) => Promise<void>;
 }
 
 /**
@@ -41,15 +32,7 @@ export const StreamMessageV2: React.FC<StreamMessageV2Props> = ({
   streamMessages,
   onLinkDetected,
   claudeSettings,
-  isStreaming = false,
-  messageIndex,
-  sessionId,
-  projectId,
-  projectPath,
-  onMessageUndo,
-  onMessageEdit,
-  onMessageDelete,
-  onMessageTruncate
+  isStreaming = false
 }) => {
   // 根据消息类型渲染不同组件
   const messageType = message.type;
@@ -72,14 +55,6 @@ export const StreamMessageV2: React.FC<StreamMessageV2Props> = ({
     return (
       <UserMessage
         message={message}
-        messageIndex={messageIndex}
-        sessionId={sessionId}
-        projectId={projectId}
-        projectPath={projectPath}
-        onMessageUndo={onMessageUndo}
-        onMessageEdit={onMessageEdit}
-        onMessageDelete={onMessageDelete}
-        onMessageTruncate={onMessageTruncate}
         className={className}
       />
     );

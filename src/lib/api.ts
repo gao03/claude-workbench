@@ -720,17 +720,6 @@ export const api = {
     }
   },
 
-  /**
-   * Get usage overview statistics - fast loading with essential metrics only
-   */
-  async getUsageOverview(): Promise<UsageOverview> {
-    try {
-      return await invoke<UsageOverview>("get_usage_overview");
-    } catch (error) {
-      console.error("Failed to get usage overview:", error);
-      throw error;
-    }
-  },
 
   /**
    * Gets usage statistics filtered by date range
@@ -771,45 +760,8 @@ export const api = {
     }
   },
 
-  /**
-   * Gets usage statistics for today only
-   * @returns Promise resolving to today's usage statistics
-   */
-  async getTodayUsageStats(): Promise<UsageStats> {
-    try {
-      return await invoke<UsageStats>("get_today_usage_stats");
-    } catch (error) {
-      console.error("Failed to get today's usage stats:", error);
-      throw error;
-    }
-  },
 
-  /**
-   * Gets usage statistics grouped by API Base URL
-   * @returns Promise resolving to array of API Base URL usage statistics
-   */
-  async getUsageByApiBaseUrl(): Promise<ApiBaseUrlUsage[]> {
-    try {
-      return await invoke<ApiBaseUrlUsage[]>("get_usage_by_api_base_url");
-    } catch (error) {
-      console.error("Failed to get usage by API Base URL:", error);
-      throw error;
-    }
-  },
 
-  /**
-   * Gets detailed usage entries with optional filtering
-   * @param limit - Optional limit for number of entries
-   * @returns Promise resolving to array of usage entries
-   */
-  async getUsageDetails(limit?: number): Promise<UsageEntry[]> {
-    try {
-      return await invoke<UsageEntry[]>("get_usage_details", { limit });
-    } catch (error) {
-      console.error("Failed to get usage details:", error);
-      throw error;
-    }
-  },
 
   /**
    * Gets cache tokens for a specific session
@@ -1855,122 +1807,12 @@ export const api = {
 
   // Subagent Management & Specialization API methods
 
-  /**
-   * Initializes the subagent specialization system
-   * @returns Promise resolving to success message
-   */
-  async initSubagentSystem(): Promise<string> {
-    try {
-      return await invoke<string>("init_subagent_system");
-    } catch (error) {
-      console.error("Failed to initialize subagent system:", error);
-      throw error;
-    }
-  },
 
-  /**
-   * Lists all available subagent specialties
-   * @returns Promise resolving to array of subagent specialties
-   */
-  async listSubagentSpecialties(): Promise<any[]> {
-    try {
-      return await invoke<any[]>("list_subagent_specialties");
-    } catch (error) {
-      console.error("Failed to list subagent specialties:", error);
-      throw error;
-    }
-  },
 
-  /**
-   * Intelligent routing - selects most suitable subagent for user request
-   * @param userRequest - The user's request to route
-   * @returns Promise resolving to routing decision
-   */
-  async routeToSubagent(userRequest: string): Promise<any> {
-    try {
-      return await invoke<any>("route_to_subagent", { userRequest });
-    } catch (error) {
-      console.error("Failed to route to subagent:", error);
-      throw error;
-    }
-  },
 
-  /**
-   * Updates subagent specialty configuration
-   * @param agentId - The agent ID to update
-   * @param specialty - The specialty type
-   * @param specialtyConfig - Optional JSON configuration
-   * @param routingKeywords - Optional JSON array of routing keywords
-   * @param autoInvoke - Whether to auto-invoke this subagent
-   * @returns Promise resolving when update is complete
-   */
-  async updateSubagentSpecialty(
-    agentId: number,
-    specialty: string,
-    specialtyConfig?: string,
-    routingKeywords?: string,
-    autoInvoke?: boolean
-  ): Promise<void> {
-    try {
-      return await invoke<void>("update_subagent_specialty", {
-        agentId,
-        specialty,
-        specialtyConfig,
-        routingKeywords,
-        autoInvoke
-      });
-    } catch (error) {
-      console.error("Failed to update subagent specialty:", error);
-      throw error;
-    }
-  },
 
-  /**
-   * Gets subagent routing history
-   * @param limit - Optional limit for number of entries
-   * @returns Promise resolving to array of routing history entries
-   */
-  async getRoutingHistory(limit?: number): Promise<any[]> {
-    try {
-      return await invoke<any[]>("get_routing_history", { limit });
-    } catch (error) {
-      console.error("Failed to get routing history:", error);
-      throw error;
-    }
-  },
 
-  /**
-   * Provides feedback on routing decision for ML improvement
-   * @param logId - The routing log ID
-   * @param feedback - Feedback score (1: good, 0: neutral, -1: bad)
-   * @returns Promise resolving when feedback is recorded
-   */
-  async provideRoutingFeedback(logId: number, feedback: number): Promise<void> {
-    try {
-      return await invoke<void>("provide_routing_feedback", { logId, feedback });
-    } catch (error) {
-      console.error("Failed to provide routing feedback:", error);
-      throw error;
-    }
-  },
 
-  /**
-   * Executes professional code review using specialized code-reviewer agent
-   * @param filePaths - Array of file paths to review
-   * @param reviewScope - Optional scope: "security", "performance", "all" (default)
-   * @returns Promise resolving to detailed code review results
-   */
-  async executeCodeReview(filePaths: string[], reviewScope?: string): Promise<import('@/types/subagents').CodeReviewResult> {
-    try {
-      return await invoke<import('@/types/subagents').CodeReviewResult>("execute_code_review", {
-        filePaths,
-        reviewScope
-      });
-    } catch (error) {
-      console.error("Failed to execute code review:", error);
-      throw error;
-    }
-  },
 
   // Enhanced Hooks Automation API methods
 

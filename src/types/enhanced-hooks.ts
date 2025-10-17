@@ -244,7 +244,7 @@ export type CommitDecision =
   | {
       type: 'Block';
       reason: string;
-      details: import('@/types/subagents').CodeReviewResult;
+      details: string;
       suggestions: string[];
     };
 

@@ -1,24 +1,12 @@
 import React from "react";
 import { MessageBubble } from "./MessageBubble";
 import { MessageHeader } from "./MessageHeader";
-import { MessageActions } from "../MessageActions";
 import { cn } from "@/lib/utils";
 import type { ClaudeStreamMessage } from '@/types/claude';
 
 interface UserMessageProps {
   /** 消息数据 */
   message: ClaudeStreamMessage;
-  /** 消息索引 */
-  messageIndex?: number;
-  /** 会话信息 */
-  sessionId?: string | null;
-  projectId?: string | null;
-  projectPath?: string | null;
-  /** 操作回调 */
-  onMessageUndo?: (messageIndex: number) => Promise<void>;
-  onMessageEdit?: (messageIndex: number, newContent: string) => Promise<void>;
-  onMessageDelete?: (messageIndex: number) => Promise<void>;
-  onMessageTruncate?: (messageIndex: number) => Promise<void>;
   /** 自定义类名 */
   className?: string;
 }
@@ -51,14 +39,6 @@ const extractUserText = (message: ClaudeStreamMessage): string => {
  */
 export const UserMessage: React.FC<UserMessageProps> = ({
   message,
-  messageIndex,
-  sessionId,
-  projectId,
-  projectPath,
-  onMessageUndo,
-  onMessageEdit,
-  onMessageDelete,
-  onMessageTruncate,
   className
 }) => {
   const text = extractUserText(message);
@@ -81,27 +61,6 @@ export const UserMessage: React.FC<UserMessageProps> = ({
           {text}
         </div>
       </MessageBubble>
-
-      {/* 操作按钮（悬停显示） */}
-      {messageIndex !== undefined && 
-       sessionId && 
-       projectId && 
-       projectPath && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <MessageActions
-            messageIndex={messageIndex}
-            messageType="user"
-            messageContent={text}
-            sessionId={sessionId}
-            projectId={projectId}
-            projectPath={projectPath}
-            onUndo={onMessageUndo}
-            onEdit={onMessageEdit}
-            onDelete={onMessageDelete}
-            onTruncate={onMessageTruncate}
-          />
-        </div>
-      )}
     </div>
   );
 };
