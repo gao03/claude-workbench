@@ -25,7 +25,7 @@ import {
 import { api, type Session, type Project } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-dialog";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { type UnlistenFn } from "@tauri-apps/api/event";
 // import { StreamMessage } from "./StreamMessage"; // 已替换为StreamMessageV2
 import { StreamMessageV2 } from "./message";
 import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingPromptInput";
@@ -35,7 +35,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SplitPane } from "@/components/ui/split-pane";
 import { WebviewPreview } from "./WebviewPreview";
-import { translationMiddleware, isSlashCommand, type TranslationResult } from '@/lib/translationMiddleware';
+import { type TranslationResult } from '@/lib/translationMiddleware';
 import { useVirtualizer } from "@tanstack/react-virtual";
 // Note: smartFilterMessages available from @/lib/messageFilter for future optimization
 // import { smartFilterMessages } from '@/lib/messageFilter';
@@ -46,6 +46,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSmartAutoScroll } from '@/hooks/useSmartAutoScroll';
 import { useMessageTranslation } from '@/hooks/useMessageTranslation';
 import { useSessionLifecycle } from '@/hooks/useSessionLifecycle';
+import { usePromptExecution } from '@/hooks/usePromptExecution';
 
 import type { ClaudeStreamMessage } from '@/types/claude';
 
@@ -172,7 +173,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const queuedPromptsRef = useRef<Array<{ id: string; prompt: string; model: "sonnet" | "opus" | "sonnet1m" }>>([]);
   const isMountedRef = useRef(true);
   const isListeningRef = useRef(false);
-  const handleSendPromptRef = useRef<((prompt: string, model: "sonnet" | "opus" | "sonnet1m", thinkingInstruction?: string) => Promise<void>) | null>(null);
 
   // ✅ Refactored: Use custom Hook for message translation (AFTER refs are declared)
   const {
@@ -208,7 +208,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     queuedPromptsRef.current = queuedPrompts;
   }, [queuedPrompts]);
 
-
   // Get effective session info (from prop or extracted) - use useMemo to ensure it updates
   const effectiveSession = useMemo(() => {
     if (session) return session;
@@ -222,6 +221,34 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     }
     return null;
   }, [session, extractedSessionInfo, projectPath]);
+
+  // ✅ Refactored: Use custom Hook for prompt execution (AFTER all other Hooks)
+  const { handleSendPrompt } = usePromptExecution({
+    projectPath,
+    isLoading,
+    claudeSessionId,
+    effectiveSession,
+    isPlanMode,
+    lastTranslationResult,
+    isActive,
+    isFirstPrompt,
+    extractedSessionInfo,
+    hasActiveSessionRef,
+    unlistenRefs,
+    isMountedRef,
+    isListeningRef,
+    queuedPromptsRef,
+    setIsLoading,
+    setError,
+    setMessages,
+    setClaudeSessionId,
+    setLastTranslationResult,
+    setQueuedPrompts,
+    setRawJsonlOutput,
+    setExtractedSessionInfo,
+    setIsFirstPrompt,
+    processMessageWithTranslation
+  });
 
   const rowVirtualizer = useVirtualizer({
     count: displayableMessages.length,
@@ -362,309 +389,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     }
   };
 
-  // Smart model selection for Default mode
-
-  const handleSendPrompt = async (prompt: string, model: "sonnet" | "opus" | "sonnet1m", thinkingInstruction?: string) => {
-    console.log('[ClaudeCodeSession] handleSendPrompt called with:', { prompt, model, projectPath, claudeSessionId, effectiveSession, thinkingInstruction });
-    
-    if (!projectPath) {
-      setError("请先选择项目目录");
-      return;
-    }
-
-    // Check if this is a slash command and handle it appropriately
-    const isSlashCommandInput = isSlashCommand(prompt);
-    const trimmedPrompt = prompt.trim();
-    
-    if (isSlashCommandInput) {
-      const commandPreview = trimmedPrompt.split('\n')[0];
-      console.log('[ClaudeCodeSession] ✅ Detected slash command, bypassing translation:', {
-        command: commandPreview,
-        model: model,
-        projectPath: projectPath
-      });
-      
-      // For slash commands, we need to send them as-is to Claude CLI
-      // Claude CLI should handle the slash command parsing and execution
-      // The key is to ensure the command is passed correctly to the Claude process
-    }
-
-    console.log('[ClaudeCodeSession] Using model:', model);
-
-    // If already loading, queue the prompt
-    if (isLoading) {
-      const newPrompt = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        prompt,
-        model
-      };
-      setQueuedPrompts(prev => [...prev, newPrompt]);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      hasActiveSessionRef.current = true;
-
-      // 🌐 Translation: Process user input before sending to Claude
-      let processedPrompt = prompt;
-      let userInputTranslation: TranslationResult | null = null;
-
-      // For resuming sessions, ensure we have the session ID
-      if (effectiveSession && !claudeSessionId) {
-        setClaudeSessionId(effectiveSession.id);
-      }
-
-      // 🔧 CRITICAL FIX: Only set up listeners if this tab is active
-      // This prevents multiple ClaudeCodeSession instances from processing the same events
-      if (!isListeningRef.current && isActive) {
-        // Clean up previous listeners
-        unlistenRefs.current.forEach(unlisten => unlisten && typeof unlisten === 'function' && unlisten());
-        unlistenRefs.current = [];
-
-        // Mark as setting up listeners
-        isListeningRef.current = true;
-
-        console.log('[ClaudeCodeSession] Setting up event listeners for ACTIVE tab only');
-
-        // --------------------------------------------------------------------
-        // 1️⃣  Event Listener Setup Strategy
-        // --------------------------------------------------------------------
-        // Claude Code may emit a *new* session_id even when we pass --resume. If
-        // we listen only on the old session-scoped channel we will miss the
-        // stream until the user navigates away & back. To avoid this we:
-        //   • Always start with GENERIC listeners (no suffix) so we catch the
-        //     very first "system:init" message regardless of the session id.
-        //   • Once that init message provides the *actual* session_id, we
-        //     dynamically switch to session-scoped listeners and stop the
-        //     generic ones to prevent duplicate handling.
-        // --------------------------------------------------------------------
-
-        let currentSessionId: string | null = claudeSessionId || effectiveSession?.id || null;
-
-        // Helper to attach session-specific listeners **once we are sure**
-        const attachSessionSpecificListeners = async (sid: string) => {
-          console.log('[ClaudeCodeSession] Attaching session-specific listeners for', sid);
-
-          const specificOutputUnlisten = await listen<string>(`claude-output:${sid}`, (evt) => {
-            handleStreamMessage(evt.payload, userInputTranslation || undefined);
-          });
-
-          const specificErrorUnlisten = await listen<string>(`claude-error:${sid}`, (evt) => {
-            console.error('Claude error (scoped):', evt.payload);
-            setError(evt.payload);
-          });
-
-          const specificCompleteUnlisten = await listen<boolean>(`claude-complete:${sid}`, (evt) => {
-            console.log('[ClaudeCodeSession] Received claude-complete (scoped):', evt.payload);
-            processComplete();
-          });
-
-          // Replace existing unlisten refs with these new ones (after cleaning up)
-          unlistenRefs.current.forEach((u) => u && typeof u === 'function' && u());
-          unlistenRefs.current = [specificOutputUnlisten, specificErrorUnlisten, specificCompleteUnlisten];
-        };
-
-        // Generic listeners (catch-all) - ALWAYS process to ensure user sees output
-        const genericOutputUnlisten = await listen<string>('claude-output', async (event) => {
-          // Always handle generic events as fallback to ensure output visibility
-          handleStreamMessage(event.payload, userInputTranslation || undefined);
-
-          // Attempt to extract session_id on the fly (for the very first init)
-          try {
-            const msg = JSON.parse(event.payload) as ClaudeStreamMessage;
-            if (msg.type === 'system' && msg.subtype === 'init' && msg.session_id) {
-              if (!currentSessionId || currentSessionId !== msg.session_id) {
-                console.log('[ClaudeCodeSession] Detected new session_id from generic listener:', msg.session_id);
-                currentSessionId = msg.session_id;
-                setClaudeSessionId(msg.session_id);
-
-                // ✅ CRITICAL FIX: Update effectiveSession.id to use the new session_id
-                // This ensures subsequent resume operations use the correct session_id
-                if (effectiveSession) {
-                  effectiveSession.id = msg.session_id;
-                  console.log('[ClaudeCodeSession] Updated effectiveSession.id to:', msg.session_id);
-                }
-
-                // If we haven't extracted session info before, do it now
-                if (!extractedSessionInfo) {
-                  const projectId = projectPath.replace(/[^a-zA-Z0-9]/g, '-');
-                  setExtractedSessionInfo({ sessionId: msg.session_id, projectId });
-                }
-
-                // Switch to session-specific listeners
-                await attachSessionSpecificListeners(msg.session_id);
-              }
-            }
-          } catch {
-            /* ignore parse errors */
-          }
-        });
-
-        // Helper to process any JSONL stream message string
-        // 使用闭包捕获当前的翻译结果，避免React状态异步更新问题
-        async function handleStreamMessage(payload: string, currentTranslationResult?: TranslationResult) {
-          try {
-            // Don't process if component unmounted
-            if (!isMountedRef.current) return;
-
-            // Store raw JSONL
-            setRawJsonlOutput((prev) => [...prev, payload]);
-
-            const message = JSON.parse(payload) as ClaudeStreamMessage;
-
-            // Use the shared translation function for consistency
-            await processMessageWithTranslation(message, payload, currentTranslationResult);
-
-          } catch (err) {
-            console.error('Failed to parse message:', err, payload);
-          }
-        }
-
-        // Helper to handle completion events (both generic and scoped)
-        const processComplete = async () => {
-          setIsLoading(false);
-          // 🔧 FIX: Reset hasActiveSessionRef when session completes to show correct UI state
-          hasActiveSessionRef.current = false;
-          isListeningRef.current = false; // Reset listening state
-
-          // ✅ CRITICAL FIX: Reset currentSessionId to allow detection of new session_id
-          // This ensures the next message will pick up the new session_id from Claude CLI
-          currentSessionId = null;
-          console.log('[ClaudeCodeSession] Session completed - reset session state for new input');
-
-          // Session is now ready to accept new input - UI will show input field instead of loading
-
-          // Process queued prompts after completion
-          if (queuedPromptsRef.current.length > 0) {
-            const [nextPrompt, ...remainingPrompts] = queuedPromptsRef.current;
-            setQueuedPrompts(remainingPrompts);
-            
-            // Small delay to ensure UI updates
-            setTimeout(() => {
-              handleSendPrompt(nextPrompt.prompt, nextPrompt.model);
-            }, 100);
-          }
-        };
-
-        const genericErrorUnlisten = await listen<string>('claude-error', (evt) => {
-          console.error('Claude error:', evt.payload);
-          setError(evt.payload);
-        });
-
-        const genericCompleteUnlisten = await listen<boolean>('claude-complete', (evt) => {
-          console.log('[ClaudeCodeSession] Received claude-complete (generic):', evt.payload);
-          processComplete();
-        });
-
-        // Store the generic unlisteners for now; they may be replaced later.
-        unlistenRefs.current = [genericOutputUnlisten, genericErrorUnlisten, genericCompleteUnlisten];
-
-        // --------------------------------------------------------------------
-        // 2️⃣  Auto-checkpoint logic moved after listener setup (unchanged)
-        // --------------------------------------------------------------------
-
-        // Skip translation entirely for slash commands
-        if (!isSlashCommandInput) {
-          try {
-            const isEnabled = await translationMiddleware.isEnabled();
-            if (isEnabled) {
-              console.log('[ClaudeCodeSession] Translation enabled, processing user input...');
-              // 确保传递给翻译中间件的参数与本地检测使用的参数一致
-              userInputTranslation = await translationMiddleware.translateUserInput(prompt);
-              processedPrompt = userInputTranslation.translatedText;
-
-              if (userInputTranslation.wasTranslated) {
-                console.log('[ClaudeCodeSession] User input translated:', {
-                  original: userInputTranslation.originalText,
-                  translated: userInputTranslation.translatedText,
-                  language: userInputTranslation.detectedLanguage
-                });
-              }
-            }
-          } catch (translationError) {
-            console.error('[ClaudeCodeSession] Translation failed, using original prompt:', translationError);
-            // Continue with original prompt if translation fails
-          }
-        } else {
-          const commandPreview = trimmedPrompt.split('\n')[0];
-          console.log('[ClaudeCodeSession] ✅ Slash command detected, skipping translation:', {
-            command: commandPreview,
-            translationEnabled: await translationMiddleware.isEnabled()
-          });
-        }
-        
-        // Store the translation result AFTER all processing for response translation
-        if (userInputTranslation) {
-          setLastTranslationResult(userInputTranslation);
-          console.log('[ClaudeCodeSession] Stored translation result for response processing:', userInputTranslation);
-        }
-
-        // 🎯 CRITICAL FIX: Add thinking instruction AFTER translation, not before
-        // This ensures thinking instructions are not embedded within translated content
-        if (thinkingInstruction) {
-          console.log('[ClaudeCodeSession] Adding thinking instruction after translation:', thinkingInstruction);
-          // Add thinking instruction at the end with proper punctuation
-          const endsWithPunctuation = /[.!?]$/.test(processedPrompt.trim());
-          const separator = endsWithPunctuation ? ' ' : '. ';
-          processedPrompt = `${processedPrompt}${separator}${thinkingInstruction}.`;
-        }
-
-        // Add the user message immediately to the UI (show original text to user)
-        const userMessage: ClaudeStreamMessage = {
-          type: "user",
-          message: {
-            content: [
-              {
-                type: "text",
-                text: prompt // Always show original user input
-              }
-            ]
-          },
-          sentAt: new Date().toISOString(),
-          // Add translation metadata for debugging/info
-          translationMeta: userInputTranslation ? {
-            wasTranslated: userInputTranslation.wasTranslated,
-            detectedLanguage: userInputTranslation.detectedLanguage,
-            translatedText: userInputTranslation.translatedText
-          } : undefined
-        };
-        setMessages(prev => [...prev, userMessage]);
-      }
-
-        // Execute the appropriate command based on session state
-        // Use processedPrompt (potentially translated) for API calls
-        if (effectiveSession && !isFirstPrompt) {
-          // Resume existing session
-          console.log('[ClaudeCodeSession] Resuming session:', effectiveSession.id);
-          try {
-            await api.resumeClaudeCode(projectPath, effectiveSession.id, processedPrompt, model, isPlanMode);
-          } catch (resumeError) {
-            console.warn('[ClaudeCodeSession] Resume failed, falling back to continue mode:', resumeError);
-            // Fallback to continue mode if resume fails
-            await api.continueClaudeCode(projectPath, processedPrompt, model, isPlanMode);
-          }
-        } else {
-          // Start new session
-          console.log('[ClaudeCodeSession] Starting new session');
-          setIsFirstPrompt(false);
-          await api.executeClaudeCode(projectPath, processedPrompt, model, isPlanMode);
-        }
-    } catch (err) {
-      console.error("Failed to send prompt:", err);
-      setError("发送提示失败");
-      setIsLoading(false);
-      hasActiveSessionRef.current = false;
-      // Reset session state on error
-      setClaudeSessionId(null);
-    }
-  };
-
-  // Update ref whenever function changes
-  useEffect(() => {
-    handleSendPromptRef.current = handleSendPrompt;
-  }, [handleSendPrompt]);
+  // ✅ handleSendPrompt function is now provided by usePromptExecution Hook (line 207-234)
 
   const handleCopyAsJsonl = async () => {
     const jsonl = rawJsonlOutput.join('\n');
