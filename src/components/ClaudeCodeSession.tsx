@@ -10,7 +10,8 @@ import {
   X,
   Command,
   DollarSign,
-  Clock
+  Clock,
+  RotateCcw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import { StreamMessageV2 } from "./message";
 import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { SlashCommandsManager } from "./SlashCommandsManager";
+import { CheckpointSelector } from "./CheckpointSelector";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SplitPane } from "@/components/ui/split-pane";
@@ -108,6 +110,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const [extractedSessionInfo, setExtractedSessionInfo] = useState<{ sessionId: string; projectId: string } | null>(null);
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
   const [showSlashCommandsSettings, setShowSlashCommandsSettings] = useState(false);
+  const [showCheckpointDialog, setShowCheckpointDialog] = useState(false);
 
   // Plan Mode state
   const [isPlanMode, setIsPlanMode] = useState(false);
@@ -124,8 +127,14 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const displayableMessages = useDisplayableMessages(messages);
 
   // ✅ Refactored: Use custom Hook for message operations
-  const { handleMessageUndo, handleMessageEdit, handleMessageDelete, handleMessageTruncate } =
-    useMessageOperations({
+  const { 
+    handleMessageUndo, 
+    handleMessageEdit, 
+    handleMessageDelete, 
+    handleMessageTruncate,
+    handleRewindToCheckpoint,
+    loadCheckpoints 
+  } = useMessageOperations({
       sessionInfo: extractedSessionInfo,
       projectPath,
       messages,
@@ -843,6 +852,14 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                     <Command className="h-3 w-3 mr-2" />
                     Commands
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowCheckpointDialog(true)}
+                    className="text-xs"
+                    disabled={!extractedSessionInfo}
+                  >
+                    <RotateCcw className="h-3 w-3 mr-2" />
+                    检查点
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -1105,6 +1122,30 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
             </DialogHeader>
             <div className="flex-1 overflow-y-auto">
               <SlashCommandsManager projectPath={projectPath} />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Checkpoint Dialog */}
+      {showCheckpointDialog && extractedSessionInfo && (
+        <Dialog open={showCheckpointDialog} onOpenChange={setShowCheckpointDialog}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RotateCcw className="h-5 w-5" />
+                会话检查点
+              </DialogTitle>
+              <DialogDescription>
+                回退到会话中的任意检查点以撤销更改
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto">
+              <CheckpointSelector
+                sessionId={extractedSessionInfo.sessionId}
+                onRewind={handleRewindToCheckpoint}
+                loadCheckpoints={loadCheckpoints}
+              />
             </div>
           </DialogContent>
         </Dialog>

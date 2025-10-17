@@ -33,3 +33,4 @@ export * from "./TabManager";
 export * from "./TabSessionWrapper";
 export * from "./TabIndicator";
 export * from "./AutoCompactSettings";
+export * from "./CheckpointSelector";

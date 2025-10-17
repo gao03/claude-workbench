@@ -57,6 +57,7 @@ use commands::enhanced_hooks::{
 use commands::message_operations::{
     message_undo, message_truncate_to_index, message_edit, message_delete,
     message_get_count, message_get_by_index, message_get_all,
+    message_rewind, get_checkpoints,
 };
 use process::ProcessRegistryState;
 use tauri::Manager;
@@ -243,6 +244,9 @@ fn main() {
             message_get_count,
             message_get_by_index,
             message_get_all,
+            // Agent SDK Checkpoint Operations
+            message_rewind,
+            get_checkpoints,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

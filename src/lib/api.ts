@@ -2145,4 +2145,42 @@ export const api = {
     }
   },
 
+  // ============================================================================
+  // Agent SDK Checkpoint Operations
+  // ============================================================================
+
+  /**
+   * Rewind session to a specific checkpoint using Agent SDK
+   * @param sessionId - The session ID to rewind
+   * @param checkpointId - The checkpoint ID to rewind to
+   * @returns Promise resolving to the rewind result
+   */
+  async rewindToCheckpoint(sessionId: string, checkpointId: string): Promise<any> {
+    try {
+      return await invoke<any>("message_rewind", {
+        sessionId,
+        checkpointId,
+      });
+    } catch (error) {
+      console.error("Failed to rewind to checkpoint:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get all checkpoints for a session
+   * @param sessionId - The session ID to get checkpoints for
+   * @returns Promise resolving to array of checkpoints
+   */
+  async getCheckpoints(sessionId: string): Promise<any[]> {
+    try {
+      return await invoke<any[]>("get_checkpoints", {
+        sessionId,
+      });
+    } catch (error) {
+      console.error("Failed to get checkpoints:", error);
+      throw error;
+    }
+  },
+
 };
