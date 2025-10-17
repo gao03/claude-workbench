@@ -407,7 +407,7 @@ export function useMessageTranslation(config: UseMessageTranslationConfig): UseM
     } catch (err) {
       console.error('[useMessageTranslation] Failed to parse message:', err, payload);
     }
-  }, [isMountedRef, lastTranslationResult, onMessagesUpdate, applyTranslationToMessage]);
+  }, [isMountedRef, lastTranslationResult, onMessagesUpdate]);
 
   /**
    * 初始化渐进式翻译（后台翻译历史消息）

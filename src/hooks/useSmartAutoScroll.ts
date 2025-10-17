@@ -50,6 +50,12 @@ export function useSmartAutoScroll(config: SmartAutoScrollConfig): SmartAutoScro
   const parentRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastScrollPositionRef = useRef(0);
+  const shouldAutoScrollRef = useRef(shouldAutoScroll);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    shouldAutoScrollRef.current = shouldAutoScroll;
+  }, [shouldAutoScroll]);
 
   // Smart scroll detection - detect when user manually scrolls
   useEffect(() => {
@@ -64,7 +70,7 @@ export function useSmartAutoScroll(config: SmartAutoScrollConfig): SmartAutoScro
       // Detect if this was a user-initiated scroll
       const scrollDifference = Math.abs(currentScrollPosition - lastScrollPositionRef.current);
       if (scrollDifference > 5) { // Only count significant scroll movements
-        const wasUserScroll = !shouldAutoScroll || scrollDifference > 100;
+        const wasUserScroll = !shouldAutoScrollRef.current || scrollDifference > 100;
 
         if (wasUserScroll) {
           setUserScrolled(!isAtBottom);
@@ -94,7 +100,7 @@ export function useSmartAutoScroll(config: SmartAutoScrollConfig): SmartAutoScro
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [shouldAutoScroll]);
+  }, []); // Empty deps - event listener only needs to be registered once
 
   // Smart auto-scroll for new messages
   useEffect(() => {

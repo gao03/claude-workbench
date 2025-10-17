@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -133,10 +133,15 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       setError
     });
 
+  // Stable callback for toggling plan mode (prevents unnecessary event listener re-registration)
+  const handleTogglePlanMode = useCallback(() => {
+    setIsPlanMode(prev => !prev);
+  }, []);
+
   // ✅ Refactored: Use custom Hook for keyboard shortcuts
   useKeyboardShortcuts({
     isActive,
-    onTogglePlanMode: () => setIsPlanMode(prev => !prev)
+    onTogglePlanMode: handleTogglePlanMode
   });
 
   // ✅ Refactored: Use custom Hook for smart auto-scroll
@@ -1080,7 +1085,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               projectPath={projectPath}
               getConversationContext={getConversationContext}
               isPlanMode={isPlanMode}
-              onTogglePlanMode={() => setIsPlanMode(prev => !prev)}
+              onTogglePlanMode={handleTogglePlanMode}
               // Removed hasActiveSession - now using Claude Code SDK directly
             />
           </div>
