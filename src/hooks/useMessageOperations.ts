@@ -7,9 +7,7 @@
 
 import { useCallback } from 'react';
 import { api } from '@/lib/api';
-import { agentSDK } from '@/lib/agentSDK';
 import type { ClaudeStreamMessage } from '@/types/claude';
-import type { Checkpoint } from '@/lib/agentSDK';
 
 interface MessageOperationsConfig {
   /** 会话 ID 和项目 ID */
@@ -33,10 +31,6 @@ interface MessageOperations {
   handleMessageDelete: (messageIndex: number) => Promise<void>;
   /** 截断消息到指定索引 */
   handleMessageTruncate: (messageIndex: number) => Promise<void>;
-  /** 回退到检查点 */
-  handleRewindToCheckpoint: (checkpointId: string) => Promise<void>;
-  /** 加载检查点列表 */
-  loadCheckpoints: () => Promise<Checkpoint[]>;
 }
 
 /**
@@ -176,56 +170,10 @@ export function useMessageOperations(config: MessageOperationsConfig): MessageOp
     }
   }, [sessionInfo, projectPath, setMessages, setError]);
 
-  /**
-   * 回退到检查点 (Agent SDK)
-   */
-  const handleRewindToCheckpoint = useCallback(async (checkpointId: string) => {
-    if (!sessionInfo) {
-      console.error('[MessageOps] Missing session info');
-      return;
-    }
-
-    try {
-      console.log(`[MessageOps] Rewinding to checkpoint ${checkpointId}`);
-
-      // 使用 Agent SDK 回退
-      await api.rewindToCheckpoint(sessionInfo.sessionId, checkpointId);
-
-      // 重新加载会话历史
-      const history = await agentSDK.getHistory();
-      setMessages(history);
-
-      console.log('[MessageOps] Successfully rewound to checkpoint');
-    } catch (error) {
-      console.error('[MessageOps] Failed to rewind:', error);
-      setError(error instanceof Error ? error.message : 'Failed to rewind to checkpoint');
-    }
-  }, [sessionInfo, setMessages, setError]);
-
-  /**
-   * 获取可用的检查点列表 (Agent SDK)
-   */
-  const loadCheckpoints = useCallback(async (): Promise<Checkpoint[]> => {
-    if (!sessionInfo) {
-      console.warn('[MessageOps] No session info, returning empty checkpoints');
-      return [];
-    }
-
-    try {
-      const checkpoints = await api.getCheckpoints(sessionInfo.sessionId);
-      return checkpoints;
-    } catch (error) {
-      console.error('[MessageOps] Failed to load checkpoints:', error);
-      return [];
-    }
-  }, [sessionInfo]);
-
   return {
     handleMessageUndo,
     handleMessageEdit,
     handleMessageDelete,
     handleMessageTruncate,
-    handleRewindToCheckpoint,
-    loadCheckpoints,
   };
 }

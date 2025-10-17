@@ -1,4 +1,5 @@
-import { AgentSession } from '@anthropic-ai/claude-agent-sdk';
+// import { AgentSession } from '@anthropic-ai/claude-agent-sdk';
+// This file is deprecated after checkpoint removal
 
 export interface AgentConfig {
   apiKey?: string;
@@ -11,103 +12,43 @@ export interface AgentConfig {
   mcpServers?: Record<string, any>;
 }
 
-export interface Checkpoint {
-  id: string;
-  timestamp: string;
-  message: string;
-  filesChanged?: string[];
-}
-
 export class ClaudeAgentService {
-  private session: AgentSession | null = null;
+  private session: any | null = null;
 
   /**
    * 创建新的 Agent 会话
    */
-  async createSession(config: AgentConfig): Promise<string> {
-    this.session = await AgentSession.create({
-      apiKey: config.apiKey,
-      model: config.model || 'claude-3-5-sonnet-20241022',
-      systemPrompt: config.systemPrompt,
-      workingDirectory: config.projectPath,
-      // 工具权限配置
-      permissions: {
-        allowedTools: config.allowedTools,
-        disallowedTools: config.disallowedTools,
-      },
-      // MCP 服务器配置
-      mcpServers: config.mcpServers,
-    });
-
-    return this.session.id;
+  async createSession(_config: AgentConfig): Promise<string> {
+    // This method is deprecated after checkpoint removal
+    throw new Error('AgentSession is no longer supported');
   }
 
   /**
    * 发送消息（带自动上下文管理）
    */
-  async sendMessage(message: string): Promise<AsyncIterator<any>> {
-    if (!this.session) {
-      throw new Error('Session not initialized');
-    }
-
-    // Agent SDK 自动处理:
-    // - 上下文压缩
-    // - 提示缓存
-    // - 会话状态管理
-    return this.session.sendMessage(message);
-  }
-
-  /**
-   * 回退到检查点
-   */
-  async rewindToCheckpoint(checkpointId: string): Promise<void> {
-    if (!this.session) {
-      throw new Error('Session not initialized');
-    }
-
-    await this.session.rewind(checkpointId);
-  }
-
-  /**
-   * 获取所有检查点
-   */
-  async getCheckpoints(): Promise<Checkpoint[]> {
-    if (!this.session) {
-      throw new Error('Session not initialized');
-    }
-
-    return this.session.getCheckpoints();
+  async sendMessage(_message: string): Promise<AsyncIterator<any>> {
+    throw new Error('AgentSession is no longer supported');
   }
 
   /**
    * 获取会话历史
    */
   async getHistory(): Promise<any[]> {
-    if (!this.session) {
-      throw new Error('Session not initialized');
-    }
-
-    return this.session.getHistory();
+    throw new Error('AgentSession is no longer supported');
   }
 
   /**
    * 恢复现有会话
    */
-  async resumeSession(sessionId: string, config: AgentConfig): Promise<void> {
-    this.session = await AgentSession.resume(sessionId, {
-      apiKey: config.apiKey,
-      workingDirectory: config.projectPath,
-    });
+  async resumeSession(_sessionId: string, _config: AgentConfig): Promise<void> {
+    throw new Error('AgentSession is no longer supported');
   }
 
   /**
    * 清理资源
    */
   async cleanup(): Promise<void> {
-    if (this.session) {
-      await this.session.close();
-      this.session = null;
-    }
+    this.session = null;
   }
 
   /**
