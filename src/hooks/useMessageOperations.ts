@@ -83,7 +83,7 @@ export function useMessageOperations(config: MessageOperationsConfig): MessageOp
       console.error('[MessageOps] Failed to undo messages:', error);
       setError(error instanceof Error ? error.message : 'Failed to undo messages');
     }
-  }, [sessionInfo, projectPath, messages.length, setMessages, setError]);
+  }, [sessionInfo, projectPath, messages, setMessages, setError]);
 
   /**
    * 编辑指定索引的消息

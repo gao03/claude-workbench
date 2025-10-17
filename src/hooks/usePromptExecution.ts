@@ -279,11 +279,8 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
                 currentSessionId = msg.session_id;
                 setClaudeSessionId(msg.session_id);
 
-                // Update effectiveSession.id to use the new session_id
-                if (effectiveSession) {
-                  effectiveSession.id = msg.session_id;
-                  console.log('[usePromptExecution] Updated effectiveSession.id to:', msg.session_id);
-                }
+                // Note: effectiveSession will be updated via useMemo in parent component
+                // when claudeSessionId or extractedSessionInfo changes
 
                 // If we haven't extracted session info before, do it now
                 if (!extractedSessionInfo) {
