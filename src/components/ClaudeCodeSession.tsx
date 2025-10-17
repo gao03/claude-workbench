@@ -45,6 +45,8 @@ import { useDisplayableMessages } from '@/hooks/useDisplayableMessages';
 import { useMessageOperations } from '@/hooks/useMessageOperations';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSmartAutoScroll } from '@/hooks/useSmartAutoScroll';
+import { useMessageTranslation } from '@/hooks/useMessageTranslation';
+import { useSessionLifecycle } from '@/hooks/useSessionLifecycle';
 import { extractMessageContent as extractContentUtil } from '@/lib/contentExtraction';
 
 import type { ClaudeStreamMessage } from '@/types/claude';
@@ -149,7 +151,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   // ============================================================================
   // Operations extracted to useMessageOperations Hook
 
-  // Progressive translation state
+  // Progressive translation state (will be managed by useMessageTranslation Hook)
   const [translationStates, setTranslationStates] = useState<TranslationState>({});
   const [translationEnabled, setTranslationEnabled] = useState<boolean>(false);
   // Settings state to avoid repeated loading in StreamMessage components
