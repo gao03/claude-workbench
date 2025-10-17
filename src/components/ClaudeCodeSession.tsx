@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { api, type Session, type Project } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { open } from "@tauri-apps/plugin-dialog";
 import { type UnlistenFn } from "@tauri-apps/api/event";
 // import { StreamMessage } from "./StreamMessage"; // 已替换为StreamMessageV2
 import { StreamMessageV2 } from "./message";
@@ -47,6 +46,8 @@ import { useSmartAutoScroll } from '@/hooks/useSmartAutoScroll';
 import { useMessageTranslation } from '@/hooks/useMessageTranslation';
 import { useSessionLifecycle } from '@/hooks/useSessionLifecycle';
 import { usePromptExecution } from '@/hooks/usePromptExecution';
+
+import * as SessionHelpers from '@/lib/sessionHelpers';
 
 import type { ClaudeStreamMessage } from '@/types/claude';
 
@@ -372,165 +373,32 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
   const handleSelectPath = async () => {
     try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: "选择项目目录"
-      });
-      
+      const selected = await SessionHelpers.selectProjectPath();
+
       if (selected) {
-        setProjectPath(selected as string);
+        setProjectPath(selected);
         setError(null);
       }
     } catch (err) {
       console.error("Failed to select directory:", err);
       const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Failed to select directory: ${errorMessage}`);
+      setError(errorMessage);
     }
   };
 
   // ✅ handleSendPrompt function is now provided by usePromptExecution Hook (line 207-234)
 
   const handleCopyAsJsonl = async () => {
-    const jsonl = rawJsonlOutput.join('\n');
-    await navigator.clipboard.writeText(jsonl);
+    await SessionHelpers.copyAsJsonl(rawJsonlOutput);
   };
 
   const handleCopyAsMarkdown = async () => {
-    let markdown = `# Claude 代码会话\n\n`;
-    markdown += `**Project:** ${projectPath}\n`;
-    markdown += `**Date:** ${new Date().toISOString()}\n\n`;
-    markdown += `---\n\n`;
-
-    for (const msg of messages) {
-      if (msg.type === "system" && msg.subtype === "init") {
-        markdown += `## System Initialization\n\n`;
-        markdown += `- Session ID: \`${msg.session_id || 'N/A'}\`\n`;
-        markdown += `- Model: \`${msg.model || 'default'}\`\n`;
-        if (msg.cwd) markdown += `- Working Directory: \`${msg.cwd}\`\n`;
-        if (msg.tools?.length) markdown += `- Tools: ${msg.tools.join(', ')}\n`;
-        markdown += `\n`;
-      } else if (msg.type === "assistant" && msg.message) {
-        markdown += `## Assistant\n\n`;
-        for (const content of msg.message.content || []) {
-          if (content.type === "text") {
-            const textContent = typeof content.text === 'string' 
-              ? content.text 
-              : (content.text?.text || JSON.stringify(content.text || content));
-            markdown += `${textContent}\n\n`;
-          } else if (content.type === "tool_use") {
-            markdown += `### Tool: ${content.name}\n\n`;
-            markdown += `\`\`\`json\n${JSON.stringify(content.input, null, 2)}\n\`\`\`\n\n`;
-          }
-        }
-        if (msg.message.usage) {
-          const { input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens } = msg.message.usage;
-          let tokenText = `*Tokens: ${input_tokens} in, ${output_tokens} out`;
-          if (cache_creation_tokens && cache_creation_tokens > 0) {
-            tokenText += `, creation: ${cache_creation_tokens}`;
-          }
-          if (cache_read_tokens && cache_read_tokens > 0) {
-            tokenText += `, read: ${cache_read_tokens}`;
-          }
-          markdown += tokenText + `*\n\n`;
-        }
-      } else if (msg.type === "user" && msg.message) {
-        markdown += `## User\n\n`;
-        for (const content of msg.message.content || []) {
-          if (content.type === "text") {
-            const textContent = typeof content.text === 'string' 
-              ? content.text 
-              : (content.text?.text || JSON.stringify(content.text));
-            markdown += `${textContent}\n\n`;
-          } else if (content.type === "tool_result") {
-            markdown += `### Tool Result\n\n`;
-            let contentText = '';
-            if (typeof content.content === 'string') {
-              contentText = content.content;
-            } else if (content.content && typeof content.content === 'object') {
-              if (content.content.text) {
-                contentText = content.content.text;
-              } else if (Array.isArray(content.content)) {
-                contentText = content.content
-                  .map((c: any) => (typeof c === 'string' ? c : c.text || JSON.stringify(c)))
-                  .join('\n');
-              } else {
-                contentText = JSON.stringify(content.content, null, 2);
-              }
-            }
-            markdown += `\`\`\`\n${contentText}\n\`\`\`\n\n`;
-          }
-        }
-      } else if (msg.type === "result") {
-        markdown += `## Execution Result\n\n`;
-        if (msg.result) {
-          markdown += `${msg.result}\n\n`;
-        }
-        if (msg.error) {
-          markdown += `**Error:** ${msg.error}\n\n`;
-        }
-      }
-    }
-
-    await navigator.clipboard.writeText(markdown);
+    await SessionHelpers.copyAsMarkdown(messages, projectPath);
   };
 
   // Get conversation context for prompt enhancement
   const getConversationContext = (): string[] => {
-    const contextMessages: string[] = [];
-    const maxMessages = 5; // 获取最近5条消息作为上下文
-    
-    // Filter out system init messages and get meaningful content
-    const meaningfulMessages = messages.filter(msg => {
-      // Skip system init messages
-      if (msg.type === "system" && msg.subtype === "init") return false;
-      // Skip empty messages
-      if (!msg.message?.content?.length && !msg.result) return false;
-      return true;
-    });
-    
-    // Get the last N messages
-    const recentMessages = meaningfulMessages.slice(-maxMessages);
-    
-    for (const msg of recentMessages) {
-      let contextLine = "";
-      
-      if (msg.type === "user" && msg.message) {
-        // Extract user message text
-        const userText = msg.message.content
-          ?.filter((c: any) => c.type === "text")
-          .map((c: any) => c.text)
-          .join("\n");
-        if (userText) {
-          contextLine = `用户: ${userText}`;
-        }
-      } else if (msg.type === "assistant" && msg.message) {
-        // Extract assistant message text
-        const assistantText = msg.message.content
-          ?.filter((c: any) => c.type === "text")
-          .map((c: any) => {
-            if (typeof c.text === 'string') return c.text;
-            return c.text?.text || '';
-          })
-          .join("\n");
-        if (assistantText) {
-          // Truncate very long assistant responses
-          const truncated = assistantText.length > 500 
-            ? assistantText.substring(0, 500) + "..." 
-            : assistantText;
-          contextLine = `助手: ${truncated}`;
-        }
-      } else if (msg.type === "result" && msg.result) {
-        // Include execution results
-        contextLine = `执行结果: ${msg.result}`;
-      }
-      
-      if (contextLine) {
-        contextMessages.push(contextLine);
-      }
-    }
-    
-    return contextMessages;
+    return SessionHelpers.getConversationContext(messages);
   };
 
   const handleCancelExecution = async () => {
@@ -592,29 +460,58 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
   // Handle URL detection from terminal output
   const handleLinkDetected = (url: string) => {
-    if (!showPreview && !showPreviewPrompt) {
-      setPreviewUrl(url);
-      setShowPreviewPrompt(true);
+    const currentState: SessionHelpers.PreviewState = {
+      showPreview,
+      showPreviewPrompt,
+      previewUrl,
+      isPreviewMaximized,
+      splitPosition
+    };
+    const newState = SessionHelpers.handleLinkDetected(url, currentState);
+    if (newState.previewUrl !== currentState.previewUrl) {
+      setPreviewUrl(newState.previewUrl);
+    }
+    if (newState.showPreviewPrompt !== currentState.showPreviewPrompt) {
+      setShowPreviewPrompt(newState.showPreviewPrompt);
     }
   };
 
   const handleClosePreview = () => {
-    setShowPreview(false);
-    setIsPreviewMaximized(false);
-    // Keep the previewUrl so it can be restored when reopening
+    const currentState: SessionHelpers.PreviewState = {
+      showPreview,
+      showPreviewPrompt,
+      previewUrl,
+      isPreviewMaximized,
+      splitPosition
+    };
+    const newState = SessionHelpers.handleClosePreview(currentState);
+    setShowPreview(newState.showPreview);
+    setIsPreviewMaximized(newState.isPreviewMaximized);
   };
 
   const handlePreviewUrlChange = (url: string) => {
-    console.log('[ClaudeCodeSession] Preview URL changed to:', url);
-    setPreviewUrl(url);
+    const currentState: SessionHelpers.PreviewState = {
+      showPreview,
+      showPreviewPrompt,
+      previewUrl,
+      isPreviewMaximized,
+      splitPosition
+    };
+    const newState = SessionHelpers.handlePreviewUrlChange(url, currentState);
+    setPreviewUrl(newState.previewUrl);
   };
 
   const handleTogglePreviewMaximize = () => {
-    setIsPreviewMaximized(!isPreviewMaximized);
-    // Reset split position when toggling maximize
-    if (isPreviewMaximized) {
-      setSplitPosition(50);
-    }
+    const currentState: SessionHelpers.PreviewState = {
+      showPreview,
+      showPreviewPrompt,
+      previewUrl,
+      isPreviewMaximized,
+      splitPosition
+    };
+    const newState = SessionHelpers.handleTogglePreviewMaximize(currentState);
+    setIsPreviewMaximized(newState.isPreviewMaximized);
+    setSplitPosition(newState.splitPosition);
   };
 
 
