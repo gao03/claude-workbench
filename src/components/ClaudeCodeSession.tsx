@@ -40,7 +40,6 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 // import { smartFilterMessages } from '@/lib/messageFilter';
 import { useSessionCostCalculation } from '@/hooks/useSessionCostCalculation';
 import { useDisplayableMessages } from '@/hooks/useDisplayableMessages';
-import { useMessageOperations } from '@/hooks/useMessageOperations';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSmartAutoScroll } from '@/hooks/useSmartAutoScroll';
 import { useMessageTranslation } from '@/hooks/useMessageTranslation';
@@ -122,20 +121,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
   // ✅ Refactored: Use custom Hook for message filtering
   const displayableMessages = useDisplayableMessages(messages);
-
-  // ✅ Refactored: Use custom Hook for message operations
-  const {
-    handleMessageUndo,
-    handleMessageEdit,
-    handleMessageDelete,
-    handleMessageTruncate
-  } = useMessageOperations({
-      sessionInfo: extractedSessionInfo,
-      projectPath,
-      messages,
-      setMessages,
-      setError
-    });
 
   // Stable callback for toggling plan mode (prevents unnecessary event listener re-registration)
   const handleTogglePlanMode = useCallback(() => {
@@ -586,10 +571,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                   sessionId={extractedSessionInfo?.sessionId || null}
                   projectId={extractedSessionInfo?.projectId || null}
                   projectPath={projectPath || null}
-                  onMessageUndo={handleMessageUndo}
-                  onMessageEdit={handleMessageEdit}
-                  onMessageDelete={handleMessageDelete}
-                  onMessageTruncate={handleMessageTruncate}
                 />
               </motion.div>
             );

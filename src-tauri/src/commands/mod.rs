@@ -10,4 +10,3 @@ pub mod translator;
 pub mod context_manager;
 pub mod context_commands;
 pub mod enhanced_hooks;
-pub mod message_operations;

@@ -54,10 +54,6 @@ use commands::translator::{
 use commands::enhanced_hooks::{
     trigger_hook_event, test_hook_condition, execute_pre_commit_review,
 };
-use commands::message_operations::{
-    message_undo, message_truncate_to_index, message_edit, message_delete,
-    message_get_count, message_get_by_index, message_get_all,
-};
 use process::ProcessRegistryState;
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStatePlugin;
@@ -234,15 +230,6 @@ fn main() {
             commands::context_commands::stop_auto_compact_monitoring,
             commands::context_commands::start_auto_compact_monitoring,
             commands::context_commands::get_auto_compact_status,
-
-            // Message Operations (Fine-grained Undo/Redo)
-            message_undo,
-            message_truncate_to_index,
-            message_edit,
-            message_delete,
-            message_get_count,
-            message_get_by_index,
-            message_get_all,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
