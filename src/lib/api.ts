@@ -778,9 +778,8 @@ export const api = {
   },
 
   // ============================================================================
-  // MESSAGE-LEVEL OPERATIONS (DEPRECATED)
+  // MCP SERVER OPERATIONS
   // ============================================================================
-  // All message operations have been removed as they are no longer supported
 
   /**
    * Adds a new MCP server
@@ -1866,10 +1865,5 @@ export const api = {
       throw error;
     }
   },
-
-  // ============================================================================
-  // Agent SDK Checkpoint Operations
-  // ============================================================================
-  // These operations have been removed as they are not supported by Claude CLI
 
 };

@@ -3,7 +3,7 @@
 /// 这个模块实现了事件驱动的自动化工作流系统，包括：
 /// - 新的hooks事件类型（on-context-compact, on-agent-switch等）
 /// - Hooks链式执行和条件触发
-/// - 与现有组件深度集成（AutoCompactManager, CheckpointStorage等）
+/// - 与现有组件深度集成（AutoCompactManager等）
 /// - 错误处理和回滚机制
 
 use serde::{Deserialize, Serialize};
