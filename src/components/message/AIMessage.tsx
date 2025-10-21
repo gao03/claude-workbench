@@ -78,12 +78,6 @@ const extractThinkingContent = (message: ClaudeStreamMessage): string => {
   if (!Array.isArray(content)) return '';
 
   const thinkingBlocks = content.filter((item: any) => item.type === 'thinking');
-
-  // 调试日志：检查思考块内容
-  if (import.meta.env.DEV && thinkingBlocks.length > 0) {
-    console.log('[extractThinkingContent] Found thinking blocks:', thinkingBlocks);
-  }
-
   return thinkingBlocks.map((item: any) => item.thinking || '').join('\n\n');
 };
 
@@ -102,14 +96,6 @@ export const AIMessage: React.FC<AIMessageProps> = ({
   const hasTools = hasToolCalls(message);
   const hasThinking = hasThinkingBlock(message);
   const thinkingContent = hasThinking ? extractThinkingContent(message) : '';
-
-  // 调试日志：检查思考块检测
-  if (import.meta.env.DEV) {
-    console.log('[AIMessage Debug] Message content:', message.message?.content);
-    console.log('[AIMessage Debug] hasThinking:', hasThinking);
-    console.log('[AIMessage Debug] thinkingContent:', thinkingContent);
-    console.log('[AIMessage Debug] thinkingContent.length:', thinkingContent.length);
-  }
 
   // 如果既没有文本又没有工具调用又没有思考块，不渲染
   if (!text && !hasTools && !hasThinking) return null;
@@ -190,12 +176,6 @@ export const AIMessage: React.FC<AIMessageProps> = ({
         )}
 
         {/* 思考块区域 */}
-        {(() => {
-          if (import.meta.env.DEV) {
-            console.log('[AIMessage Render] Render condition - hasThinking:', hasThinking, 'thinkingContent:', !!thinkingContent);
-          }
-          return null;
-        })()}
         {hasThinking && thinkingContent && (
           <div className="mx-4 mb-3 border-l-2 border-purple-500/30 bg-purple-500/5 rounded">
             <details className="group">
