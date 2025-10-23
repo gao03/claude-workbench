@@ -1,41 +1,21 @@
 /**
- * Formats a Unix timestamp to a human-readable date string with time
+ * Formats a Unix timestamp to yy-MM-dd HH:mm format
  * @param timestamp - Unix timestamp in seconds
  * @returns Formatted date string
  *
  * @example
- * formatUnixTimestamp(1735555200) // "Dec 30, 2:30 PM" or "Dec 30, 2024 2:30 PM"
+ * formatUnixTimestamp(1735555200) // "24-12-30 14:30"
  */
 export function formatUnixTimestamp(timestamp: number): string {
   const date = new Date(timestamp * 1000);
-  const now = new Date();
 
-  // If it's today, show time only
-  if (isToday(date)) {
-    return formatTime(date);
-  }
+  const year = String(date.getFullYear()).slice(-2);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
 
-  // If it's yesterday
-  if (isYesterday(date)) {
-    return `Yesterday ${formatTime(date)}`;
-  }
-
-  // If it's this year, show month day + time
-  if (date.getFullYear() === now.getFullYear()) {
-    const dateStr = date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
-    return `${dateStr} ${formatTime(date)}`;
-  }
-
-  // Otherwise show full date + time
-  const dateStr = date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
-  return `${dateStr} ${formatTime(date)}`;
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
 /**
@@ -72,25 +52,6 @@ export function getFirstLine(text: string): string {
   return lines[0] || '';
 }
 
-// Helper functions
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
-    minute: '2-digit',
-    hour12: true 
-  });
-}
-
-function isToday(date: Date): boolean {
-  const today = new Date();
-  return date.toDateString() === today.toDateString();
-}
-
-function isYesterday(date: Date): boolean {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return date.toDateString() === yesterday.toDateString();
-}
 
 /**
  * Formats a timestamp to a relative time string (e.g., "2 hours ago", "3 days ago")
