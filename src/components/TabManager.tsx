@@ -168,20 +168,6 @@ export const TabManager: React.FC<TabManagerProps> = ({
         {/* 🎨 极简标签页栏 */}
         <div className="flex-shrink-0 border-b border-border bg-background">
           <div className="flex items-center h-12 px-4 gap-2">
-            {/* 返回按钮 */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="px-3"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1.5" />
-              <span>返回</span>
-            </Button>
-
-            {/* 分隔线 */}
-            <div className="h-4 w-px bg-border" />
-
             {/* 标签页容器 */}
             <div
               ref={tabsContainerRef}
@@ -350,15 +336,6 @@ export const TabManager: React.FC<TabManagerProps> = ({
                 session={tab.session}
                 initialProjectPath={tab.projectPath}
                 isActive={tab.isActive}
-                onBack={() => {
-                  // 如果只有一个标签页，直接返回
-                  if (tabs.length === 1) {
-                    onBack();
-                  } else {
-                    // 否则关闭当前标签页
-                    handleCloseTab(tab.id);
-                  }
-                }}
                 onProjectSettings={onProjectSettings}
                 onStreamingChange={(isStreaming, sessionId) =>
                   updateTabStreamingStatus(tab.id, isStreaming, sessionId)

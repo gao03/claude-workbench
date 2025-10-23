@@ -461,11 +461,6 @@ function AppContent() {
           <ClaudeCodeSession
             session={selectedSession || undefined}
             initialProjectPath={newSessionProjectPath}
-            onBack={() => {
-              setSelectedSession(null);
-              setNewSessionProjectPath(""); // Clear the project path
-              handleViewChange("projects");
-            }}
             onStreamingChange={(isStreaming, sessionId) => {
               setIsClaudeStreaming(isStreaming);
               setActiveClaudeSessionId(sessionId);

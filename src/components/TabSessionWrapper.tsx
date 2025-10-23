@@ -7,7 +7,6 @@ interface TabSessionWrapperProps {
   tabId: string;
   session?: Session;
   initialProjectPath?: string;
-  onBack: () => void;
   onProjectSettings?: (projectPath: string) => void;
   onStreamingChange?: (isStreaming: boolean, sessionId: string | null) => void;
   isActive: boolean;
@@ -22,7 +21,6 @@ const TabSessionWrapperComponent: React.FC<TabSessionWrapperProps> = ({
   tabId,
   session,
   initialProjectPath,
-  onBack,
   onProjectSettings,
   onStreamingChange,
   isActive,
@@ -85,7 +83,6 @@ const TabSessionWrapperComponent: React.FC<TabSessionWrapperProps> = ({
       <ClaudeCodeSession
         session={session}
         initialProjectPath={initialProjectPath}
-        onBack={onBack}
         onProjectSettings={onProjectSettings}
         onStreamingChange={handleStreamingChange}
         isActive={isActive}
@@ -102,6 +99,6 @@ export const TabSessionWrapper = React.memo(TabSessionWrapperComponent, (prevPro
     prevProps.isActive === nextProps.isActive &&
     prevProps.session?.id === nextProps.session?.id &&
     prevProps.initialProjectPath === nextProps.initialProjectPath
-    // onBack, onProjectSettings, onStreamingChange 等函数props通常是稳定的
+    // onProjectSettings, onStreamingChange 等函数props通常是稳定的
   );
 });

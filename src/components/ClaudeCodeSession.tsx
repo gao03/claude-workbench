@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
   FolderOpen,
   Copy,
   ChevronDown,
@@ -31,7 +30,6 @@ import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingProm
 import { ErrorBoundary } from "./ErrorBoundary";
 import { SlashCommandsManager } from "./SlashCommandsManager";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SplitPane } from "@/components/ui/split-pane";
 import { WebviewPreview } from "./WebviewPreview";
 import { type TranslationResult } from '@/lib/translationMiddleware';
@@ -60,10 +58,6 @@ interface ClaudeCodeSessionProps {
    */
   initialProjectPath?: string;
   /**
-   * Callback to go back
-   */
-  onBack: () => void;
-  /**
    * Callback to open hooks configuration
    */
   onProjectSettings?: (projectPath: string) => void;
@@ -90,7 +84,6 @@ interface ClaudeCodeSessionProps {
 export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   session,
   initialProjectPath = "",
-  onBack,
   onProjectSettings,
   className,
   onStreamingChange,
@@ -725,29 +718,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           transition={{ duration: 0.3 }}
           className="flex items-center justify-between p-4 border-b border-border"
         >
-          <div className="flex items-center">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onBack}
-                    className="h-8 w-8 hover:bg-accent hover:text-accent-foreground mr-2"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>返回会话列表</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <div className="h-5 w-px bg-border mr-3" />
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
               <FolderOpen className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">
-                {projectPath || "未选择项目"}
+                {projectPath ? (projectPath.split('/').pop() || projectPath.split('\\').pop() || projectPath) : "未选择项目"}
               </span>
               
               {/* Plan Mode Indicator */}
@@ -766,7 +740,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                   </Badge>
                 </motion.div>
               )}
-            </div>
           </div>
 
           <div className="flex items-center gap-2">
