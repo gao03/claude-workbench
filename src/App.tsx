@@ -13,7 +13,6 @@ import { Settings } from "@/components/Settings";
 import { ClaudeCodeSession } from "@/components/ClaudeCodeSession";
 import { TabManager } from "@/components/TabManager";
 import { TabProvider, useTabs } from "@/hooks/useTabs";
-import { TabIndicator } from "@/components/TabIndicator";
 import { UsageDashboard } from "@/components/UsageDashboard";
 import { MCPManager } from "@/components/MCPManager";
 import { ClaudeBinaryDialog } from "@/components/ClaudeBinaryDialog";
@@ -531,13 +530,6 @@ function AppContent() {
             onUsageClick={() => handleViewChange("usage-dashboard")}
             onMCPClick={() => handleViewChange("mcp")}
           />
-
-          {/* 标签页指示器 */}
-          <div className="flex-shrink-0 px-4 py-2 border-b bg-muted/20">
-            <TabIndicator
-              onViewTabs={() => handleViewChange("claude-tab-manager")}
-            />
-          </div>
 
           {/* Main Content */}
           <div className="flex-1 overflow-y-auto">
