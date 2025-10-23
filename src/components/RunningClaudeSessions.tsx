@@ -39,7 +39,16 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
   const loadRunningSessions = async () => {
     try {
       const sessions = await api.listRunningClaudeSessions();
-      setRunningSessions(sessions);
+      // 🔧 智能刷新：仅在数据真正改变时才更新状态，避免不必要的重新渲染
+      setRunningSessions(prev => {
+        const prevJson = JSON.stringify(prev);
+        const newJson = JSON.stringify(sessions);
+        if (prevJson !== newJson) {
+          console.log('[RunningClaudeSessions] Data changed, updating...');
+          return sessions;
+        }
+        return prev; // 返回旧状态，不触发重新渲染
+      });
       setError(null);
     } catch (err) {
       console.error("Failed to load running sessions:", err);
@@ -91,7 +100,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
     <div className={cn("space-y-3", className)}>
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <div className="w-2 h-2 bg-green-500 rounded-full" />
           <h3 className="text-sm font-medium">Active Claude Sessions</h3>
         </div>
         <span className="text-xs text-muted-foreground">
