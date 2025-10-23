@@ -70,16 +70,27 @@ export const SessionList: React.FC<SessionListProps> = ({
     (session.first_message && session.first_message.trim() !== '')
   );
 
+  // 🔧 按活跃度排序：优先使用 message_timestamp，否则使用 created_at
+  const sortedSessions = [...validSessions].sort((a, b) => {
+    const timeA = a.message_timestamp
+      ? new Date(a.message_timestamp).getTime()
+      : a.created_at * 1000;
+    const timeB = b.message_timestamp
+      ? new Date(b.message_timestamp).getTime()
+      : b.created_at * 1000;
+    return timeB - timeA; // 降序：最新的在前
+  });
+
   // Calculate pagination
-  const totalPages = Math.ceil(validSessions.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(sortedSessions.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentSessions = validSessions.slice(startIndex, endIndex);
+  const currentSessions = sortedSessions.slice(startIndex, endIndex);
   
   // Reset to page 1 if sessions change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [validSessions.length]);
+  }, [sortedSessions.length]);
 
   return (
     <div className={cn("space-y-4", className)}>
