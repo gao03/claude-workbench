@@ -719,11 +719,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           className="flex items-center justify-between p-4 border-b border-border"
         >
           <div className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">
-                {projectPath ? (projectPath.split('/').pop() || projectPath.split('\\').pop() || projectPath) : "未选择项目"}
-              </span>
-              
               {/* Plan Mode Indicator */}
               {isPlanMode && (
                 <motion.div
