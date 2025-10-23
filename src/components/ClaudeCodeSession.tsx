@@ -948,7 +948,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                 bottom: 'calc(120px + env(safe-area-inset-bottom))', // 确保在输入区域上方
               }}
             >
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
                 {/* New message indicator - only show when user scrolled away */}
                 <AnimatePresence>
                   {userScrolled && (
@@ -956,7 +956,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                       initial={{ opacity: 0, y: 20, scale: 0.8 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 20, scale: 0.8 }}
-                      className="floating-element backdrop-enhanced rounded-full px-3 py-2 cursor-pointer hover:bg-accent"
+                      className="flex flex-col items-center gap-1 bg-background/60 backdrop-blur-md border border-border/50 rounded-xl px-1.5 py-2 cursor-pointer hover:bg-accent/80 shadow-sm"
                       onClick={() => {
                         setUserScrolled(false);
                         setShouldAutoScroll(true);
@@ -967,19 +967,21 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                           });
                         }
                       }}
-                      title="New messages - click to scroll to bottom"
+                      title="新消息 - 点击滚动到底部"
                     >
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                        <span>新消息</span>
-                        <ChevronDown className="h-3 w-3" />
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                      <div className="flex flex-col items-center text-[10px] leading-tight tracking-wider">
+                        <span>新</span>
+                        <span>消</span>
+                        <span>息</span>
                       </div>
+                      <ChevronDown className="h-3 w-3" />
                     </motion.div>
                   )}
                 </AnimatePresence>
-                
+
                 {/* Traditional scroll controls */}
-                <div className="flex flex-col bg-background/60 backdrop-blur-md border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                <div className="flex flex-col bg-background/60 backdrop-blur-md border border-border/50 rounded-xl overflow-hidden shadow-sm">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -993,10 +995,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                         });
                       }
                     }}
-                    className="px-2 py-2 hover:bg-accent/80 rounded-none"
+                    className="px-1.5 py-1.5 hover:bg-accent/80 rounded-none h-auto min-h-0"
                     title="滚动到顶部"
                   >
-                    <ChevronUp className="h-4 w-4" />
+                    <ChevronUp className="h-3.5 w-3.5" />
                   </Button>
                   <div className="h-px w-full bg-border/50" />
                   <Button
@@ -1012,10 +1014,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                         });
                       }
                     }}
-                    className="px-2 py-2 hover:bg-accent/80 rounded-none"
+                    className="px-1.5 py-1.5 hover:bg-accent/80 rounded-none h-auto min-h-0"
                     title="滚动到底部"
                   >
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
