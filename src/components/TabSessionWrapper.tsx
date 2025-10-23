@@ -25,7 +25,7 @@ const TabSessionWrapperComponent: React.FC<TabSessionWrapperProps> = ({
   onStreamingChange,
   isActive,
 }) => {
-  const { tab, updateTitle, updateStreaming, setCleanup } = useTabSession(tabId);
+  const { tab, updateStreaming, setCleanup } = useTabSession(tabId);
   const sessionRef = useRef<{ hasChanges: boolean; sessionId: string | null }>({
     hasChanges: false,
     sessionId: null,
@@ -48,13 +48,8 @@ const TabSessionWrapperComponent: React.FC<TabSessionWrapperProps> = ({
     updateStreaming(isStreaming, sessionId);
     onStreamingChange?.(isStreaming, sessionId);
 
-    // 根据流状态自动更新标题
-    if (isStreaming && sessionId && tab) {
-      const shortSessionId = sessionId.slice(-8);
-      if (!tab.title.includes(shortSessionId)) {
-        updateTitle(`${tab.title} (${shortSessionId})`);
-      }
-    }
+    // 🔧 移除标题自动更新逻辑
+    // 会话 ID 已经在 Tooltip 中显示，不需要在标题中重复显示
   };
 
   // 监听会话变化并标记为已更改
