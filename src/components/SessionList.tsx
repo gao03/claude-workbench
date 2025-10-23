@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { FileText, ArrowLeft, Calendar, Clock, MessageSquare, Plus } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { ArrowLeft, Clock, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { ClaudeMemoriesDropdown } from "@/components/ClaudeMemoriesDropdown";
@@ -130,68 +129,48 @@ export const SessionList: React.FC<SessionListProps> = ({
         </div>
       )}
 
-      <div className="space-y-2">
+      {/* Compact session list */}
+      <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
         {currentSessions.map((session) => (
-          <div key={session.id}>
-              <Card
-                className={cn(
-                  "transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer",
-                  session.todo_data && "border-l-4 border-l-primary"
-                )}
-                onClick={() => {
-                  onSessionClick?.(session);
-                }}
-              >
-                <CardContent className="p-3">
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3 flex-1 min-w-0">
-                        <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <div className="space-y-1 flex-1 min-w-0">
-                          <p className="font-mono text-xs text-muted-foreground">{session.id}</p>
-                          
-                          {/* First message preview */}
-                          {session.first_message && (
-                            <div className="space-y-1">
-                              <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                                <MessageSquare className="h-3 w-3" />
-                                <span>First message:</span>
-                              </div>
-                              <p className="text-xs line-clamp-2 text-foreground/80">
-                                {truncateText(getFirstLine(session.first_message), 100)}
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* Metadata */}
-                          <div className="flex items-center space-x-3 text-xs text-muted-foreground">
-                            {/* Message timestamp if available, otherwise file creation time */}
-                            <div className="flex items-center space-x-1">
-                              <Clock className="h-3 w-3" />
-                              <span>
-                                {session.message_timestamp 
-                                  ? formatISOTimestamp(session.message_timestamp)
-                                  : formatUnixTimestamp(session.created_at)
-                                }
-                              </span>
-                            </div>
-                            
-                            {session.todo_data && (
-                              <div className="flex items-center space-x-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>Has todo</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+          <button
+            key={session.id}
+            onClick={() => onSessionClick?.(session)}
+            className={cn(
+              "w-full text-left px-4 py-2.5 hover:bg-muted/30 transition-colors group",
+              session.todo_data && "bg-primary/5 border-l-2 border-l-primary"
+            )}
+          >
+            <div className="flex items-center justify-between gap-3">
+              {/* Session info */}
+              <div className="flex-1 min-w-0 space-y-0.5">
+                {/* First message preview */}
+                <p className="text-sm font-medium truncate text-foreground group-hover:text-primary transition-colors">
+                  {session.first_message
+                    ? truncateText(getFirstLine(session.first_message), 80)
+                    : session.id
+                  }
+                </p>
+
+                {/* Session ID (small and subtle) */}
+                <p className="text-xs font-mono text-muted-foreground truncate">
+                  {session.id}
+                </p>
+              </div>
+
+              {/* Timestamp */}
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+                <Clock className="h-3 w-3" />
+                <span>
+                  {session.message_timestamp
+                    ? formatISOTimestamp(session.message_timestamp)
+                    : formatUnixTimestamp(session.created_at)
+                  }
+                </span>
+              </div>
             </div>
-          ))}
-        </div>
+          </button>
+        ))}
+      </div>
 
       <Pagination
         currentPage={currentPage}
