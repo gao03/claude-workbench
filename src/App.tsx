@@ -433,7 +433,6 @@ function AppContent() {
                           onProjectDelete={handleProjectDelete}
                           onProjectsChanged={loadProjects}
                           loading={loading}
-                          className="animate-fade-in"
                         />
                       ) : (
                         <div className="py-8 text-center">
