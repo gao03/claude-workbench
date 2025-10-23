@@ -147,7 +147,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   const ProjectGrid = () => (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {currentProjects.map((project, index) => (
+        {currentProjects.map((project) => (
           <div key={project.id}>
             <Card
               className="p-4 hover:shadow-md transition-all duration-200 cursor-pointer group h-full"

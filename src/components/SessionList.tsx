@@ -131,7 +131,7 @@ export const SessionList: React.FC<SessionListProps> = ({
       )}
 
       <div className="space-y-2">
-        {currentSessions.map((session, index) => (
+        {currentSessions.map((session) => (
           <div key={session.id}>
               <Card
                 className={cn(
