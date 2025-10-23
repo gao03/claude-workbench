@@ -46,15 +46,22 @@ export const Toast: React.FC<ToastProps> = ({
   onDismiss,
   className,
 }) => {
+  const dismissRef = React.useRef(onDismiss);
+
+  // 更新 ref 但不触发重新渲染
+  React.useEffect(() => {
+    dismissRef.current = onDismiss;
+  }, [onDismiss]);
+
   React.useEffect(() => {
     if (duration && duration > 0) {
       const timer = setTimeout(() => {
-        onDismiss?.();
+        dismissRef.current?.();
       }, duration);
-      
+
       return () => clearTimeout(timer);
     }
-  }, [duration, onDismiss]);
+  }, [duration]);
   
   const icons = {
     success: <CheckCircle className="h-4 w-4" />,
