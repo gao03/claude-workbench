@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { FileText, ArrowLeft, Calendar, Clock, MessageSquare, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,26 +64,27 @@ export const SessionList: React.FC<SessionListProps> = ({
 }) => {
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
-  
+
+  // 🔧 过滤掉空白无用的会话（没有 first_message 或 id 为空的）
+  const validSessions = sessions.filter(session =>
+    session.id && session.id.trim() !== '' &&
+    (session.first_message && session.first_message.trim() !== '')
+  );
+
   // Calculate pagination
-  const totalPages = Math.ceil(sessions.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(validSessions.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentSessions = sessions.slice(startIndex, endIndex);
+  const currentSessions = validSessions.slice(startIndex, endIndex);
   
   // Reset to page 1 if sessions change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [sessions.length]);
-  
+  }, [validSessions.length]);
+
   return (
     <div className={cn("space-y-4", className)}>
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3 }}
-        className="flex items-center space-x-3"
-      >
+      <div className="flex items-center space-x-3">
         {/* 🔧 IMPROVED: 提升返回项目列表按钮的显著性 */}
         <Button
           variant="default"
@@ -98,33 +98,27 @@ export const SessionList: React.FC<SessionListProps> = ({
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-medium truncate">{projectPath}</h2>
           <p className="text-xs text-muted-foreground">
-            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+            {validSessions.length} valid session{validSessions.length !== 1 ? 's' : ''}
+            {sessions.length !== validSessions.length && (
+              <span className="text-muted-foreground/70"> ({sessions.length - validSessions.length} hidden)</span>
+            )}
           </p>
         </div>
-      </motion.div>
+      </div>
 
       {/* CLAUDE.md Memories Dropdown */}
       {onEditClaudeFile && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
+        <div>
           <ClaudeMemoriesDropdown
             projectPath={projectPath}
             onEditFile={onEditClaudeFile}
           />
-        </motion.div>
+        </div>
       )}
 
       {/* New Session Button */}
       {onNewSession && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-          className="mb-4"
-        >
+        <div className="mb-4">
           <Button
             onClick={() => onNewSession(projectPath)}
             size="default"
@@ -133,23 +127,12 @@ export const SessionList: React.FC<SessionListProps> = ({
             <Plus className="mr-2 h-4 w-4" />
             {t('claude.newSession')}
           </Button>
-        </motion.div>
+        </div>
       )}
 
-      <AnimatePresence mode="popLayout">
-        <div className="space-y-2">
-          {currentSessions.map((session, index) => (
-            <motion.div
-              key={session.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{
-                duration: 0.3,
-                delay: index * 0.05,
-                ease: [0.4, 0, 0.2, 1],
-              }}
-            >
+      <div className="space-y-2">
+        {currentSessions.map((session, index) => (
+          <div key={session.id}>
               <Card
                 className={cn(
                   "transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer",
@@ -206,11 +189,10 @@ export const SessionList: React.FC<SessionListProps> = ({
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           ))}
         </div>
-      </AnimatePresence>
-      
+
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
