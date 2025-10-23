@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Loader2 } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { OutputCacheProvider } from "@/lib/outputCache";
@@ -332,30 +331,21 @@ function AppContent() {
         return (
           <div className="flex-1 overflow-y-auto">
             <div className="container mx-auto p-6">
-              {/* Header */}
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mb-6"
-              >
+              {/* Header - 移除动画避免重复触发 */}
+              <div className="mb-6">
                 <div className="mb-4">
                   <h1 className="text-3xl font-bold tracking-tight">{t('common.ccProjectsTitle')}</h1>
                   <p className="text-sm text-muted-foreground mt-1">
                     {t('common.browseClaudeSessions')}
                   </p>
                 </div>
-              </motion.div>
+              </div>
 
               {/* Error display */}
               {error && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive max-w-2xl"
-                >
+                <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive max-w-2xl">
                   {error}
-                </motion.div>
+                </div>
               )}
 
               {/* Loading state */}
@@ -365,17 +355,11 @@ function AppContent() {
                 </div>
               )}
 
-              {/* Content */}
+              {/* Content - 移除动画避免重复触发 */}
               {!loading && (
-                <AnimatePresence mode="wait">
+                <>
                   {selectedProject ? (
-                    <motion.div
-                      key="sessions"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
+                    <div>
                       <SessionList
                         sessions={sessions}
                         projectPath={selectedProject.path}
@@ -404,22 +388,11 @@ function AppContent() {
                           handleViewChange("claude-tab-manager");
                         }}
                       />
-                    </motion.div>
+                    </div>
                   ) : (
-                    <motion.div
-                      key="projects"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.3 }}
-                    >
+                    <div>
                       {/* New session button at the top */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="mb-4"
-                      >
+                      <div className="mb-4">
                         <Button
                           onClick={handleNewProject}
                           size="default"
@@ -428,7 +401,7 @@ function AppContent() {
                           <Plus className="mr-2 h-4 w-4" />
                           {t('common.newProject')}
                         </Button>
-                      </motion.div>
+                      </div>
 
                       {/* Running Claude Sessions */}
                       <RunningClaudeSessions
@@ -469,9 +442,9 @@ function AppContent() {
                           </p>
                         </div>
                       )}
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
+                </>
               )}
             </div>
           </div>
