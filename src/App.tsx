@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Loader2, FolderCode } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { OutputCacheProvider } from "@/lib/outputCache";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ import { EnhancedHooksManager } from '@/components/EnhancedHooksManager';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type View =
-  | "welcome"
   | "projects"
   | "editor"
   | "claude-file-editor"
@@ -55,8 +54,8 @@ function App() {
  */
 function AppContent() {
   const { t } = useTranslation();
-  const { openSessionInBackground } = useTabs();
-  const [view, setView] = useState<View>("welcome");
+  const { openSessionInBackground, switchToTab } = useTabs();
+  const [view, setView] = useState<View>("projects");
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -69,22 +68,19 @@ function AppContent() {
   const [activeClaudeSessionId, setActiveClaudeSessionId] = useState<string | null>(null);
   const [isClaudeStreaming, setIsClaudeStreaming] = useState(false);
   const [projectForSettings, setProjectForSettings] = useState<Project | null>(null);
-  const [previousView, setPreviousView] = useState<View>("welcome");
+  const [previousView, setPreviousView] = useState<View>("projects");
   const [showNavigationConfirm, setShowNavigationConfirm] = useState(false);
   const [pendingView, setPendingView] = useState<View | null>(null);
   const [newSessionProjectPath, setNewSessionProjectPath] = useState<string>("");
 
   // 🔧 NEW: Navigation history stack for smart back functionality
-  const [navigationHistory, setNavigationHistory] = useState<View[]>(["welcome"]);
+  const [navigationHistory, setNavigationHistory] = useState<View[]>(["projects"]);
 
   // 在项目视图中挂载时加载项目
   // Load projects on mount when in projects view
   useEffect(() => {
     if (view === "projects") {
       loadProjects();
-    } else if (view === "welcome") {
-      // Reset loading state for welcome view
-      setLoading(false);
     }
   }, [view]);
 
@@ -93,17 +89,20 @@ function AppContent() {
   useEffect(() => {
     const handleSessionSelected = (event: CustomEvent) => {
       const { session } = event.detail;
-      // 在后台打开会话，不跳转页面
+      // 在后台打开会话并自动切换到该标签页
       const result = openSessionInBackground(session);
+      switchToTab(result.tabId);
+      // 切换到标签管理器视图
+      handleViewChange("claude-tab-manager");
       // 根据是否创建新标签页显示不同的通知
       if (result.isNew) {
         setToast({
-          message: `会话 ${session.id.slice(-8)} 已在后台打开`,
-          type: "info"
+          message: `会话 ${session.id.slice(-8)} 已打开`,
+          type: "success"
         });
       } else {
         setToast({
-          message: `会话 ${session.id.slice(-8)} 已存在`,
+          message: `已切换到会话 ${session.id.slice(-8)}`,
           type: "info"
         });
       }
@@ -231,9 +230,9 @@ function AppContent() {
       setView(previousView);
       return previousView;
     }
-    // Fallback to welcome if no history
-    setView("welcome");
-    return "welcome";
+    // Fallback to projects if no history
+    setView("projects");
+    return "projects";
   };
 
   /**
@@ -300,104 +299,6 @@ function AppContent() {
 
   const renderContent = () => {
     switch (view) {
-      case "welcome":
-        return (
-          <div className="flex items-center justify-center p-8 min-h-full bg-gradient-to-br from-background via-background to-background/95">
-            <div className="w-full max-w-6xl">
-              {/* Welcome Header with Modern Gradient Text */}
-              <motion.div
-                initial={{ opacity: 0, y: -30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="mb-16 text-center"
-              >
-                <div className="mb-4 flex items-center justify-center gap-3">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                    className="text-6xl"
-                  >
-                    ◐
-                  </motion.div>
-                  <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">
-                    {t('app.title')}
-                  </h1>
-                </div>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3, duration: 0.6 }}
-                  className="text-xl text-muted-foreground mt-2"
-                >
-                  {t('app.subtitle')}
-                </motion.p>
-              </motion.div>
-
-              {/* Navigation Card - Direct to Projects */}
-              <div className="grid grid-cols-1 max-w-2xl mx-auto">
-                {/* CC Projects Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ 
-                    duration: 0.5, 
-                    delay: 0.3,
-                    ease: [0.22, 1, 0.36, 1]
-                  }}
-                >
-                  <Card 
-                    variant="interactive"
-                    padding="none"
-                    glow
-                    className="h-72 overflow-hidden group"
-                    onClick={() => handleViewChange("projects")}
-                  >
-                    <div className="h-full flex flex-col items-center justify-center p-10 relative">
-                      {/* Background Gradient */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      
-                      {/* Icon with Floating Animation */}
-                      <motion.div
-                        animate={{ y: [0, -10, 0] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                        className="relative z-10"
-                      >
-                        <div className="p-6 rounded-2xl bg-accent/10 group-hover:bg-accent/20 transition-colors duration-300">
-                          <FolderCode className="h-20 w-20 text-accent-foreground" strokeWidth={1.5} />
-                        </div>
-                      </motion.div>
-
-                      {/* Text */}
-                      <div className="mt-6 relative z-10 text-center">
-                        <h2 className="text-2xl font-bold mb-2 group-hover:text-accent-foreground transition-colors">
-                          {t('navigation.ccProjects')}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                          Browse and manage your projects
-                        </p>
-                      </div>
-
-                      {/* Decorative Elements */}
-                      <div className="absolute top-4 right-4 w-20 h-20 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-colors" />
-                      <div className="absolute bottom-4 left-4 w-16 h-16 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
-                    </div>
-                  </Card>
-                </motion.div>
-              </div>
-
-              {/* Subtle Bottom Hint */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.8, duration: 0.6 }}
-                className="mt-12 text-center text-sm text-muted-foreground"
-              >
-                Click a card to get started
-              </motion.div>
-            </div>
-          </div>
-        );
-
       case "enhanced-hooks-manager":
         return (
           <EnhancedHooksManager
@@ -424,7 +325,7 @@ function AppContent() {
         return (
           <div className="flex-1 overflow-y-auto">
             <div className="container mx-auto p-6">
-              {/* Header with navigation - 🔧 IMPROVED: Reduce prominence of home button */}
+              {/* Header */}
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -433,20 +334,9 @@ function AppContent() {
               >
                 <div className="mb-4">
                   <h1 className="text-3xl font-bold tracking-tight">{t('common.ccProjectsTitle')}</h1>
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-sm text-muted-foreground">
-                      {t('common.browseClaudeSessions')}
-                    </p>
-                    {/* 🔧 IMPROVED: 更清晰的返回主页按钮样式和位置 */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewChange("welcome")}
-                      className="text-xs text-muted-foreground hover:text-foreground opacity-70 hover:opacity-100 transition-all duration-200"
-                    >
-                      ← 主页
-                    </Button>
-                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {t('common.browseClaudeSessions')}
+                  </p>
                 </div>
               </motion.div>
 
@@ -485,16 +375,18 @@ function AppContent() {
                         onBack={handleBack}
                         onEditClaudeFile={handleEditClaudeFile}
                         onSessionClick={(session) => {
-                          // 在后台打开会话，不跳转页面
+                          // 打开会话并自动切换到该标签页
                           const result = openSessionInBackground(session);
+                          switchToTab(result.tabId);
+                          handleViewChange("claude-tab-manager");
                           if (result.isNew) {
                             setToast({
-                              message: `会话 ${session.id.slice(-8)} 已在后台打开`,
-                              type: "info"
+                              message: `会话 ${session.id.slice(-8)} 已打开`,
+                              type: "success"
                             });
                           } else {
                             setToast({
-                              message: `会话 ${session.id.slice(-8)} 已存在`,
+                              message: `已切换到会话 ${session.id.slice(-8)}`,
                               type: "info"
                             });
                           }
@@ -534,16 +426,18 @@ function AppContent() {
                       {/* Running Claude Sessions */}
                       <RunningClaudeSessions
                         onSessionClick={(session) => {
-                          // 在后台打开会话，不跳转页面
+                          // 打开会话并自动切换到该标签页
                           const result = openSessionInBackground(session);
+                          switchToTab(result.tabId);
+                          handleViewChange("claude-tab-manager");
                           if (result.isNew) {
                             setToast({
-                              message: `会话 ${session.id.slice(-8)} 已在后台打开`,
-                              type: "info"
+                              message: `会话 ${session.id.slice(-8)} 已打开`,
+                              type: "success"
                             });
                           } else {
                             setToast({
-                              message: `会话 ${session.id.slice(-8)} 已存在`,
+                              message: `已切换到会话 ${session.id.slice(-8)}`,
                               type: "info"
                             });
                           }
