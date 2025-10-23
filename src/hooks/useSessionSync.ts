@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTabs } from './useTabs';
 import { listen } from '@tauri-apps/api/event';
 
@@ -17,6 +17,16 @@ import { listen } from '@tauri-apps/api/event';
 export const useSessionSync = () => {
   const { tabs, updateTabStreamingStatus } = useTabs();
 
+  // Use refs to avoid re-registering the listener on every tabs change
+  const tabsRef = useRef(tabs);
+  const updateTabStreamingStatusRef = useRef(updateTabStreamingStatus);
+
+  // Keep refs up to date
+  useEffect(() => {
+    tabsRef.current = tabs;
+    updateTabStreamingStatusRef.current = updateTabStreamingStatus;
+  }, [tabs, updateTabStreamingStatus]);
+
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
@@ -34,25 +44,25 @@ export const useSessionSync = () => {
           run_id?: number;
         }>('claude-session-state', (event) => {
           const { session_id, status } = event.payload;
-          
+
           console.log(`[SessionSync] Event received: ${status} for session ${session_id}`);
 
-          // Find tab with this session
-          const tab = tabs.find(t => t.session?.id === session_id);
-          
+          // Find tab with this session (use ref to get latest tabs)
+          const tab = tabsRef.current.find(t => t.session?.id === session_id);
+
           if (tab) {
             if (status === 'started') {
               // Session started - set to streaming
               if (tab.state !== 'streaming') {
                 console.log(`[SessionSync] Updating tab ${tab.id} to streaming`);
-                updateTabStreamingStatus(tab.id, true, session_id);
+                updateTabStreamingStatusRef.current(tab.id, true, session_id);
               }
             } else if (status === 'stopped') {
               // Session stopped - set to idle
               if (tab.state === 'streaming') {
                 console.log(`[SessionSync] Updating tab ${tab.id} to idle`);
-                updateTabStreamingStatus(tab.id, false, null);
-                
+                updateTabStreamingStatusRef.current(tab.id, false, null);
+
                 // If error occurred, log it
                 if (event.payload.error) {
                   console.error(`[SessionSync] Session ${session_id} stopped with error:`, event.payload.error);
@@ -81,5 +91,5 @@ export const useSessionSync = () => {
         console.log('[SessionSync] Event listener unregistered');
       }
     };
-  }, [tabs, updateTabStreamingStatus]);
+  }, []); // Empty deps - listener only needs to be registered once
 };
