@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Loader2 } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
@@ -76,13 +76,16 @@ function AppContent() {
   // 🔧 NEW: Navigation history stack for smart back functionality
   const [navigationHistory, setNavigationHistory] = useState<View[]>(["projects"]);
 
-  // 在项目视图中挂载时加载项目
-  // Load projects on mount when in projects view
+  // 在项目视图中挂载时加载项目（仅在初次进入时加载）
+  // Load projects on mount when in projects view (only load once on initial mount)
+  const hasLoadedProjectsRef = useRef(false);
+
   useEffect(() => {
-    console.log('[App] useEffect triggered, view:', view);
-    if (view === "projects") {
+    console.log('[App] useEffect triggered, view:', view, 'hasLoaded:', hasLoadedProjectsRef.current);
+    if (view === "projects" && !hasLoadedProjectsRef.current) {
       console.log('[App] Loading projects...');
       loadProjects();
+      hasLoadedProjectsRef.current = true;
     }
   }, [view]);
 
