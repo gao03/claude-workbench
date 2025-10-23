@@ -1,44 +1,41 @@
 /**
- * Formats a Unix timestamp to a human-readable date string
+ * Formats a Unix timestamp to a human-readable date string with time
  * @param timestamp - Unix timestamp in seconds
  * @returns Formatted date string
- * 
+ *
  * @example
- * formatUnixTimestamp(1735555200) // "Dec 30, 2024"
+ * formatUnixTimestamp(1735555200) // "Dec 30, 2:30 PM" or "Dec 30, 2024 2:30 PM"
  */
 export function formatUnixTimestamp(timestamp: number): string {
   const date = new Date(timestamp * 1000);
   const now = new Date();
-  
-  // If it's today, show time
+
+  // If it's today, show time only
   if (isToday(date)) {
     return formatTime(date);
   }
-  
+
   // If it's yesterday
   if (isYesterday(date)) {
-    return `Yesterday, ${formatTime(date)}`;
+    return `Yesterday ${formatTime(date)}`;
   }
-  
-  // If it's within the last week, show day of week
-  if (isWithinWeek(date)) {
-    return `${getDayName(date)}, ${formatTime(date)}`;
-  }
-  
-  // If it's this year, don't show year
+
+  // If it's this year, show month day + time
   if (date.getFullYear() === now.getFullYear()) {
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
+    const dateStr = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
     });
+    return `${dateStr} ${formatTime(date)}`;
   }
-  
-  // Otherwise show full date
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
+
+  // Otherwise show full date + time
+  const dateStr = date.toLocaleDateString('en-US', {
+    month: 'short',
     day: 'numeric',
     year: 'numeric'
   });
+  return `${dateStr} ${formatTime(date)}`;
 }
 
 /**
@@ -93,16 +90,6 @@ function isYesterday(date: Date): boolean {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   return date.toDateString() === yesterday.toDateString();
-}
-
-function isWithinWeek(date: Date): boolean {
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  return date > weekAgo;
-}
-
-function getDayName(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'long' });
 }
 
 /**
