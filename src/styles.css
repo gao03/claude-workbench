@@ -263,6 +263,19 @@ button:focus-visible,
   -webkit-line-clamp: 2;
 }
 
+/* Minimalist transition utilities */
+@utility transition-interactive {
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@utility transition-overlay {
+  transition-property: opacity, transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @keyframes enter {
   from {
     opacity: var(--tw-enter-opacity, 1);
@@ -583,99 +596,6 @@ button:focus-visible,
 
 /* Removed special font-weight for larger sizes to maintain consistency */
 
-/* Shimmer hover effect */
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.shimmer-hover {
-  position: relative;
-  overflow: hidden;
-}
-
-.shimmer-hover::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.05),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-.shimmer-hover:hover::before {
-  left: 100%;
-  animation: shimmer 0.5s;
-}
-
-/* Trailing border effect */
-@property --angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes trail-rotate {
-  to {
-    --angle: 360deg;
-  }
-}
-
-.trailing-border {
-  position: relative;
-  background: var(--color-card);
-  z-index: 0;
-  overflow: visible;
-}
-
-/* The correctly traveling border line */
-.trailing-border::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  padding: 2px;
-  border-radius: inherit;
-  background: conic-gradient(
-    from var(--angle),
-    transparent 0%,
-    transparent 85%,
-    #d97757 90%,
-    #ff9a7a 92.5%,
-    #d97757 95%,
-    transparent 100%
-  );
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: -1;
-}
-
-.trailing-border:hover::after {
-  opacity: 1;
-  animation: trail-rotate 2s linear infinite;
-}
-
-/* Ensure the card content stays above the border effect */
-.trailing-border > * {
-  position: relative;
-  z-index: 1;
-}
-
 /* --- THEME-MATCHING SCROLLBARS --- */
 
 /* For Firefox */
@@ -924,29 +844,6 @@ code::-webkit-scrollbar-thumb:hover,
 
 /* Light theme specific styles */
 .light {
-  /* Override shimmer effect for light theme */
-  .shimmer-hover::before {
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(0, 0, 0, 0.08),
-      transparent
-    );
-  }
-
-  /* Override trailing border for light theme */
-  .trailing-border::after {
-    background: conic-gradient(
-      from var(--angle),
-      transparent 0%,
-      transparent 85%,
-      #3b82f6 90%,
-      #60a5fa 92.5%,
-      #3b82f6 95%,
-      transparent 100%
-    );
-  }
-
   /* Enhanced backdrop blur and background opacity for better contrast */
   .bg-background\/95 {
     background-color: oklch(0.99 0.005 240 / 0.98) !important;

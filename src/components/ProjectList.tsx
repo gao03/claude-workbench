@@ -1,17 +1,14 @@
 import React, { useState } from "react";
-import { 
-  FolderOpen, 
-  Calendar, 
-  FileText, 
-  ChevronRight, 
+import {
+  FolderOpen,
+  Calendar,
+  FileText,
   Settings,
   MoreVertical,
   Trash2,
   Archive
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -146,90 +143,84 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   
   const ProjectGrid = () => (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {currentProjects.map((project) => (
-          <div key={project.id}>
-            <Card
-              className="p-4 hover:shadow-md transition-all duration-200 cursor-pointer group h-full"
-              onClick={() => onProjectClick(project)}
-            >
-              <div className="flex flex-col h-full">
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FolderOpen className="h-5 w-5 text-primary shrink-0" />
-                      <h3 className="font-semibold text-base truncate">
-                        {getProjectName(project.path)}
-                      </h3>
-                    </div>
-                    {project.sessions.length > 0 && (
-                      <Badge variant="secondary" className="shrink-0 ml-2">
-                        {project.sessions.length}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <p className="text-sm text-muted-foreground mb-3 font-mono truncate">
-                    {project.path}
-                  </p>
+          <button
+            key={project.id}
+            onClick={() => onProjectClick(project)}
+            className="w-full text-left px-4 py-3 rounded-lg bg-card border border-transparent hover:border-border hover:bg-muted/30 transition-colors group"
+          >
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <FolderOpen className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                <h3 className="font-medium text-[15px] truncate">
+                  {getProjectName(project.path)}
+                </h3>
+              </div>
+              {project.sessions.length > 0 && (
+                <span className="text-xs text-muted-foreground font-medium px-2 py-0.5 bg-muted/50 rounded shrink-0">
+                  {project.sessions.length}
+                </span>
+              )}
+            </div>
+
+            <p className="text-sm text-muted-foreground truncate font-mono mb-2">
+              {project.path}
+            </p>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  <span>{formatTimeAgo(project.created_at * 1000)}</span>
                 </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatTimeAgo(project.created_at * 1000)}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <FileText className="h-3 w-3" />
-                      <span>{project.sessions.length}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {(onProjectSettings || onProjectDelete) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {onProjectSettings && (
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onProjectSettings(project);
-                              }}
-                            >
-                              <Settings className="h-4 w-4 mr-2" />
-                              Hooks
-                            </DropdownMenuItem>
-                          )}
-                          {onProjectSettings && onProjectDelete && (
-                            <DropdownMenuSeparator />
-                          )}
-                          {onProjectDelete && (
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteProject(project);
-                              }}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              删除项目
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
+                <div className="flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  <span>{project.sessions.length} 会话</span>
                 </div>
               </div>
-            </Card>
-          </div>
+
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {(onProjectSettings || onProjectDelete) && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon-sm" className="h-7 w-7">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {onProjectSettings && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onProjectSettings(project);
+                          }}
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          Hooks
+                        </DropdownMenuItem>
+                      )}
+                      {onProjectSettings && onProjectDelete && (
+                        <DropdownMenuSeparator />
+                      )}
+                      {onProjectDelete && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProject(project);
+                          }}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          删除项目
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
+          </button>
         ))}
       </div>
       
