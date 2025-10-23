@@ -179,18 +179,15 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
 
     if (session) {
       const projectName = extractProjectName(session.project_path);
-      const now = new Date();
-      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-      return projectName ? `${projectName} (${timeStr})` : `会话 ${timeStr}`;
+      return projectName || '未命名会话';
     }
 
     if (projectPath) {
       const projectName = extractProjectName(projectPath);
-      return projectName ? `新会话 · ${projectName}` : `新会话 ${nextTabId.current}`;
+      return projectName || '新会话';
     }
 
-    return `新会话 ${nextTabId.current}`;
+    return '新会话';
   }, []);
 
   // ✨ REFACTORED: Create new tab (simplified)
