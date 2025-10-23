@@ -79,7 +79,9 @@ function AppContent() {
   // 在项目视图中挂载时加载项目
   // Load projects on mount when in projects view
   useEffect(() => {
+    console.log('[App] useEffect triggered, view:', view);
     if (view === "projects") {
+      console.log('[App] Loading projects...');
       loadProjects();
     }
   }, [view]);
@@ -195,6 +197,8 @@ function AppContent() {
    * Handles view changes with navigation protection and history management
    */
   const handleViewChange = (newView: View) => {
+    console.log('[App] handleViewChange called:', { from: view, to: newView });
+
     // Check if we're navigating away from an active Claude session
     if (view === "claude-code-session" && isClaudeStreaming && activeClaudeSessionId) {
       // Show in-app confirmation dialog instead of system confirm
