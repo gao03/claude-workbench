@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { 
   FolderOpen, 
   Calendar, 
@@ -149,16 +148,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {currentProjects.map((project, index) => (
-          <motion.div
-            key={project.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.3,
-              delay: index * 0.05,
-              ease: [0.4, 0, 0.2, 1],
-            }}
-          >
+          <div key={project.id}>
             <Card
               className="p-4 hover:shadow-md transition-all duration-200 cursor-pointer group h-full"
               onClick={() => onProjectClick(project)}
@@ -239,7 +229,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 </div>
               </div>
             </Card>
-          </motion.div>
+          </div>
         ))}
       </div>
       

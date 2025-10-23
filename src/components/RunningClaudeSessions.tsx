@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { Play, Loader2, Terminal, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -109,12 +108,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
           if (!sessionId) return null;
 
           return (
-            <motion.div
-              key={session.run_id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
+            <div key={session.run_id}>
               <Card className="transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer">
                 <CardContent 
                   className="p-3"
@@ -160,7 +154,7 @@ export const RunningClaudeSessions: React.FC<RunningClaudeSessionsProps> = ({
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           );
         })}
       </div>
