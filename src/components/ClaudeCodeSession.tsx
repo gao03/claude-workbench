@@ -979,7 +979,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                 </AnimatePresence>
                 
                 {/* Traditional scroll controls */}
-                <div className="flex items-center floating-element backdrop-enhanced rounded-full overflow-hidden">
+                <div className="flex flex-col bg-background/60 backdrop-blur-md border border-border/50 rounded-2xl overflow-hidden shadow-sm">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -993,12 +993,12 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                         });
                       }
                     }}
-                    className="px-3 py-2 hover:bg-accent rounded-none"
+                    className="px-2 py-2 hover:bg-accent/80 rounded-none"
                     title="滚动到顶部"
                   >
                     <ChevronUp className="h-4 w-4" />
                   </Button>
-                  <div className="w-px h-4 bg-border" />
+                  <div className="h-px w-full bg-border/50" />
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1012,7 +1012,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                         });
                       }
                     }}
-                    className="px-3 py-2 hover:bg-accent rounded-none"
+                    className="px-2 py-2 hover:bg-accent/80 rounded-none"
                     title="滚动到底部"
                   >
                     <ChevronDown className="h-4 w-4" />
