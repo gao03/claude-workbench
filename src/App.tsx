@@ -523,13 +523,15 @@ function AppContent() {
   return (
     <OutputCacheProvider>
       <div className="h-screen bg-background flex flex-col">
-          {/* Topbar */}
-          <Topbar
-            onClaudeClick={() => handleViewChange("editor")}
-            onSettingsClick={() => handleViewChange("settings")}
-            onUsageClick={() => handleViewChange("usage-dashboard")}
-            onMCPClick={() => handleViewChange("mcp")}
-          />
+          {/* Topbar - 条件渲染：在标签页管理器中隐藏，提供沉浸式体验 */}
+          {view !== "claude-tab-manager" && (
+            <Topbar
+              onClaudeClick={() => handleViewChange("editor")}
+              onSettingsClick={() => handleViewChange("settings")}
+              onUsageClick={() => handleViewChange("usage-dashboard")}
+              onMCPClick={() => handleViewChange("mcp")}
+            />
+          )}
 
           {/* Main Content */}
           <div className="flex-1 overflow-y-auto">
