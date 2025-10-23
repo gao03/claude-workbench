@@ -134,23 +134,26 @@ export const TabManager: React.FC<TabManagerProps> = ({
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // Priority 1: Tabs restored from localStorage
-    if (tabs.length > 0) {
-      console.log('[TabManager] Tabs restored from localStorage');
-      return;
-    }
+    // 🔧 修复：新建操作应该覆盖已保存的标签页
+    const isNewOperation = initialSession || initialProjectPath;
 
-    // Priority 2: Initial session provided
+    // Priority 1: Initial session provided (highest priority)
     if (initialSession) {
       console.log('[TabManager] Creating tab for initial session:', initialSession.id);
       createNewTab(initialSession);
       return;
     }
 
-    // Priority 3: Initial project path provided
+    // Priority 2: Initial project path provided
     if (initialProjectPath) {
       console.log('[TabManager] Creating tab for initial project:', initialProjectPath);
       createNewTab(undefined, initialProjectPath);
+      return;
+    }
+
+    // Priority 3: Tabs restored from localStorage (only if no new operation)
+    if (tabs.length > 0 && !isNewOperation) {
+      console.log('[TabManager] Tabs restored from localStorage');
       return;
     }
 
@@ -161,22 +164,22 @@ export const TabManager: React.FC<TabManagerProps> = ({
   return (
     <TooltipProvider>
       <div className={cn("h-full flex flex-col bg-background", className)}>
-        {/* 🎨 现代化标签页栏 */}
-        <div className="flex-shrink-0 border-b border-border/60 bg-gradient-to-b from-muted/30 to-background/50 backdrop-blur-sm">
-          <div className="flex items-center h-14 px-4 gap-3">
-            {/* 返回按钮 - 更现代的设计 */}
+        {/* 🎨 极简标签页栏 */}
+        <div className="flex-shrink-0 border-b border-border bg-background">
+          <div className="flex items-center h-12 px-4 gap-2">
+            {/* 返回按钮 */}
             <Button
               variant="ghost"
               size="sm"
               onClick={onBack}
-              className="px-3 hover:bg-muted/80 transition-colors"
+              className="px-3"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              <span className="font-medium">返回</span>
+              <ArrowLeft className="h-4 w-4 mr-1.5" />
+              <span>返回</span>
             </Button>
 
             {/* 分隔线 */}
-            <div className="h-6 w-px bg-border/50" />
+            <div className="h-4 w-px bg-border" />
 
             {/* 标签页容器 */}
             <div
@@ -188,21 +191,18 @@ export const TabManager: React.FC<TabManagerProps> = ({
                   <motion.div
                     key={tab.id}
                     layout
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ 
-                      duration: 0.2,
-                      ease: [0.22, 1, 0.36, 1]
-                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
                     className={cn(
-                      "group relative flex items-center gap-2.5 px-4 py-2 rounded-xl min-w-0 max-w-[220px] cursor-pointer",
-                      "transition-all duration-300 ease-out",
+                      "group relative flex items-center gap-2 px-3 py-1.5 rounded-lg min-w-0 max-w-[200px] cursor-pointer",
+                      "transition-colors",
                       tab.isActive
-                        ? "bg-background shadow-md border-2 border-primary/20 text-foreground scale-105"
-                        : "bg-muted/40 border-2 border-transparent text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:scale-[1.02]",
-                      draggedTab === tab.id && "opacity-40 scale-95",
-                      dragOverIndex === index && draggedTab !== tab.id && "ring-2 ring-primary/50 ring-offset-2" // 🔧 NEW: 拖拽悬停高亮
+                        ? "bg-muted border border-border text-foreground"
+                        : "bg-transparent border border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                      draggedTab === tab.id && "opacity-40",
+                      dragOverIndex === index && draggedTab !== tab.id && "border-primary"
                     )}
                     onClick={() => switchToTab(tab.id)}
                     draggable
@@ -211,88 +211,65 @@ export const TabManager: React.FC<TabManagerProps> = ({
                     onDragOver={(e) => handleTabDragOver(e, index)}
                     onDrop={(e) => handleTabDrop(e, index)}
                   >
-                    {/* 活跃标签页顶部指示条 */}
-                    {tab.isActive && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-primary to-accent rounded-t-xl"
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      />
-                    )}
-
-                    {/* 会话状态指示器 - 更大更明显 */}
+                    {/* 会话状态指示器 - 极简 */}
                     <div className="flex-shrink-0">
                       {tab.state === 'streaming' ? (
                         <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
+                          animate={{ opacity: [1, 0.4, 1] }}
                           transition={{ duration: 1.5, repeat: Infinity }}
-                          className="h-2.5 w-2.5 bg-success rounded-full shadow-lg shadow-success/50"
+                          className="h-1.5 w-1.5 bg-success rounded-full"
                         />
                       ) : tab.hasUnsavedChanges ? (
-                        <div className="h-2.5 w-2.5 bg-warning rounded-full shadow-lg shadow-warning/50" />
-                      ) : (
-                        <MessageSquare className="h-4 w-4 opacity-70" />
-                      )}
+                        <div className="h-1.5 w-1.5 bg-warning rounded-full" />
+                      ) : null}
                     </div>
 
                     {/* 标签页标题 */}
-                    <span className="flex-1 truncate text-sm font-medium">
+                    <span className="flex-1 truncate text-sm">
                       {tab.title}
                     </span>
 
-                    {/* 关闭按钮 - 更平滑的显示 */}
-                    <motion.div
-                      initial={false}
-                      animate={{ opacity: tab.isActive ? 1 : 0 }}
-                      whileHover={{ opacity: 1 }}
-                      transition={{ duration: 0.15 }}
-                      className="flex-shrink-0"
+                    {/* 关闭按钮 - 仅在 hover 时显示 */}
+                    <button
+                      className={cn(
+                        "flex-shrink-0 h-5 w-5 rounded flex items-center justify-center",
+                        "opacity-0 group-hover:opacity-100 transition-opacity",
+                        "hover:bg-muted-foreground/20"
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCloseTab(tab.id);
+                      }}
                     >
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive rounded-lg transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCloseTab(tab.id);
-                        }}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </motion.div>
+                      <X className="h-3 w-3" />
+                    </button>
                   </motion.div>
                 ))}
               </AnimatePresence>
 
-              {/* 新建标签页按钮 - 更突出的设计 */}
+              {/* 新建标签页按钮 */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="icon-sm"
-                    className="flex-shrink-0 rounded-lg shadow-sm hover:shadow-md transition-all"
+                  <button
+                    className="flex-shrink-0 h-7 w-7 rounded flex items-center justify-center hover:bg-muted transition-colors"
                     onClick={() => createNewTab()}
                   >
                     <Plus className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>新建会话</TooltipContent>
               </Tooltip>
             </div>
 
             {/* 分隔线 */}
-            <div className="h-6 w-px bg-border/50" />
+            <div className="h-4 w-px bg-border" />
 
-            {/* 标签页菜单 - 更现代的图标按钮 */}
+            {/* 标签页菜单 */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon-sm" 
-                  className="rounded-lg hover:bg-muted/70 transition-colors"
-                >
+                <button className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted transition-colors">
                   <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => createNewTab()}>

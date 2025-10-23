@@ -78,6 +78,8 @@ pub struct Session {
     pub first_message: Option<String>,
     /// Timestamp of the first user message (if available)
     pub message_timestamp: Option<String>,
+    /// Timestamp of the last message in the session (if available) - ISO string
+    pub last_message_timestamp: Option<String>,
 }
 
 /// Represents a message entry in the JSONL file
@@ -328,6 +330,33 @@ fn extract_first_user_message(jsonl_path: &PathBuf) -> (Option<String>, Option<S
     }
 
     (None, None)
+}
+
+/// Extracts the timestamp of the last message (user or assistant) from a JSONL file
+fn extract_last_message_timestamp(jsonl_path: &PathBuf) -> Option<String> {
+    let file = match fs::File::open(jsonl_path) {
+        Ok(file) => file,
+        Err(_) => return None,
+    };
+
+    let reader = BufReader::new(file);
+    let mut last_timestamp: Option<String> = None;
+
+    for line in reader.lines() {
+        if let Ok(line) = line {
+            if let Ok(entry) = serde_json::from_str::<JsonlEntry>(&line) {
+                // Check if this entry has a message (user or assistant)
+                if entry.message.is_some() {
+                    // Update last_timestamp if this entry has a timestamp
+                    if let Some(timestamp) = entry.timestamp {
+                        last_timestamp = Some(timestamp);
+                    }
+                }
+            }
+        }
+    }
+
+    last_timestamp
 }
 
 /// Escapes prompt content for safe command line usage
@@ -732,6 +761,9 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
                 // Extract first user message and timestamp
                 let (first_message, message_timestamp) = extract_first_user_message(&path);
 
+                // Extract last message timestamp (any message, user or assistant)
+                let last_message_timestamp = extract_last_message_timestamp(&path);
+
                 // Try to load associated todo data
                 let todo_path = todos_dir.join(format!("{}.json", session_id));
                 let todo_data = if todo_path.exists() {
@@ -750,6 +782,7 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
                     created_at,
                     first_message,
                     message_timestamp,
+                    last_message_timestamp,
                 });
             }
         }

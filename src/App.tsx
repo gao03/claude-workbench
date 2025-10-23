@@ -165,8 +165,9 @@ function AppContent() {
    * Opens a new project session from home page (requires project path selection)
    */
   const handleNewProject = async () => {
-    handleViewChange("claude-tab-manager");
     setSelectedSession(null);
+    setNewSessionProjectPath("__NEW_PROJECT__"); // 使用特殊标记表示"新建项目"
+    handleViewChange("claude-tab-manager");
   };
 
   /**
