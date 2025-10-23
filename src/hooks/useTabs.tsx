@@ -146,25 +146,48 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
 
   // Generate smart tab title
   const generateTabTitle = useCallback((session?: Session, projectPath?: string) => {
-    if (session) {
-      const projectName = session.project_path
-        ? (session.project_path.split('/').pop() || session.project_path.split('\\').pop())
-        : '';
+    // Helper function to extract project name from path
+    const extractProjectName = (path: string): string => {
+      if (!path) return '';
+
+      // 判断是 Windows 路径还是 Unix 路径
+      const isWindowsPath = path.includes('\\');
+      const separator = isWindowsPath ? '\\' : '/';
+
+      // 分割路径并获取最后一个片段
+      const segments = path.split(separator);
+      const projectName = segments[segments.length - 1] || '';
+
+      // 格式化项目名：移除常见前缀，替换分隔符为空格
       const formattedName = projectName
-        ? projectName.replace(/^(my-|test-|demo-)/, '').replace(/[-_]/g, ' ')
-        : '';
+        .replace(/^(my-|test-|demo-)/, '')
+        .replace(/[-_]/g, ' ')
+        .trim();
+
+      // 调试日志（可在浏览器控制台查看）
+      console.log('[TabTitle Debug]', {
+        originalPath: path,
+        isWindowsPath,
+        separator,
+        segments,
+        projectName,
+        formattedName
+      });
+
+      return formattedName;
+    };
+
+    if (session) {
+      const projectName = extractProjectName(session.project_path);
       const now = new Date();
       const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-      
-      return formattedName ? `${formattedName} (${timeStr})` : `会话 ${timeStr}`;
+
+      return projectName ? `${projectName} (${timeStr})` : `会话 ${timeStr}`;
     }
 
     if (projectPath) {
-      const projectName = projectPath.split('/').pop() || projectPath.split('\\').pop();
-      const formattedName = projectName
-        ? projectName.replace(/^(my-|test-|demo-)/, '').replace(/[-_]/g, ' ')
-        : '';
-      return formattedName ? `新会话 · ${formattedName}` : `新会话 ${nextTabId.current}`;
+      const projectName = extractProjectName(projectPath);
+      return projectName ? `新会话 · ${projectName}` : `新会话 ${nextTabId.current}`;
     }
 
     return `新会话 ${nextTabId.current}`;
