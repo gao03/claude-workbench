@@ -70,14 +70,22 @@ export const SessionList: React.FC<SessionListProps> = ({
     (session.first_message && session.first_message.trim() !== '')
   );
 
-  // 🔧 按活跃度排序：优先使用 message_timestamp，否则使用 created_at
+  // 🔧 按活跃度排序：优先使用最后一条消息时间，其次第一条消息时间，最后使用创建时间
   const sortedSessions = [...validSessions].sort((a, b) => {
-    const timeA = a.message_timestamp
+    // 获取会话 A 的最后活跃时间
+    const timeA = a.last_message_timestamp
+      ? new Date(a.last_message_timestamp).getTime()
+      : a.message_timestamp
       ? new Date(a.message_timestamp).getTime()
       : a.created_at * 1000;
-    const timeB = b.message_timestamp
+
+    // 获取会话 B 的最后活跃时间
+    const timeB = b.last_message_timestamp
+      ? new Date(b.last_message_timestamp).getTime()
+      : b.message_timestamp
       ? new Date(b.message_timestamp).getTime()
       : b.created_at * 1000;
+
     return timeB - timeA; // 降序：最新的在前
   });
 
@@ -168,11 +176,13 @@ export const SessionList: React.FC<SessionListProps> = ({
                 </p>
               </div>
 
-              {/* Timestamp */}
+              {/* Timestamp - 优先显示最后一条消息时间 */}
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
                 <Clock className="h-3 w-3" />
                 <span>
-                  {session.message_timestamp
+                  {session.last_message_timestamp
+                    ? formatISOTimestamp(session.last_message_timestamp)
+                    : session.message_timestamp
                     ? formatISOTimestamp(session.message_timestamp)
                     : formatUnixTimestamp(session.created_at)
                   }

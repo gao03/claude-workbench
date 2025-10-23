@@ -49,6 +49,8 @@ export interface Session {
   first_message?: string;
   /** Timestamp of the first user message (if available) */
   message_timestamp?: string;
+  /** Timestamp of the last message in the session (if available) - ISO string */
+  last_message_timestamp?: string;
 }
 
 /**
