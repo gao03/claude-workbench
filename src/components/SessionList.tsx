@@ -39,7 +39,7 @@ interface SessionListProps {
   className?: string;
 }
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 20;
 
 /**
  * SessionList component - Displays paginated sessions for a specific project
