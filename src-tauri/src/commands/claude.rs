@@ -490,8 +490,9 @@ fn create_system_command(
     args: Vec<String>,
     project_path: &str,
     model: Option<&str>,
+    max_thinking_tokens: Option<u32>,
 ) -> Result<Command, String> {
-    create_windows_command(claude_path, args, project_path, model)
+    create_windows_command(claude_path, args, project_path, model, max_thinking_tokens)
 }
 
 /// Create a Windows command
@@ -500,6 +501,7 @@ fn create_windows_command(
     args: Vec<String>,
     project_path: &str,
     model: Option<&str>,
+    max_thinking_tokens: Option<u32>,
 ) -> Result<Command, String> {
     let mut cmd = create_command_with_env(claude_path);
 
@@ -507,6 +509,12 @@ fn create_windows_command(
     if let Some(model_name) = model {
         log::info!("Setting ANTHROPIC_MODEL environment variable to: {}", model_name);
         cmd.env("ANTHROPIC_MODEL", model_name);
+    }
+
+    // 设置 MAX_THINKING_TOKENS 环境变量以启用扩展思考
+    if let Some(tokens) = max_thinking_tokens {
+        log::info!("Setting MAX_THINKING_TOKENS environment variable to: {}", tokens);
+        cmd.env("MAX_THINKING_TOKENS", tokens.to_string());
     }
 
     // Add all arguments
@@ -1608,7 +1616,7 @@ pub async fn execute_claude_code(
     let args = build_execution_args(&execution_config, &prompt, &mapped_model, escape_prompt_for_cli);
 
     // Create command
-    let cmd = create_system_command(&claude_path, args, &project_path, Some(&mapped_model))?;
+    let cmd = create_system_command(&claude_path, args, &project_path, Some(&mapped_model), max_thinking_tokens)?;
     spawn_claude_process(app, cmd, prompt, model, project_path).await
 }
 
@@ -1666,7 +1674,7 @@ pub async fn continue_claude_code(
     args.insert(0, "-c".to_string());
 
     // Create command
-    let cmd = create_system_command(&claude_path, args, &project_path, Some(&mapped_model))?;
+    let cmd = create_system_command(&claude_path, args, &project_path, Some(&mapped_model), max_thinking_tokens)?;
     spawn_claude_process(app, cmd, prompt, model, project_path).await
 }
 
@@ -1730,7 +1738,7 @@ pub async fn resume_claude_code(
     // 使用新的参数构建函数，添加 --resume 和 session_id（先映射模型名称）
     let mapped_model = map_model_to_claude_alias(&model);
     let mut args = build_execution_args(&execution_config, &prompt, &mapped_model, escape_prompt_for_cli);
-    
+
     // 为resume模式重新组织参数：--resume session_id 应该在最前面
     args.insert(0, "--resume".to_string());
     args.insert(1, session_id.clone());
@@ -1738,7 +1746,7 @@ pub async fn resume_claude_code(
     log::info!("Resume command: claude {}", args.join(" "));
 
     // Create command
-    let cmd = create_system_command(&claude_path, args, &project_path, Some(&mapped_model))?;
+    let cmd = create_system_command(&claude_path, args, &project_path, Some(&mapped_model), max_thinking_tokens)?;
     
     // Try to spawn the process - if it fails, fall back to continue mode
     match spawn_claude_process(app.clone(), cmd, prompt.clone(), model.clone(), project_path.clone()).await {
