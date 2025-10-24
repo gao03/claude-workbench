@@ -1406,6 +1406,13 @@ pub async fn update_thinking_mode(enabled: bool, tokens: Option<u32>) -> Result<
         log::info!("Removed MAX_THINKING_TOKENS from env");
     }
 
+    // Also remove the old alwaysThinkingEnabled field if it exists
+    // This field conflicts with the standard MAX_THINKING_TOKENS approach
+    if settings_obj.contains_key("alwaysThinkingEnabled") {
+        settings_obj.remove("alwaysThinkingEnabled");
+        log::info!("Removed deprecated alwaysThinkingEnabled field");
+    }
+
     // Write back to file
     let json_string = serde_json::to_string_pretty(&settings)
         .map_err(|e| format!("Failed to serialize settings: {}", e))?;

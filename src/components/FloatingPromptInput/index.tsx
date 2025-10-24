@@ -225,12 +225,9 @@ const FloatingPromptInputInner = (
         finalPrompt = finalPrompt + (finalPrompt.endsWith(' ') || finalPrompt === '' ? '' : ' ') + imagePathMentions;
       }
 
-      // Get maxThinkingTokens from selected mode
-      const thinkingMode = THINKING_MODES.find(m => m.id === selectedThinkingMode);
-      const maxThinkingTokens = thinkingMode?.tokens; // undefined for "auto" mode
-
-      // Send prompt and maxThinkingTokens separately
-      onSend(finalPrompt, selectedModel, maxThinkingTokens);
+      // Note: Thinking mode is now controlled via settings.json, not per-request
+      // The maxThinkingTokens parameter is kept for backward compatibility but not used
+      onSend(finalPrompt, selectedModel, undefined);
       setPrompt("");
       setImageAttachments([]);
       setEmbeddedImages([]);
