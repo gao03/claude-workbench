@@ -427,7 +427,64 @@ const FloatingPromptInputInner = (
         )}
 
         <div className="p-4 space-y-2">
-          {/* First Row: All Controls */}
+          {/* First Row: Prompt Input */}
+          <div className="relative">
+            <Textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={dragActive ? "拖放图片到这里..." : "向 Claude 提问..."}
+              disabled={disabled}
+              className={cn(
+                "min-h-[56px] max-h-[160px] resize-none pr-10 overflow-y-auto",
+                dragActive && "border-primary"
+              )}
+              rows={1}
+              style={{ height: 'auto' }}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            />
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsExpanded(true)}
+              disabled={disabled}
+              className="absolute right-1 bottom-1 h-8 w-8"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+
+            {/* File Picker */}
+            <AnimatePresence>
+              {showFilePicker && projectPath && projectPath.trim() && (
+                <FilePicker
+                  basePath={projectPath.trim()}
+                  onSelect={handleFileSelect}
+                  onClose={handleFilePickerClose}
+                  initialQuery={filePickerQuery}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Slash Command Picker */}
+            <AnimatePresence>
+              {showSlashCommandPicker && (
+                <SlashCommandPicker
+                  projectPath={projectPath}
+                  onSelect={handleSlashCommandSelect}
+                  onClose={handleSlashCommandPickerClose}
+                  initialQuery={slashCommandQuery}
+                />
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Second Row: All Controls */}
           <div className="flex items-center gap-2">
             {/* Model Selector */}
             <ModelSelector
@@ -528,63 +585,6 @@ const FloatingPromptInputInner = (
                 发送
               </Button>
             )}
-          </div>
-
-          {/* Second Row: Prompt Input */}
-          <div className="relative">
-            <Textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={handleTextChange}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              placeholder={dragActive ? "拖放图片到这里..." : "向 Claude 提问..."}
-              disabled={disabled}
-              className={cn(
-                "min-h-[56px] max-h-[160px] resize-none pr-10 overflow-y-auto",
-                dragActive && "border-primary"
-              )}
-              rows={1}
-              style={{ height: 'auto' }}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsExpanded(true)}
-              disabled={disabled}
-              className="absolute right-1 bottom-1 h-8 w-8"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-
-            {/* File Picker */}
-            <AnimatePresence>
-              {showFilePicker && projectPath && projectPath.trim() && (
-                <FilePicker
-                  basePath={projectPath.trim()}
-                  onSelect={handleFileSelect}
-                  onClose={handleFilePickerClose}
-                  initialQuery={filePickerQuery}
-                />
-              )}
-            </AnimatePresence>
-
-            {/* Slash Command Picker */}
-            <AnimatePresence>
-              {showSlashCommandPicker && (
-                <SlashCommandPicker
-                  projectPath={projectPath}
-                  onSelect={handleSlashCommandSelect}
-                  onClose={handleSlashCommandPickerClose}
-                  initialQuery={slashCommandQuery}
-                />
-              )}
-            </AnimatePresence>
           </div>
         </div>
       </div>
