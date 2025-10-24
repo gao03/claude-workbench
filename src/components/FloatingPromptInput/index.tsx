@@ -401,49 +401,6 @@ const FloatingPromptInputInner = (
         )}
 
         <div className="p-4">
-          {/* Info bar above controls */}
-          {(hasMessages && sessionCost) || isLoading ? (
-            <div className="flex items-center mb-2">
-              {/* Left section - aligns with Model and Thinking selectors */}
-              <div className="flex items-center gap-3">
-                {/* Placeholder to match Model selector width */}
-                <div style={{ width: '120px' }} />
-                {/* Placeholder to match Thinking selector width */}
-                <div style={{ width: '120px' }} />
-
-                {/* Session Cost - above Plan Mode button */}
-                {hasMessages && sessionCost && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-6">
-                      <DollarSign className="h-3 w-3 text-green-600" />
-                      <span className="font-mono text-xs">{sessionCost}</span>
-                    </Badge>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Right section - Loading Indicator */}
-              <div className="flex-1 flex justify-end">
-                {isLoading && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-600"
-                  >
-                    <div className="rotating-symbol text-blue-600" style={{ width: '12px', height: '12px' }} />
-                    <span>处理中...</span>
-                  </motion.div>
-                )}
-              </div>
-            </div>
-          ) : null}
-
           <div className="flex items-end gap-3">
             {/* Model Selector */}
             <ModelSelector
@@ -459,13 +416,30 @@ const FloatingPromptInputInner = (
               disabled={disabled}
             />
 
-            {/* Plan Mode Toggle */}
+            {/* Plan Mode Toggle with Session Cost above it */}
             {onTogglePlanMode && (
-              <PlanModeToggle
-                isPlanMode={isPlanMode || false}
-                onToggle={onTogglePlanMode}
-                disabled={disabled}
-              />
+              <div className="flex flex-col gap-1">
+                {/* Session Cost - directly above Plan button */}
+                {hasMessages && sessionCost && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="self-start"
+                  >
+                    <Badge variant="outline" className="flex items-center gap-1 px-2 py-0.5 h-5">
+                      <DollarSign className="h-3 w-3 text-green-600" />
+                      <span className="font-mono text-[10px]">{sessionCost}</span>
+                    </Badge>
+                  </motion.div>
+                )}
+
+                <PlanModeToggle
+                  isPlanMode={isPlanMode || false}
+                  onToggle={onTogglePlanMode}
+                  disabled={disabled}
+                />
+              </div>
             )}
 
             {/* Prompt Input */}
@@ -549,25 +523,41 @@ const FloatingPromptInputInner = (
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Send/Cancel Button */}
-            {isLoading ? (
-              <Button
-                onClick={onCancel}
-                variant="destructive"
-                size="default"
-                disabled={disabled}
-              >
-                取消
-              </Button>
-            ) : (
-              <Button
-                onClick={handleSend}
-                disabled={!prompt.trim() || disabled}
-                size="default"
-              >
-                发送
-              </Button>
-            )}
+            {/* Send/Cancel Button with Loading Indicator above */}
+            <div className="flex flex-col gap-1">
+              {/* Loading Indicator - directly above Send/Cancel button */}
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-md self-end"
+                >
+                  <div className="rotating-symbol text-blue-600" style={{ width: '10px', height: '10px' }} />
+                  <span className="text-[10px] text-blue-600">处理中</span>
+                </motion.div>
+              )}
+
+              {isLoading ? (
+                <Button
+                  onClick={onCancel}
+                  variant="destructive"
+                  size="default"
+                  disabled={disabled}
+                >
+                  取消
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSend}
+                  disabled={!prompt.trim() || disabled}
+                  size="default"
+                >
+                  发送
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
