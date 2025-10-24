@@ -18,6 +18,7 @@ import { useImageHandling } from "./hooks/useImageHandling";
 import { useFileSelection } from "./hooks/useFileSelection";
 import { useSlashCommands } from "./hooks/useSlashCommands";
 import { usePromptEnhancement } from "./hooks/usePromptEnhancement";
+import { api } from "@/lib/api";
 
 // Re-export types for external use
 export type { FloatingPromptInputRef, FloatingPromptInputProps, ThinkingMode, ModelType } from "./types";
@@ -144,8 +145,23 @@ const FloatingPromptInputInner = (
   }));
 
   // Toggle thinking mode
-  const handleToggleThinkingMode = () => {
-    setSelectedThinkingMode(prev => prev === "off" ? "on" : "off");
+  const handleToggleThinkingMode = async () => {
+    const newMode: ThinkingMode = selectedThinkingMode === "off" ? "on" : "off";
+    setSelectedThinkingMode(newMode);
+
+    // Update settings.json with the new thinking mode
+    try {
+      const thinkingMode = THINKING_MODES.find(m => m.id === newMode);
+      const enabled = newMode === "on";
+      const tokens = thinkingMode?.tokens;
+
+      await api.updateThinkingMode(enabled, tokens);
+      console.log(`Thinking mode ${enabled ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+      console.error("Failed to update thinking mode in settings.json:", error);
+      // Revert the UI state on error
+      setSelectedThinkingMode(prev => prev === "off" ? "on" : "off");
+    }
   };
 
   // Focus management when expanded state changes

@@ -490,9 +490,9 @@ fn create_system_command(
     args: Vec<String>,
     project_path: &str,
     model: Option<&str>,
-    max_thinking_tokens: Option<u32>,
+    _max_thinking_tokens: Option<u32>, // Keep parameter for compatibility but don't use it
 ) -> Result<Command, String> {
-    create_windows_command(claude_path, args, project_path, model, max_thinking_tokens)
+    create_windows_command(claude_path, args, project_path, model)
 }
 
 /// Create a Windows command
@@ -501,7 +501,6 @@ fn create_windows_command(
     args: Vec<String>,
     project_path: &str,
     model: Option<&str>,
-    max_thinking_tokens: Option<u32>,
 ) -> Result<Command, String> {
     let mut cmd = create_command_with_env(claude_path);
 
@@ -511,11 +510,8 @@ fn create_windows_command(
         cmd.env("ANTHROPIC_MODEL", model_name);
     }
 
-    // 设置 MAX_THINKING_TOKENS 环境变量以启用扩展思考
-    if let Some(tokens) = max_thinking_tokens {
-        log::info!("Setting MAX_THINKING_TOKENS environment variable to: {}", tokens);
-        cmd.env("MAX_THINKING_TOKENS", tokens.to_string());
-    }
+    // Note: MAX_THINKING_TOKENS is now controlled via settings.json env field
+    // See update_thinking_mode command for managing this setting
 
     // Add all arguments
     cmd.args(&args);
@@ -1367,6 +1363,58 @@ pub async fn save_claude_settings(settings: serde_json::Value) -> Result<String,
 
     log::info!("Settings saved successfully to: {:?}", settings_path);
     Ok("Settings saved successfully".to_string())
+}
+
+/// Updates the thinking mode in settings.json by modifying the MAX_THINKING_TOKENS env variable
+#[tauri::command]
+pub async fn update_thinking_mode(enabled: bool, tokens: Option<u32>) -> Result<String, String> {
+    log::info!("Updating thinking mode: enabled={}, tokens={:?}", enabled, tokens);
+
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let settings_path = claude_dir.join("settings.json");
+
+    // Read existing settings
+    let mut settings = if settings_path.exists() {
+        let content = fs::read_to_string(&settings_path)
+            .map_err(|e| format!("Failed to read settings: {}", e))?;
+        serde_json::from_str::<serde_json::Value>(&content)
+            .map_err(|e| format!("Failed to parse settings: {}", e))?
+    } else {
+        serde_json::json!({})
+    };
+
+    // Ensure env object exists
+    if !settings.is_object() {
+        settings = serde_json::json!({});
+    }
+
+    let settings_obj = settings.as_object_mut().unwrap();
+    if !settings_obj.contains_key("env") {
+        settings_obj.insert("env".to_string(), serde_json::json!({}));
+    }
+
+    let env_obj = settings_obj.get_mut("env").unwrap().as_object_mut()
+        .ok_or("env is not an object")?;
+
+    // Update MAX_THINKING_TOKENS
+    if enabled {
+        let token_value = tokens.unwrap_or(10000);
+        env_obj.insert("MAX_THINKING_TOKENS".to_string(), serde_json::json!(token_value.to_string()));
+        log::info!("Set MAX_THINKING_TOKENS to {}", token_value);
+    } else {
+        env_obj.remove("MAX_THINKING_TOKENS");
+        log::info!("Removed MAX_THINKING_TOKENS from env");
+    }
+
+    // Write back to file
+    let json_string = serde_json::to_string_pretty(&settings)
+        .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+
+    fs::write(&settings_path, &json_string)
+        .map_err(|e| format!("Failed to write settings: {}", e))?;
+
+    log::info!("Thinking mode updated successfully");
+    Ok(format!("Thinking mode {} successfully", if enabled { "enabled" } else { "disabled" }))
 }
 
 /// Recursively finds all CLAUDE.md files in a project directory

@@ -22,6 +22,7 @@ use commands::claude::{
     get_available_tools, validate_permission_config,
     set_custom_claude_path, get_claude_path, clear_custom_claude_path,
     restore_project, list_hidden_projects, delete_project_permanently, enhance_prompt, enhance_prompt_with_gemini,
+    update_thinking_mode,
     ClaudeProcessState,
 };
 use commands::mcp::{
@@ -120,6 +121,7 @@ fn main() {
             check_claude_version,
             save_system_prompt,
             save_claude_settings,
+            update_thinking_mode,
             find_claude_md_files,
             read_claude_md_file,
             save_claude_md_file,

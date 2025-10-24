@@ -596,6 +596,22 @@ export const api = {
   },
 
   /**
+   * Updates the thinking mode by modifying MAX_THINKING_TOKENS in settings.json
+   * @param enabled - Whether to enable thinking mode
+   * @param tokens - Optional token limit (defaults to 10000)
+   * @returns Promise resolving when the settings are updated
+   */
+  async updateThinkingMode(enabled: boolean, tokens?: number): Promise<string> {
+    try {
+      console.log("Updating thinking mode:", { enabled, tokens });
+      return await invoke<string>("update_thinking_mode", { enabled, tokens });
+    } catch (error) {
+      console.error("Failed to update thinking mode:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Finds all CLAUDE.md files in a project directory
    * @param projectPath - The absolute path to the project
    * @returns Promise resolving to an array of CLAUDE.md files
