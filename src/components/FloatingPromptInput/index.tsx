@@ -1,6 +1,6 @@
 import React, { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Maximize2, Minimize2, X, Wand2, ChevronDown, DollarSign } from "lucide-react";
+import { Maximize2, Minimize2, X, Wand2, ChevronDown, DollarSign, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,6 +50,8 @@ const FloatingPromptInputInner = (
     onTogglePlanMode,
     sessionCost,
     hasMessages = false,
+    showCheckpointPanel = false,
+    onToggleCheckpointPanel,
   }: FloatingPromptInputProps,
   ref: React.Ref<FloatingPromptInputRef>,
 ) => {
@@ -545,6 +547,20 @@ const FloatingPromptInputInner = (
                 onToggle={onTogglePlanMode}
                 disabled={disabled}
               />
+            )}
+
+            {/* Checkpoint Toggle */}
+            {onToggleCheckpointPanel && hasMessages && (
+              <Button
+                variant={showCheckpointPanel ? "default" : "outline"}
+                size="default"
+                onClick={onToggleCheckpointPanel}
+                disabled={disabled}
+                className="gap-2 h-8"
+              >
+                <GitBranch className="h-3.5 w-3.5" />
+                <span className="text-xs">检查点</span>
+              </Button>
             )}
 
             {/* Session Cost */}

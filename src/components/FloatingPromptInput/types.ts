@@ -95,6 +95,14 @@ export interface FloatingPromptInputProps {
    * Whether there are messages (to show cost display)
    */
   hasMessages?: boolean;
+  /**
+   * Whether checkpoint panel is shown
+   */
+  showCheckpointPanel?: boolean;
+  /**
+   * Callback when checkpoint button is toggled
+   */
+  onToggleCheckpointPanel?: () => void;
 }
 
 /**

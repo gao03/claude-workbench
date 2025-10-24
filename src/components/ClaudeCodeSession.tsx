@@ -5,8 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   X,
-  Clock,
-  GitBranch
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -517,21 +516,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     };
   }, [effectiveSession, projectPath]);
 
-  // Toolbar for checkpoint button (only show when session exists)
-  const toolbar = effectiveSession && (
-    <div className="flex items-center justify-end px-6 py-2 border-b border-border bg-muted/20">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setShowCheckpointPanel(!showCheckpointPanel)}
-        className="gap-2"
-      >
-        <GitBranch className="h-4 w-4" />
-        {showCheckpointPanel ? "隐藏检查点" : "显示检查点"}
-      </Button>
-    </div>
-  );
-
   const messagesList = (
     <div
       ref={parentRef}
@@ -732,7 +716,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
             <SplitPane
               left={
                 <div className="h-full flex flex-col">
-                  {toolbar}
                   {projectPathInput}
                   {messagesList}
                 </div>
@@ -755,7 +738,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           ) : (
             // Original layout when no preview
             <div className="h-full flex flex-col max-w-5xl mx-auto">
-              {toolbar}
               {projectPathInput}
               {messagesList}
 
@@ -933,6 +915,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               onTogglePlanMode={handleTogglePlanMode}
               sessionCost={formatCost(sessionCost)}
               hasMessages={messages.length > 0}
+              showCheckpointPanel={showCheckpointPanel}
+              onToggleCheckpointPanel={() => setShowCheckpointPanel(!showCheckpointPanel)}
             />
           </div>
 
