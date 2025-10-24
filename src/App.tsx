@@ -285,23 +285,6 @@ function AppContent() {
     }
   };
 
-  /**
-   * Handles navigating to hooks configuration from a project path
-   */
-  const handleProjectSettingsFromPath = (projectPath: string) => {
-    // Create a temporary project object from the path
-    const projectId = projectPath.replace(/[^a-zA-Z0-9]/g, '-');
-    const tempProject: Project = {
-      id: projectId,
-      path: projectPath,
-      sessions: [],
-      created_at: Date.now() / 1000
-    };
-    setProjectForSettings(tempProject);
-    setPreviousView(view);
-    handleViewChange("project-settings");
-  };
-
   const renderContent = () => {
     switch (view) {
       case "enhanced-hooks-manager":
@@ -465,7 +448,6 @@ function AppContent() {
               setIsClaudeStreaming(isStreaming);
               setActiveClaudeSessionId(sessionId);
             }}
-            onProjectSettings={handleProjectSettingsFromPath}
           />
         );
 
@@ -479,7 +461,6 @@ function AppContent() {
               setNewSessionProjectPath(""); // Clear the project path
               handleViewChange("projects");
             }}
-            onProjectSettings={handleProjectSettingsFromPath}
           />
         );
       

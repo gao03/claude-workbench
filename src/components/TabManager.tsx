@@ -32,7 +32,6 @@ import type { Session } from '@/lib/api';
 
 interface TabManagerProps {
   onBack: () => void;
-  onProjectSettings?: (projectPath: string) => void;
   className?: string;
   /**
    * 初始会话信息 - 从 SessionList 跳转时使用
@@ -50,7 +49,6 @@ interface TabManagerProps {
  */
 export const TabManager: React.FC<TabManagerProps> = ({
   onBack,
-  onProjectSettings,
   className,
   initialSession,
   initialProjectPath,
@@ -376,7 +374,6 @@ export const TabManager: React.FC<TabManagerProps> = ({
                 session={tab.session}
                 initialProjectPath={tab.projectPath}
                 isActive={tab.isActive}
-                onProjectSettings={onProjectSettings}
                 onStreamingChange={(isStreaming, sessionId) =>
                   updateTabStreamingStatus(tab.id, isStreaming, sessionId)
                 }
