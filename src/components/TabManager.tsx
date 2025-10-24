@@ -200,7 +200,7 @@ export const TabManager: React.FC<TabManagerProps> = ({
                           tab.isActive
                             ? "bg-muted border border-border text-foreground"
                             : "bg-transparent border border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                          draggedTab === tab.id && "opacity-40",
+                          draggedTab === tab.id && "opacity-50",
                           dragOverIndex === index && draggedTab !== tab.id && "border-primary"
                         )}
                         onClick={() => switchToTab(tab.id)}
