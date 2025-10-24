@@ -58,7 +58,7 @@ const FloatingPromptInputInner = (
   // State
   const [prompt, setPrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelType>(defaultModel);
-  const [selectedThinkingMode, setSelectedThinkingMode] = useState<ThinkingMode>("off");
+  const [selectedThinkingMode, setSelectedThinkingMode] = useState<ThinkingMode>("on");
   const [isExpanded, setIsExpanded] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
 
