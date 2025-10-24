@@ -2,12 +2,9 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FolderOpen,
-  Copy,
   ChevronDown,
-  Settings,
   ChevronUp,
   X,
-  Command,
   DollarSign,
   Clock
 } from "lucide-react";
@@ -15,12 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { api, type Session, type Project } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { type UnlistenFn } from "@tauri-apps/api/event";
@@ -58,10 +49,6 @@ interface ClaudeCodeSessionProps {
    */
   initialProjectPath?: string;
   /**
-   * Callback to open hooks configuration
-   */
-  onProjectSettings?: (projectPath: string) => void;
-  /**
    * Optional className for styling
    */
   className?: string;
@@ -84,7 +71,6 @@ interface ClaudeCodeSessionProps {
 export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   session,
   initialProjectPath = "",
-  onProjectSettings,
   className,
   onStreamingChange,
   isActive = true, // 默认为活跃状态，保持向后兼容
@@ -374,14 +360,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   };
 
   // ✅ handleSendPrompt function is now provided by usePromptExecution Hook (line 207-234)
-
-  const handleCopyAsJsonl = async () => {
-    await SessionHelpers.copyAsJsonl(rawJsonlOutput);
-  };
-
-  const handleCopyAsMarkdown = async () => {
-    await SessionHelpers.copyAsMarkdown(messages, projectPath);
-  };
 
   // Get conversation context for prompt enhancement
   const getConversationContext = (): string[] => {
@@ -759,75 +737,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                 <span>处理中...</span>
               </div>
             )}
-            
-            {/* 合并的项目配置按钮 */}
-            {projectPath && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isLoading}
-                    className="h-8"
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    项目配置
-                    <ChevronDown className="h-3 w-3 ml-1" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-32">
-                  {onProjectSettings && (
-                    <DropdownMenuItem
-                      onClick={() => onProjectSettings(projectPath)}
-                      className="text-xs"
-                    >
-                      <Settings className="h-3 w-3 mr-2" />
-                      Hooks
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem
-                    onClick={() => setShowSlashCommandsSettings(true)}
-                    className="text-xs"
-                  >
-                    <Command className="h-3 w-3 mr-2" />
-                    Commands
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            <div className="flex items-center gap-2">
-              {messages.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <Copy className="h-4 w-4" />
-                      复制输出
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-32">
-                    <DropdownMenuItem
-                      onClick={handleCopyAsMarkdown}
-                      className="text-xs"
-                    >
-                      <Copy className="h-3 w-3 mr-2" />
-                      Markdown
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={handleCopyAsJsonl}
-                      className="text-xs"
-                    >
-                      <Copy className="h-3 w-3 mr-2" />
-                      JSONL
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
           </div>
         </motion.div>
 
