@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, Settings, BarChart3, Network } from "lucide-react";
+import { FileText, Settings, BarChart3, Network, MessageSquare, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClaudeStatusIndicator } from "@/components/ClaudeStatusIndicator";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,14 @@ interface TopbarProps {
    * Callback when MCP is clicked
    */
   onMCPClick: () => void;
+  /**
+   * Callback when Tabs is clicked
+   */
+  onTabsClick?: () => void;
+  /**
+   * Number of open tabs
+   */
+  tabsCount?: number;
   /**
    * Optional messages for cost calculation
    */
@@ -55,6 +63,8 @@ export const Topbar: React.FC<TopbarProps> = ({
   onSettingsClick,
   onUsageClick,
   onMCPClick,
+  onTabsClick,
+  tabsCount = 0,
   messages,
   sessionId,
   className,
@@ -133,10 +143,32 @@ export const Topbar: React.FC<TopbarProps> = ({
           <Network className="mr-2 h-4 w-4" strokeWidth={2} />
           {t('navigation.mcpManager')}
         </Button>
-        
+
         {/* 分隔线 */}
         <div className="h-6 w-px bg-border/50 mx-1" />
-        
+
+        {/* 会话状态指示器 */}
+        {tabsCount > 0 && onTabsClick && (
+          <>
+            <div className="flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs h-8">
+              <MessageSquare className="h-3 w-3" />
+              <span>{tabsCount}</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onTabsClick}
+              className="text-sm font-medium px-3 hover:bg-muted/70 hover:scale-105 transition-all rounded-lg"
+            >
+              <Eye className="mr-2 h-4 w-4" strokeWidth={2} />
+              查看会话
+            </Button>
+
+            {/* 分隔线 */}
+            <div className="h-6 w-px bg-border/50 mx-1" />
+          </>
+        )}
+
         <Button
           variant="secondary"
           size="sm"
