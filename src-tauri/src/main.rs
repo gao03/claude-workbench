@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod checkpoint;
 mod claude_binary;
 mod commands;
 mod process;
@@ -24,6 +25,11 @@ use commands::claude::{
     restore_project, list_hidden_projects, delete_project_permanently, enhance_prompt, enhance_prompt_with_gemini,
     update_thinking_mode,
     ClaudeProcessState,
+    // Checkpoint commands
+    create_checkpoint, restore_checkpoint, list_checkpoints, fork_from_checkpoint,
+    get_session_timeline, update_checkpoint_settings, get_checkpoint_diff,
+    track_checkpoint_message, check_auto_checkpoint, cleanup_old_checkpoints,
+    get_checkpoint_settings, clear_checkpoint_manager, track_session_messages,
 };
 use commands::mcp::{
     mcp_add, mcp_add_from_claude_desktop, mcp_add_json, mcp_export_config, mcp_get, mcp_get_server_status, mcp_list,
@@ -83,6 +89,18 @@ fn main() {
 
             // Initialize Claude process state
             app.manage(ClaudeProcessState::default());
+
+            // Initialize checkpoint state
+            let checkpoint_state = checkpoint::state::CheckpointState::new();
+            let checkpoint_state_clone = checkpoint_state.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Ok(claude_dir) = commands::claude::get_claude_dir() {
+                    checkpoint_state_clone.set_claude_dir(claude_dir).await;
+                } else {
+                    log::error!("Failed to get Claude directory for checkpoint initialization");
+                }
+            });
+            app.manage(checkpoint_state);
 
             // Initialize auto-compact manager for context management
             let auto_compact_manager = Arc::new(commands::context_manager::AutoCompactManager::new());
@@ -232,6 +250,21 @@ fn main() {
             commands::context_commands::stop_auto_compact_monitoring,
             commands::context_commands::start_auto_compact_monitoring,
             commands::context_commands::get_auto_compact_status,
+
+            // Checkpoint Management
+            create_checkpoint,
+            restore_checkpoint,
+            list_checkpoints,
+            fork_from_checkpoint,
+            get_session_timeline,
+            update_checkpoint_settings,
+            get_checkpoint_diff,
+            track_checkpoint_message,
+            check_auto_checkpoint,
+            cleanup_old_checkpoints,
+            get_checkpoint_settings,
+            clear_checkpoint_manager,
+            track_session_messages,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
