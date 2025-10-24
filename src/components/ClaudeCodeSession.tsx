@@ -502,7 +502,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       ref={parentRef}
       className="flex-1 overflow-y-auto relative"
       style={{
-        paddingBottom: 'calc(100px + env(safe-area-inset-bottom))', // 优化底部空间，让内容更贴近输入框
+        paddingBottom: 'calc(140px + env(safe-area-inset-bottom))', // 增加底部空间，避免与输入框重叠
         paddingTop: '20px',
       }}
     >
@@ -800,9 +800,9 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ delay: 0.5 }}
-              className="fixed right-6 z-40"
+              className="absolute right-6 z-40"
               style={{
-                bottom: 'calc(120px + env(safe-area-inset-bottom))', // 确保在输入区域上方
+                bottom: 'calc(145px + env(safe-area-inset-bottom))', // 确保在输入区域上方且有足够间距
               }}
             >
               <div className="flex flex-col gap-1.5">
