@@ -1,8 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, MoreHorizontal, MessageSquare, ArrowLeft, Eye } from 'lucide-react';
+import { X, Plus, MoreHorizontal, MessageSquare, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -285,44 +284,6 @@ export const TabManager: React.FC<TabManagerProps> = ({
                 <TooltipContent>新建会话</TooltipContent>
               </Tooltip>
             </div>
-
-            {/* 分隔线 */}
-            <div className="h-4 w-px bg-border" />
-
-            {/* 标签页状态指示器 - 集成到工具栏 */}
-            {tabs.length > 0 && (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge
-                      variant="secondary"
-                      className="flex items-center gap-1 text-xs h-6 px-2"
-                    >
-                      <MessageSquare className="h-3 w-3" />
-                      <span>{tabs.length}</span>
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{tabs.length} 个会话已打开</TooltipContent>
-                </Tooltip>
-
-                {/* 查看会话按钮 */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className="flex items-center gap-1 h-7 px-2 rounded text-xs hover:bg-muted transition-colors"
-                      onClick={() => {
-                        // 可以添加"查看所有会话"的功能，例如显示侧边栏
-                        console.log('查看所有会话');
-                      }}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span>查看会话</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>查看所有已打开的会话</TooltipContent>
-                </Tooltip>
-              </>
-            )}
 
             {/* 分隔线 */}
             <div className="h-4 w-px bg-border" />
