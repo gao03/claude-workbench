@@ -5,13 +5,11 @@ import {
   ChevronDown,
   ChevronUp,
   X,
-  DollarSign,
   Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { api, type Session, type Project } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { type UnlistenFn } from "@tauri-apps/api/event";
@@ -689,56 +687,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   return (
     <div className={cn("flex flex-col h-full bg-background", className)}>
       <div className="w-full h-full flex flex-col">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex items-center justify-between p-4 border-b border-border"
-        >
-          <div className="flex items-center gap-2">
-              {/* Plan Mode Indicator */}
-              {isPlanMode && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Badge 
-                    variant="secondary" 
-                    className="ml-2 flex items-center gap-1 px-2 py-0.5 h-6 bg-blue-50 text-blue-700 border-blue-200"
-                  >
-                    <span className="text-xs font-semibold">🔍 Plan Mode</span>
-                  </Badge>
-                </motion.div>
-              )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Session Cost Display */}
-            {messages.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-8">
-                  <DollarSign className="h-3 w-3 text-green-600" />
-                  <span className="font-mono text-xs">{formatCost(sessionCost)}</span>
-                </Badge>
-              </motion.div>
-            )}
-
-            {/* Loading Indicator in Toolbar */}
-            {isLoading && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-600">
-                <div className="rotating-symbol text-blue-600" style={{ width: '12px', height: '12px' }} />
-                <span>处理中...</span>
-              </div>
-            )}
-          </div>
-        </motion.div>
 
         {/* Main Content Area */}
         <div className={cn(
@@ -946,7 +894,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               getConversationContext={getConversationContext}
               isPlanMode={isPlanMode}
               onTogglePlanMode={handleTogglePlanMode}
-              // Removed hasActiveSession - now using Claude Code SDK directly
+              sessionCost={formatCost(sessionCost)}
+              hasMessages={messages.length > 0}
             />
           </div>
 

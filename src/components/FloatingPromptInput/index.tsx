@@ -1,9 +1,10 @@
 import React, { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Maximize2, Minimize2, X, Wand2, ChevronDown } from "lucide-react";
+import { Maximize2, Minimize2, X, Wand2, ChevronDown, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FilePicker } from "../FilePicker";
 import { SlashCommandPicker } from "../SlashCommandPicker";
@@ -46,6 +47,8 @@ const FloatingPromptInputInner = (
     getConversationContext,
     isPlanMode = false,
     onTogglePlanMode,
+    sessionCost,
+    hasMessages = false,
   }: FloatingPromptInputProps,
   ref: React.Ref<FloatingPromptInputRef>,
 ) => {
@@ -398,6 +401,40 @@ const FloatingPromptInputInner = (
         )}
 
         <div className="p-4">
+          {/* Session Cost Display and Loading Indicator */}
+          <div className="flex items-center justify-between mb-3">
+            {/* Session Cost - Left side above Plan Mode button */}
+            {hasMessages && sessionCost && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Badge variant="outline" className="flex items-center gap-1 px-2 py-1">
+                  <DollarSign className="h-3 w-3 text-green-600" />
+                  <span className="font-mono text-xs">{sessionCost}</span>
+                </Badge>
+              </motion.div>
+            )}
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Loading Indicator - Right side above Send button */}
+            {isLoading && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-600"
+              >
+                <div className="rotating-symbol text-blue-600" style={{ width: '12px', height: '12px' }} />
+                <span>处理中...</span>
+              </motion.div>
+            )}
+          </div>
+
           <div className="flex items-end gap-3">
             {/* Model Selector */}
             <ModelSelector

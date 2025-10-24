@@ -86,6 +86,14 @@ export interface FloatingPromptInputProps {
    * Callback when Plan Mode is toggled
    */
   onTogglePlanMode?: () => void;
+  /**
+   * Session cost for display (formatted string like "$0.05")
+   */
+  sessionCost?: string;
+  /**
+   * Whether there are messages (to show cost display)
+   */
+  hasMessages?: boolean;
 }
 
 /**

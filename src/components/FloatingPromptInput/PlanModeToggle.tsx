@@ -28,10 +28,14 @@ export const PlanModeToggle: React.FC<PlanModeToggleProps> = ({
             onClick={onToggle}
             disabled={disabled}
             className={cn(
-              "gap-2",
+              "gap-2 relative",
               isPlanMode && "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
             )}
           >
+            {/* Active indicator */}
+            {isPlanMode && (
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-green-500 rounded-full border-2 border-background animate-pulse" />
+            )}
             <Search className="h-4 w-4" />
             <span className="text-sm font-medium">Plan</span>
           </Button>
