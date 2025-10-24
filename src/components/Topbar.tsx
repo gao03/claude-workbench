@@ -147,13 +147,15 @@ export const Topbar: React.FC<TopbarProps> = ({
         {/* 分隔线 */}
         <div className="h-6 w-px bg-border/50 mx-1" />
 
-        {/* 会话状态指示器 */}
-        {tabsCount > 0 && onTabsClick && (
+        {/* 会话状态指示器 - 始终显示，即使没有打开的会话 */}
+        {onTabsClick && (
           <>
-            <div className="flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs h-8">
-              <MessageSquare className="h-3 w-3" />
-              <span>{tabsCount}</span>
-            </div>
+            {tabsCount > 0 && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs h-8">
+                <MessageSquare className="h-3 w-3" />
+                <span>{tabsCount}</span>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -162,6 +164,7 @@ export const Topbar: React.FC<TopbarProps> = ({
             >
               <Eye className="mr-2 h-4 w-4" strokeWidth={2} />
               查看会话
+              {tabsCount > 0 && <span className="ml-1.5 text-xs">({tabsCount})</span>}
             </Button>
 
             {/* 分隔线 */}
