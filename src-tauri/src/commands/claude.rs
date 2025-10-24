@@ -1746,7 +1746,7 @@ pub async fn resume_claude_code(
         Err(resume_error) => {
             log::warn!("Resume failed: {}, trying continue mode as fallback", resume_error);
             // Fallback to continue mode
-            continue_claude_code(app, project_path, prompt, model, Some(plan_mode)).await
+            continue_claude_code(app, project_path, prompt, model, Some(plan_mode), max_thinking_tokens).await
         }
     }
 }
