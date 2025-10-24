@@ -57,6 +57,7 @@ pub struct ClaudeExecutionConfig {
     pub output_format: OutputFormat,
     pub timeout_seconds: Option<u32>,
     pub max_tokens: Option<u32>,
+    pub max_thinking_tokens: Option<u32>,
     pub verbose: bool,
     pub permissions: ClaudePermissionConfig,
 }
@@ -74,6 +75,7 @@ impl Default for ClaudeExecutionConfig {
             output_format: OutputFormat::StreamJson,
             timeout_seconds: None,
             max_tokens: None,
+            max_thinking_tokens: None,
             verbose: true,
             permissions: ClaudePermissionConfig::default(),
         }
@@ -159,10 +161,16 @@ pub fn build_execution_args(
         args.push("--max-tokens".to_string());
         args.push(max_tokens.to_string());
     }
-    
+
+    // 添加thinking token限制（Extended Thinking 功能）
+    if let Some(max_thinking_tokens) = config.max_thinking_tokens {
+        args.push("--maxThinkingTokens".to_string());
+        args.push(max_thinking_tokens.to_string());
+    }
+
     // 添加权限参数
     args.extend(build_permission_args(&config.permissions));
-    
+
     args
 }
 

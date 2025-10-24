@@ -27,47 +27,49 @@ export const MODELS: ModelConfig[] = [
 
 /**
  * Thinking modes configuration
+ * Now using maxThinkingTokens parameter instead of phrases
  */
 export const THINKING_MODES: ThinkingModeConfig[] = [
   {
     id: "auto",
     name: "Auto",
     description: "让 Claude 自己决定",
-    level: 0
+    level: 0,
+    tokens: undefined // No extended thinking
   },
   {
     id: "think",
     name: "Think",
-    description: "基本推理",
+    description: "基本推理 (5K tokens)",
     level: 1,
-    phrase: "think"
+    tokens: 5000
   },
   {
     id: "keep_thinking",
     name: "持续思考",
-    description: "持续深入思考",
+    description: "持续深入思考 (10K tokens)",
     level: 2,
-    phrase: "keep thinking"
+    tokens: 10000
   },
   {
     id: "think_more",
     name: "更多思考",
-    description: "进行更深层次的思考",
+    description: "进行更深层次的思考 (15K tokens)",
     level: 3,
-    phrase: "think more"
+    tokens: 15000
   },
   {
     id: "think_a_lot",
     name: "大量思考",
-    description: "进行广泛而深入的思考",
+    description: "进行广泛而深入的思考 (20K tokens)",
     level: 4,
-    phrase: "think a lot"
+    tokens: 20000
   },
   {
     id: "think_longer",
     name: "长时间思考",
-    description: "进行长时间的深度分析",
+    description: "进行长时间的深度分析 (30K tokens)",
     level: 5,
-    phrase: "think longer"
+    tokens: 30000
   }
 ];

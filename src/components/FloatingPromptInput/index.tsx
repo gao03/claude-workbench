@@ -174,26 +174,26 @@ const FloatingPromptInputInner = (
   const handleSend = () => {
     if (prompt.trim() && !disabled) {
       let finalPrompt = prompt.trim();
-      
+
       // Add image attachment paths to the prompt
       if (imageAttachments.length > 0) {
         const imagePathMentions = imageAttachments.map(attachment => {
           return attachment.filePath.includes(' ') ? `@"${attachment.filePath}"` : `@${attachment.filePath}`;
         }).join(' ');
-        
+
         finalPrompt = finalPrompt + (finalPrompt.endsWith(' ') || finalPrompt === '' ? '' : ' ') + imagePathMentions;
       }
-      
-      // Extract thinking instruction separately
-      const thinkingMode = THINKING_MODES.find(m => m.id === selectedThinkingMode);
-      const thinkingInstruction = thinkingMode?.phrase || undefined;
 
-      // Send prompt and thinking instruction separately
-      onSend(finalPrompt, selectedModel, thinkingInstruction);
+      // Get maxThinkingTokens from selected mode
+      const thinkingMode = THINKING_MODES.find(m => m.id === selectedThinkingMode);
+      const maxThinkingTokens = thinkingMode?.tokens; // undefined for "auto" mode
+
+      // Send prompt and maxThinkingTokens separately
+      onSend(finalPrompt, selectedModel, maxThinkingTokens);
       setPrompt("");
       setImageAttachments([]);
       setEmbeddedImages([]);
-      
+
       // Reset textarea height after sending
       setTimeout(() => {
         const textarea = isExpanded ? expandedTextareaRef.current : textareaRef.current;

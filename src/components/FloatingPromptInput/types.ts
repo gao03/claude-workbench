@@ -28,7 +28,7 @@ export interface ThinkingModeConfig {
   name: string;
   description: string;
   level: number; // 0-5 for visual indicator
-  phrase?: string; // The phrase to append
+  tokens?: number; // Maximum thinking tokens (undefined = no extended thinking)
 }
 
 /**
@@ -47,9 +47,9 @@ export interface ImageAttachment {
  */
 export interface FloatingPromptInputProps {
   /**
-   * Callback when prompt is sent - includes thinking instruction separately
+   * Callback when prompt is sent - includes maxThinkingTokens separately
    */
-  onSend: (prompt: string, model: ModelType, thinkingInstruction?: string) => void;
+  onSend: (prompt: string, model: ModelType, maxThinkingTokens?: number) => void;
   /**
    * Whether the input is loading
    */

@@ -63,7 +63,7 @@ interface UsePromptExecutionConfig {
 }
 
 interface UsePromptExecutionReturn {
-  handleSendPrompt: (prompt: string, model: 'sonnet' | 'opus' | 'sonnet1m', thinkingInstruction?: string) => Promise<void>;
+  handleSendPrompt: (prompt: string, model: 'sonnet' | 'opus' | 'sonnet1m', maxThinkingTokens?: number) => Promise<void>;
 }
 
 // ============================================================================
@@ -104,7 +104,7 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
   const handleSendPrompt = useCallback(async (
     prompt: string,
     model: 'sonnet' | 'opus' | 'sonnet1m',
-    thinkingInstruction?: string
+    maxThinkingTokens?: number
   ) => {
     console.log('[usePromptExecution] handleSendPrompt called with:', {
       prompt,
@@ -112,7 +112,7 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
       projectPath,
       claudeSessionId,
       effectiveSession,
-      thinkingInstruction
+      maxThinkingTokens
     });
 
     // ========================================================================
@@ -350,15 +350,12 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
         }
 
         // ========================================================================
-        // 4️⃣ Thinking Instruction Processing
+        // 4️⃣ maxThinkingTokens Processing (No longer modifying prompt)
         // ========================================================================
 
-        // Add thinking instruction AFTER translation, not before
-        if (thinkingInstruction) {
-          console.log('[usePromptExecution] Adding thinking instruction after translation:', thinkingInstruction);
-          const endsWithPunctuation = /[.!?]$/.test(processedPrompt.trim());
-          const separator = endsWithPunctuation ? ' ' : '. ';
-          processedPrompt = `${processedPrompt}${separator}${thinkingInstruction}.`;
+        // maxThinkingTokens is now passed as API parameter, not added to prompt
+        if (maxThinkingTokens) {
+          console.log('[usePromptExecution] Extended thinking enabled with maxThinkingTokens:', maxThinkingTokens);
         }
 
         // ========================================================================
@@ -396,17 +393,17 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
         // Resume existing session
         console.log('[usePromptExecution] Resuming session:', effectiveSession.id);
         try {
-          await api.resumeClaudeCode(projectPath, effectiveSession.id, processedPrompt, model, isPlanMode);
+          await api.resumeClaudeCode(projectPath, effectiveSession.id, processedPrompt, model, isPlanMode, maxThinkingTokens);
         } catch (resumeError) {
           console.warn('[usePromptExecution] Resume failed, falling back to continue mode:', resumeError);
           // Fallback to continue mode if resume fails
-          await api.continueClaudeCode(projectPath, processedPrompt, model, isPlanMode);
+          await api.continueClaudeCode(projectPath, processedPrompt, model, isPlanMode, maxThinkingTokens);
         }
       } else {
         // Start new session
         console.log('[usePromptExecution] Starting new session');
         setIsFirstPrompt(false);
-        await api.executeClaudeCode(projectPath, processedPrompt, model, isPlanMode);
+        await api.executeClaudeCode(projectPath, processedPrompt, model, isPlanMode, maxThinkingTokens);
       }
 
     } catch (err) {
