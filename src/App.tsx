@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, MessageSquare, Eye } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { OutputCacheProvider } from "@/lib/outputCache";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,7 @@ function App() {
  */
 function AppContent() {
   const { t } = useTranslation();
-  const { openSessionInBackground, switchToTab } = useTabs();
+  const { openSessionInBackground, switchToTab, getTabStats } = useTabs();
   const [view, setView] = useState<View>("projects");
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -315,11 +315,34 @@ function AppContent() {
             <div className="container mx-auto p-6">
               {/* Header - 移除动画避免重复触发 */}
               <div className="mb-6">
-                <div className="mb-4">
-                  <h1 className="text-3xl font-bold tracking-tight">{t('common.ccProjectsTitle')}</h1>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('common.browseClaudeSessions')}
-                  </p>
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('common.ccProjectsTitle')}</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t('common.browseClaudeSessions')}
+                    </p>
+                  </div>
+
+                  {/* 会话状态指示器 */}
+                  <div className="flex items-center gap-2">
+                    {getTabStats().total > 0 && (
+                      <>
+                        <div className="flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs h-7">
+                          <MessageSquare className="h-3 w-3" />
+                          <span>{getTabStats().total}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => handleViewChange("claude-tab-manager")}
+                        >
+                          <Eye className="h-3.5 w-3.5 mr-1" />
+                          查看会话
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
