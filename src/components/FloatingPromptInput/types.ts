@@ -7,8 +7,9 @@ export type ModelType = "sonnet" | "opus" | "sonnet1m";
 
 /**
  * Thinking mode type definition
+ * Simplified to on/off (conforming to official Claude Code standard)
  */
-export type ThinkingMode = "auto" | "think" | "keep_thinking" | "think_more" | "think_a_lot" | "think_longer";
+export type ThinkingMode = "off" | "on";
 
 /**
  * Model configuration

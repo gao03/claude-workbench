@@ -10,7 +10,7 @@ import { FilePicker } from "../FilePicker";
 import { SlashCommandPicker } from "../SlashCommandPicker";
 import { ImagePreview } from "../ImagePreview";
 import { ModelSelector } from "./ModelSelector";
-import { ThinkingModeSelector } from "./ThinkingModeSelector";
+import { ThinkingModeToggle } from "./ThinkingModeToggle";
 import { PlanModeToggle } from "./PlanModeToggle";
 import { FloatingPromptInputProps, FloatingPromptInputRef, ThinkingMode, ModelType } from "./types";
 import { THINKING_MODES } from "./constants";
@@ -55,7 +55,7 @@ const FloatingPromptInputInner = (
   // State
   const [prompt, setPrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelType>(defaultModel);
-  const [selectedThinkingMode, setSelectedThinkingMode] = useState<ThinkingMode>("auto");
+  const [selectedThinkingMode, setSelectedThinkingMode] = useState<ThinkingMode>("off");
   const [isExpanded, setIsExpanded] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
 
@@ -143,6 +143,11 @@ const FloatingPromptInputInner = (
     addImage,
   }));
 
+  // Toggle thinking mode
+  const handleToggleThinkingMode = () => {
+    setSelectedThinkingMode(prev => prev === "off" ? "on" : "off");
+  };
+
   // Focus management when expanded state changes
   useEffect(() => {
     if (isExpanded && expandedTextareaRef.current) {
@@ -169,6 +174,26 @@ const FloatingPromptInputInner = (
     const textarea = isExpanded ? expandedTextareaRef.current : textareaRef.current;
     adjustTextareaHeight(textarea);
   }, [prompt, isExpanded]);
+
+  // Tab key listener for thinking mode toggle
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Tab key (without Shift) to toggle thinking mode
+      if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Only if not in textarea (to avoid interfering with textarea Tab)
+        const activeElement = document.activeElement;
+        const isInTextarea = activeElement?.tagName === 'TEXTAREA';
+
+        if (!isInTextarea && !disabled) {
+          e.preventDefault();
+          handleToggleThinkingMode();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [disabled]);
 
   // Event handlers
   const handleSend = () => {
@@ -334,9 +359,9 @@ const FloatingPromptInputInner = (
                     onModelChange={setSelectedModel}
                     disabled={disabled}
                   />
-                  <ThinkingModeSelector
-                    selectedMode={selectedThinkingMode}
-                    onModeChange={setSelectedThinkingMode}
+                  <ThinkingModeToggle
+                    isEnabled={selectedThinkingMode === "on"}
+                    onToggle={handleToggleThinkingMode}
                     disabled={disabled}
                   />
                   {onTogglePlanMode && (
@@ -493,10 +518,10 @@ const FloatingPromptInputInner = (
               disabled={disabled}
             />
 
-            {/* Thinking Mode Selector */}
-            <ThinkingModeSelector
-              selectedMode={selectedThinkingMode}
-              onModeChange={setSelectedThinkingMode}
+            {/* Thinking Mode Toggle */}
+            <ThinkingModeToggle
+              isEnabled={selectedThinkingMode === "on"}
+              onToggle={handleToggleThinkingMode}
               disabled={disabled}
             />
 
