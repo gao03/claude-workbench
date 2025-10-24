@@ -401,39 +401,48 @@ const FloatingPromptInputInner = (
         )}
 
         <div className="p-4">
-          {/* Session Cost Display and Loading Indicator */}
-          <div className="flex items-center justify-between mb-3">
-            {/* Session Cost - Left side above Plan Mode button */}
-            {hasMessages && sessionCost && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Badge variant="outline" className="flex items-center gap-1 px-2 py-1">
-                  <DollarSign className="h-3 w-3 text-green-600" />
-                  <span className="font-mono text-xs">{sessionCost}</span>
-                </Badge>
-              </motion.div>
-            )}
+          {/* Info bar above controls */}
+          {(hasMessages && sessionCost) || isLoading ? (
+            <div className="flex items-center mb-2">
+              {/* Left section - aligns with Model and Thinking selectors */}
+              <div className="flex items-center gap-3">
+                {/* Placeholder to match Model selector width */}
+                <div style={{ width: '120px' }} />
+                {/* Placeholder to match Thinking selector width */}
+                <div style={{ width: '120px' }} />
 
-            {/* Spacer */}
-            <div className="flex-1" />
+                {/* Session Cost - above Plan Mode button */}
+                {hasMessages && sessionCost && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-6">
+                      <DollarSign className="h-3 w-3 text-green-600" />
+                      <span className="font-mono text-xs">{sessionCost}</span>
+                    </Badge>
+                  </motion.div>
+                )}
+              </div>
 
-            {/* Loading Indicator - Right side above Send button */}
-            {isLoading && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-600"
-              >
-                <div className="rotating-symbol text-blue-600" style={{ width: '12px', height: '12px' }} />
-                <span>处理中...</span>
-              </motion.div>
-            )}
-          </div>
+              {/* Right section - Loading Indicator */}
+              <div className="flex-1 flex justify-end">
+                {isLoading && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-600"
+                  >
+                    <div className="rotating-symbol text-blue-600" style={{ width: '12px', height: '12px' }} />
+                    <span>处理中...</span>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex items-end gap-3">
             {/* Model Selector */}
