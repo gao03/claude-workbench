@@ -426,8 +426,9 @@ const FloatingPromptInputInner = (
           />
         )}
 
-        <div className="p-4">
-          <div className="flex items-end gap-3">
+        <div className="p-4 space-y-2">
+          {/* First Row: All Controls */}
+          <div className="flex items-center gap-2">
             {/* Model Selector */}
             <ModelSelector
               selectedModel={selectedModel}
@@ -442,88 +443,45 @@ const FloatingPromptInputInner = (
               disabled={disabled}
             />
 
-            {/* Plan Mode Toggle with Session Cost above it */}
+            {/* Plan Mode Toggle */}
             {onTogglePlanMode && (
-              <div className="flex flex-col gap-1">
-                {/* Session Cost - directly above Plan button */}
-                {hasMessages && sessionCost && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.2 }}
-                    className="self-start"
-                  >
-                    <Badge variant="outline" className="flex items-center gap-1 px-2 py-0.5 h-5">
-                      <DollarSign className="h-3 w-3 text-green-600" />
-                      <span className="font-mono text-[10px]">{sessionCost}</span>
-                    </Badge>
-                  </motion.div>
-                )}
-
-                <PlanModeToggle
-                  isPlanMode={isPlanMode || false}
-                  onToggle={onTogglePlanMode}
-                  disabled={disabled}
-                />
-              </div>
+              <PlanModeToggle
+                isPlanMode={isPlanMode || false}
+                onToggle={onTogglePlanMode}
+                disabled={disabled}
+              />
             )}
 
-            {/* Prompt Input */}
-            <div className="flex-1 relative">
-              <Textarea
-                ref={textareaRef}
-                value={prompt}
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                placeholder={dragActive ? "拖放图片到这里..." : "向 Claude 提问..."}
-                disabled={disabled}
-                className={cn(
-                  "min-h-[56px] max-h-[160px] resize-none pr-10 overflow-y-auto",
-                  dragActive && "border-primary"
-                )}
-                rows={1}
-                style={{ height: 'auto' }}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              />
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsExpanded(true)}
-                disabled={disabled}
-                className="absolute right-1 bottom-1 h-8 w-8"
+            {/* Session Cost */}
+            {hasMessages && sessionCost && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2 }}
               >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
+                <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-8">
+                  <DollarSign className="h-3 w-3 text-green-600" />
+                  <span className="font-mono text-xs">{sessionCost}</span>
+                </Badge>
+              </motion.div>
+            )}
 
-              {/* File Picker */}
-              <AnimatePresence>
-                {showFilePicker && projectPath && projectPath.trim() && (
-                  <FilePicker
-                    basePath={projectPath.trim()}
-                    onSelect={handleFileSelect}
-                    onClose={handleFilePickerClose}
-                    initialQuery={filePickerQuery}
-                  />
-                )}
-              </AnimatePresence>
+            {/* Loading Indicator */}
+            {isLoading && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-600 h-8"
+              >
+                <div className="rotating-symbol text-blue-600" style={{ width: '12px', height: '12px' }} />
+                <span>处理中</span>
+              </motion.div>
+            )}
 
-              {/* Slash Command Picker */}
-              <AnimatePresence>
-                {showSlashCommandPicker && (
-                  <SlashCommandPicker
-                    projectPath={projectPath}
-                    onSelect={handleSlashCommandSelect}
-                    onClose={handleSlashCommandPickerClose}
-                    initialQuery={slashCommandQuery}
-                  />
-                )}
-              </AnimatePresence>
-            </div>
+            {/* Spacer */}
+            <div className="flex-1" />
 
             {/* Enhance Button */}
             <DropdownMenu>
@@ -532,10 +490,10 @@ const FloatingPromptInputInner = (
                   variant="outline"
                   size="default"
                   disabled={disabled || isEnhancing}
-                  className="gap-2"
+                  className="gap-2 h-8"
                 >
-                  <Wand2 className="h-4 w-4" />
-                  {isEnhancing ? "优化中..." : "优化提示词"}
+                  <Wand2 className="h-3.5 w-3.5" />
+                  <span className="text-xs">{isEnhancing ? "优化中..." : "优化"}</span>
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -549,41 +507,84 @@ const FloatingPromptInputInner = (
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Send/Cancel Button with Loading Indicator above */}
-            <div className="flex flex-col gap-1">
-              {/* Loading Indicator - directly above Send/Cancel button */}
-              {isLoading && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-md self-end"
-                >
-                  <div className="rotating-symbol text-blue-600" style={{ width: '10px', height: '10px' }} />
-                  <span className="text-[10px] text-blue-600">处理中</span>
-                </motion.div>
-              )}
+            {/* Send/Cancel Button */}
+            {isLoading ? (
+              <Button
+                onClick={onCancel}
+                variant="destructive"
+                size="default"
+                disabled={disabled}
+                className="h-8"
+              >
+                取消
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSend}
+                disabled={!prompt.trim() || disabled}
+                size="default"
+                className="h-8"
+              >
+                发送
+              </Button>
+            )}
+          </div>
 
-              {isLoading ? (
-                <Button
-                  onClick={onCancel}
-                  variant="destructive"
-                  size="default"
-                  disabled={disabled}
-                >
-                  取消
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSend}
-                  disabled={!prompt.trim() || disabled}
-                  size="default"
-                >
-                  发送
-                </Button>
+          {/* Second Row: Prompt Input */}
+          <div className="relative">
+            <Textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={dragActive ? "拖放图片到这里..." : "向 Claude 提问..."}
+              disabled={disabled}
+              className={cn(
+                "min-h-[56px] max-h-[160px] resize-none pr-10 overflow-y-auto",
+                dragActive && "border-primary"
               )}
-            </div>
+              rows={1}
+              style={{ height: 'auto' }}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            />
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsExpanded(true)}
+              disabled={disabled}
+              className="absolute right-1 bottom-1 h-8 w-8"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+
+            {/* File Picker */}
+            <AnimatePresence>
+              {showFilePicker && projectPath && projectPath.trim() && (
+                <FilePicker
+                  basePath={projectPath.trim()}
+                  onSelect={handleFileSelect}
+                  onClose={handleFilePickerClose}
+                  initialQuery={filePickerQuery}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Slash Command Picker */}
+            <AnimatePresence>
+              {showSlashCommandPicker && (
+                <SlashCommandPicker
+                  projectPath={projectPath}
+                  onSelect={handleSlashCommandSelect}
+                  onClose={handleSlashCommandPickerClose}
+                  initialQuery={slashCommandQuery}
+                />
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
