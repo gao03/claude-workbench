@@ -348,13 +348,39 @@ const FloatingPromptInputInner = (
                   )}
                 </div>
 
-                <Button
-                  onClick={handleSend}
-                  disabled={!prompt.trim() || disabled}
-                  size="default"
-                >
-                  发送
-                </Button>
+                <div className="flex items-center gap-2">
+                  {/* Enhance Button in Expanded Mode */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="default"
+                        disabled={disabled || isEnhancing}
+                        className="gap-2"
+                      >
+                        <Wand2 className="h-4 w-4" />
+                        {isEnhancing ? "优化中..." : "优化提示词"}
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleEnhancePrompt}>
+                        使用 Claude
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleEnhancePromptWithGemini}>
+                        使用 Gemini
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Button
+                    onClick={handleSend}
+                    disabled={!prompt.trim() || disabled}
+                    size="default"
+                  >
+                    发送
+                  </Button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
