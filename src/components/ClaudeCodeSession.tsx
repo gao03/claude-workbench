@@ -5,7 +5,8 @@ import {
   ChevronDown,
   ChevronUp,
   X,
-  Clock
+  Clock,
+  GitBranch
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import { StreamMessageV2 } from "./message";
 import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { SlashCommandsManager } from "./SlashCommandsManager";
+import { TimelineNavigator } from "./TimelineNavigator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { SplitPane } from "@/components/ui/split-pane";
 import { WebviewPreview } from "./WebviewPreview";
@@ -84,6 +86,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const [extractedSessionInfo, setExtractedSessionInfo] = useState<{ sessionId: string; projectId: string } | null>(null);
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
   const [showSlashCommandsSettings, setShowSlashCommandsSettings] = useState(false);
+
+  // Checkpoint state
+  const [showCheckpointPanel, setShowCheckpointPanel] = useState(false);
+  const [timelineRefreshVersion, setTimelineRefreshVersion] = useState(0);
 
   // Plan Mode state
   const [isPlanMode, setIsPlanMode] = useState(false);
@@ -477,7 +483,21 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     setSplitPosition(newState.splitPosition);
   };
 
+  // Checkpoint handlers
+  const handleCheckpointSelect = useCallback((checkpoint: any) => {
+    console.log("Selected checkpoint:", checkpoint);
+    // 可以在这里处理选中检查点后的逻辑
+  }, []);
 
+  const handleCheckpointFork = useCallback((checkpointId: string) => {
+    console.log("Fork from checkpoint:", checkpointId);
+    // 可以在这里实现从检查点创建新会话的逻辑
+  }, []);
+
+  const handleCheckpointCreated = useCallback(() => {
+    // 当创建新检查点时，刷新时间线
+    setTimelineRefreshVersion(prev => prev + 1);
+  }, []);
 
   // Cleanup event listeners and track mount state
   useEffect(() => {
@@ -496,6 +516,21 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       setClaudeSessionId(null);
     };
   }, [effectiveSession, projectPath]);
+
+  // Toolbar for checkpoint button (only show when session exists)
+  const toolbar = effectiveSession && (
+    <div className="flex items-center justify-end px-6 py-2 border-b border-border bg-muted/20">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setShowCheckpointPanel(!showCheckpointPanel)}
+        className="gap-2"
+      >
+        <GitBranch className="h-4 w-4" />
+        {showCheckpointPanel ? "隐藏检查点" : "显示检查点"}
+      </Button>
+    </div>
+  );
 
   const messagesList = (
     <div
@@ -697,6 +732,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
             <SplitPane
               left={
                 <div className="h-full flex flex-col">
+                  {toolbar}
                   {projectPathInput}
                   {messagesList}
                 </div>
@@ -719,6 +755,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           ) : (
             // Original layout when no preview
             <div className="h-full flex flex-col max-w-5xl mx-auto">
+              {toolbar}
               {projectPathInput}
               {messagesList}
 
@@ -914,6 +951,32 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
             </DialogHeader>
             <div className="flex-1 overflow-y-auto">
               <SlashCommandsManager projectPath={projectPath} />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Checkpoint Timeline Dialog */}
+      {showCheckpointPanel && effectiveSession && (
+        <Dialog open={showCheckpointPanel} onOpenChange={setShowCheckpointPanel}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>会话检查点时间线</DialogTitle>
+              <DialogDescription>
+                管理当前会话的检查点，可以创建、恢复或比较不同的检查点状态
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto">
+              <TimelineNavigator
+                sessionId={effectiveSession.id}
+                projectId={effectiveSession.project_id}
+                projectPath={projectPath}
+                currentMessageIndex={messages.length}
+                onCheckpointSelect={handleCheckpointSelect}
+                onFork={handleCheckpointFork}
+                refreshVersion={timelineRefreshVersion}
+                onCheckpointCreated={handleCheckpointCreated}
+              />
             </div>
           </DialogContent>
         </Dialog>
