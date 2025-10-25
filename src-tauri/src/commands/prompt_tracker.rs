@@ -12,8 +12,8 @@ use super::claude::get_claude_dir;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PromptRecord {
-    /// Index of this prompt (0, 1, 2...)
-    pub index: usize,
+    /// Unique message ID
+    pub message_id: String,
     /// The prompt text user entered
     pub text: String,
     /// Git commit before sending this prompt
@@ -34,25 +34,25 @@ fn get_prompts_file_path(session_id: &str, project_id: &str) -> Result<PathBuf> 
     Ok(path)
 }
 
-/// Load prompts from file
-fn load_prompts(session_id: &str, project_id: &str) -> Result<Vec<PromptRecord>> {
+/// Load prompts from file (HashMap keyed by message_id)
+fn load_prompts(session_id: &str, project_id: &str) -> Result<std::collections::HashMap<String, PromptRecord>> {
     let path = get_prompts_file_path(session_id, project_id)?;
     
     if !path.exists() {
-        return Ok(Vec::new());
+        return Ok(std::collections::HashMap::new());
     }
     
     let content = fs::read_to_string(&path)
         .context("Failed to read prompts file")?;
     
-    let prompts: Vec<PromptRecord> = serde_json::from_str(&content)
+    let prompts: std::collections::HashMap<String, PromptRecord> = serde_json::from_str(&content)
         .context("Failed to parse prompts file")?;
     
     Ok(prompts)
 }
 
 /// Save prompts to file
-fn save_prompts(session_id: &str, project_id: &str, prompts: &[PromptRecord]) -> Result<()> {
+fn save_prompts(session_id: &str, project_id: &str, prompts: &std::collections::HashMap<String, PromptRecord>) -> Result<()> {
     let path = get_prompts_file_path(session_id, project_id)?;
     
     // Ensure directory exists
@@ -68,11 +68,11 @@ fn save_prompts(session_id: &str, project_id: &str, prompts: &[PromptRecord]) ->
     Ok(())
 }
 
-/// Truncate session JSONL file to before a specific prompt
-fn truncate_session_to_prompt(
+/// Truncate session JSONL file to before a specific message
+fn truncate_session_to_message(
     session_id: &str,
     project_id: &str,
-    prompt_index: usize,
+    message_id: &str,
 ) -> Result<()> {
     let claude_dir = get_claude_dir().context("Failed to get claude dir")?;
     let session_path = claude_dir
@@ -90,32 +90,36 @@ fn truncate_session_to_prompt(
     
     let lines: Vec<&str> = content.lines().collect();
     
-    // Count user messages and find the line index to truncate at
-    let mut user_message_count = 0;
+    // Find the message with this ID
     let mut truncate_at_line = 0;
+    let mut found = false;
     
     for (line_index, line) in lines.iter().enumerate() {
-        // Parse line as JSON to check message type
         if let Ok(msg) = serde_json::from_str::<serde_json::Value>(line) {
-            if msg.get("type").and_then(|t| t.as_str()) == Some("user") {
-                if user_message_count == prompt_index {
-                    // Found the target prompt, truncate before it
+            // Check if this is the target message
+            if let Some(id) = msg.get("id").and_then(|id| id.as_str()) {
+                if id == message_id {
                     truncate_at_line = line_index;
+                    found = true;
                     break;
                 }
-                user_message_count += 1;
             }
         }
     }
     
-    // Truncate to the line before this prompt
+    if !found {
+        log::warn!("Message {} not found in session file", message_id);
+        return Ok(());
+    }
+    
+    // Truncate to the line before this message
     let truncated_lines: Vec<&str> = lines.into_iter().take(truncate_at_line).collect();
     let new_content = truncated_lines.join("\n");
     
     fs::write(&session_path, new_content)
         .context("Failed to write truncated session")?;
     
-    log::info!("Truncated session to {} lines (before prompt #{})", truncate_at_line, prompt_index);
+    log::info!("Truncated session to {} lines (before message {})", truncate_at_line, message_id);
     Ok(())
 }
 
@@ -125,9 +129,10 @@ pub async fn record_prompt_sent(
     session_id: String,
     project_id: String,
     project_path: String,
+    message_id: String,
     prompt_text: String,
-) -> Result<usize, String> {
-    log::info!("Recording prompt sent for session: {}", session_id);
+) -> Result<(), String> {
+    log::info!("Recording prompt {} for session: {}", message_id, session_id);
     
     // Ensure Git repository is initialized
     simple_git::ensure_git_repo(&project_path)
@@ -142,23 +147,22 @@ pub async fn record_prompt_sent(
         .map_err(|e| format!("Failed to load prompts: {}", e))?;
     
     // Create new prompt record
-    let index = prompts.len();
     let record = PromptRecord {
-        index,
+        message_id: message_id.clone(),
         text: prompt_text,
         git_commit_before: commit_before,
         git_commit_after: None,
         timestamp: Utc::now().timestamp(),
     };
     
-    prompts.push(record);
+    prompts.insert(message_id.clone(), record);
     
     // Save
     save_prompts(&session_id, &project_id, &prompts)
         .map_err(|e| format!("Failed to save prompts: {}", e))?;
     
-    log::info!("Recorded prompt #{} for session: {}", index, session_id);
-    Ok(index)
+    log::info!("Recorded prompt {} for session: {}", message_id, session_id);
+    Ok(())
 }
 
 /// Mark a prompt as completed (after AI finishes)
@@ -167,9 +171,9 @@ pub async fn mark_prompt_completed(
     session_id: String,
     project_id: String,
     project_path: String,
-    prompt_index: usize,
+    message_id: String,
 ) -> Result<(), String> {
-    log::info!("Marking prompt #{} completed", prompt_index);
+    log::info!("Marking prompt {} completed", message_id);
     
     // Get current commit (state after AI completion)
     let commit_after = simple_git::git_current_commit(&project_path)
@@ -180,56 +184,58 @@ pub async fn mark_prompt_completed(
         .map_err(|e| format!("Failed to load prompts: {}", e))?;
     
     // Update the prompt record
-    if let Some(prompt) = prompts.get_mut(prompt_index) {
+    if let Some(prompt) = prompts.get_mut(&message_id) {
         prompt.git_commit_after = Some(commit_after);
     } else {
-        return Err(format!("Prompt #{} not found", prompt_index));
+        log::warn!("Prompt {} not found", message_id);
+        return Ok(());  // Not an error, just skip
     }
     
     // Save
     save_prompts(&session_id, &project_id, &prompts)
         .map_err(|e| format!("Failed to save prompts: {}", e))?;
     
-    log::info!("Marked prompt #{} as completed", prompt_index);
+    log::info!("Marked prompt {} as completed", message_id);
     Ok(())
 }
 
-/// Revert to a specific prompt
+/// Revert to a specific prompt (by message ID)
 #[tauri::command]
 pub async fn revert_to_prompt(
     session_id: String,
     project_id: String,
     project_path: String,
-    prompt_index: usize,
+    message_id: String,
 ) -> Result<String, String> {
-    log::info!("Reverting to prompt #{} in session: {}", prompt_index, session_id);
+    log::info!("Reverting to message {} in session: {}", message_id, session_id);
     
     // Load prompts
     let prompts = load_prompts(&session_id, &project_id)
         .map_err(|e| format!("Failed to load prompts: {}", e))?;
     
-    let prompt = prompts.get(prompt_index)
-        .ok_or_else(|| format!("Prompt #{} not found", prompt_index))?;
+    let prompt = prompts.get(&message_id)
+        .ok_or_else(|| format!("Message {} not found in prompts", message_id))?;
     
     // 1. Save any uncommitted changes to stash
-    simple_git::git_stash_save(&project_path, &format!("Auto-stash before revert to prompt #{}", prompt_index))
+    simple_git::git_stash_save(&project_path, &format!("Auto-stash before revert to {}", message_id))
         .map_err(|e| format!("Failed to stash changes: {}", e))?;
     
     // 2. Reset code to state before this prompt was sent
     simple_git::git_reset_hard(&project_path, &prompt.git_commit_before)
         .map_err(|e| format!("Failed to reset code: {}", e))?;
     
-    // 3. Truncate session messages (delete this prompt and everything after)
-    truncate_session_to_prompt(&session_id, &project_id, prompt_index)
+    // 3. Truncate session messages (delete this message and everything after)
+    truncate_session_to_message(&session_id, &project_id, &message_id)
         .map_err(|e| format!("Failed to truncate session: {}", e))?;
     
-    // 4. Truncate prompts list
+    // 4. Remove this prompt and all after it from prompts map
+    // (Just delete the entry - simpler than truncating)
     let mut prompts_to_save = prompts.clone();
-    prompts_to_save.truncate(prompt_index);
+    prompts_to_save.remove(&message_id);
     save_prompts(&session_id, &project_id, &prompts_to_save)
-        .map_err(|e| format!("Failed to save truncated prompts: {}", e))?;
+        .map_err(|e| format!("Failed to save prompts: {}", e))?;
     
-    log::info!("Successfully reverted to prompt #{}", prompt_index);
+    log::info!("Successfully reverted to message {}", message_id);
     
     // 5. Return the prompt text for restoring to input
     Ok(prompt.text.clone())
@@ -240,8 +246,9 @@ pub async fn revert_to_prompt(
 pub async fn get_prompt_list(
     session_id: String,
     project_id: String,
-) -> Result<Vec<PromptRecord>, String> {
+) -> Result<std::collections::HashMap<String, PromptRecord>, String> {
     load_prompts(&session_id, &project_id)
         .map_err(|e| format!("Failed to load prompts: {}", e))
 }
+
 

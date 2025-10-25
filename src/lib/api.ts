@@ -1925,19 +1925,21 @@ export const api = {
   },
 
   /**
-   * Record a prompt being sent
+   * Record a prompt being sent (by message ID)
    */
   async recordPromptSent(
     sessionId: string,
     projectId: string,
     projectPath: string,
+    messageId: string,
     promptText: string
-  ): Promise<number> {
+  ): Promise<void> {
     try {
-      return await invoke<number>("record_prompt_sent", {
+      return await invoke<void>("record_prompt_sent", {
         sessionId,
         projectId,
         projectPath,
+        messageId,
         promptText
       });
     } catch (error) {
@@ -1947,20 +1949,20 @@ export const api = {
   },
 
   /**
-   * Mark a prompt as completed
+   * Mark a prompt as completed (by message ID)
    */
   async markPromptCompleted(
     sessionId: string,
     projectId: string,
     projectPath: string,
-    promptIndex: number
+    messageId: string
   ): Promise<void> {
     try {
       return await invoke<void>("mark_prompt_completed", {
         sessionId,
         projectId,
         projectPath,
-        promptIndex
+        messageId
       });
     } catch (error) {
       console.error("Failed to mark prompt completed:", error);
@@ -1969,20 +1971,20 @@ export const api = {
   },
 
   /**
-   * Revert to a specific prompt
+   * Revert to a specific prompt (by message ID)
    */
   async revertToPrompt(
     sessionId: string,
     projectId: string,
     projectPath: string,
-    promptIndex: number
+    messageId: string
   ): Promise<string> {
     try {
       return await invoke<string>("revert_to_prompt", {
         sessionId,
         projectId,
         projectPath,
-        promptIndex
+        messageId
       });
     } catch (error) {
       console.error("Failed to revert to prompt:", error);

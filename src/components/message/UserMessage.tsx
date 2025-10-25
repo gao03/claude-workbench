@@ -14,10 +14,8 @@ interface UserMessageProps {
   message: ClaudeStreamMessage;
   /** 自定义类名 */
   className?: string;
-  /** 提示词索引（只计算用户提示词） */
-  promptIndex?: number;
-  /** 撤回回调 */
-  onRevert?: (promptIndex: number) => void;
+  /** 撤回回调（传递消息ID） */
+  onRevert?: (messageId: string) => void;
 }
 
 /**
@@ -49,7 +47,6 @@ const extractUserText = (message: ClaudeStreamMessage): string => {
 export const UserMessage: React.FC<UserMessageProps> = ({
   message,
   className,
-  promptIndex,
   onRevert
 }) => {
   const text = extractUserText(message);
@@ -58,20 +55,22 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   // 如果没有文本内容，不渲染
   if (!text) return null;
 
+  const messageId = message.id;
+
   const handleRevertClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (promptIndex === undefined || !onRevert) return;
+    if (!messageId || !onRevert) return;
     setShowConfirmDialog(true);
   };
 
   const handleConfirmRevert = () => {
-    if (promptIndex !== undefined && onRevert) {
+    if (messageId && onRevert) {
       setShowConfirmDialog(false);
-      onRevert(promptIndex);
+      onRevert(messageId);
     }
   };
 
-  const showRevertButton = promptIndex !== undefined && promptIndex >= 0 && onRevert;
+  const showRevertButton = Boolean(messageId && onRevert);
 
   return (
     <>
@@ -137,7 +136,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <span className="text-green-600 mt-0.5">✓</span>
-                    <span>删除提示词 #{(promptIndex ?? 0) + 1} 及之后的所有对话</span>
+                    <span>删除此消息及之后的所有对话</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-green-600 mt-0.5">✓</span>
