@@ -590,11 +590,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               ? getPromptIndexForMessage(virtualItem.index) 
               : undefined;
             
-            // 调试日志
-            if (message.type === 'user' && promptIndex !== undefined) {
-              console.log('[Render] User message at displayable index', virtualItem.index, '→ promptIndex:', promptIndex);
-            }
-            
             return (
               <motion.div
                 key={virtualItem.key}

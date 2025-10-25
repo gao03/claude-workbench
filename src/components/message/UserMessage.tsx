@@ -61,7 +61,6 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   const handleRevertClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (promptIndex === undefined || !onRevert) return;
-    console.log('[UserMessage] Revert clicked, promptIndex:', promptIndex);
     setShowConfirmDialog(true);
   };
 
