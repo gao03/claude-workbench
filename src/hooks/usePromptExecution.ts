@@ -155,9 +155,24 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
       setError(null);
       hasActiveSessionRef.current = true;
 
-      // 🆕 生成消息ID（用于追踪）
-      const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      let promptRecorded = false;
+      // 🆕 记录提示词发送（在发送前保存 Git 状态）
+      // 只记录真实用户输入，不记录 Warmup 等系统消息
+      let recordedPromptIndex = -1;
+      const isUserInitiated = !prompt.includes('Warmup') && !prompt.startsWith('System:');
+      
+      if (effectiveSession && isUserInitiated) {
+        try {
+          recordedPromptIndex = await api.recordPromptSent(
+            effectiveSession.id,
+            effectiveSession.project_id,
+            projectPath,
+            prompt
+          );
+          console.log('[Prompt Revert] Recorded user prompt #', recordedPromptIndex);
+        } catch (err) {
+          console.error('[Prompt Revert] Failed to record prompt:', err);
+        }
+      }
 
       // Translation state
       let processedPrompt = prompt;
@@ -248,14 +263,14 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
         // ====================================================================
         const processComplete = async () => {
           // 🆕 标记提示词完成（记录完成后的 Git 状态）
-          if (promptRecorded && effectiveSession) {
+          if (recordedPromptIndex >= 0 && effectiveSession) {
             api.markPromptCompleted(
               effectiveSession.id,
               effectiveSession.project_id,
               projectPath,
-              messageId
+              recordedPromptIndex
             ).then(() => {
-              console.log('[Prompt Revert] Marked prompt completed:', messageId);
+              console.log('[Prompt Revert] Marked prompt # as completed', recordedPromptIndex);
             }).catch(err => {
               console.error('[Prompt Revert] Failed to mark completed:', err);
             });
@@ -306,17 +321,16 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
                   setExtractedSessionInfo({ sessionId: msg.session_id, projectId });
                   
                   // 🆕 记录提示词（现在有 sessionId 和 projectId 了）
-                  if (!promptRecorded) {
+                  // 只记录真实用户输入
+                  if (recordedPromptIndex < 0 && isUserInitiated) {
                     try {
-                      await api.recordPromptSent(
+                      recordedPromptIndex = await api.recordPromptSent(
                         msg.session_id,
                         projectId,
                         projectPath,
-                        messageId,
                         prompt
                       );
-                      promptRecorded = true;
-                      console.log('[Prompt Revert] Recorded prompt:', messageId);
+                      console.log('[Prompt Revert] Recorded user prompt #', recordedPromptIndex, '(after session detected)');
                     } catch (err) {
                       console.error('[Prompt Revert] Failed to record prompt:', err);
                     }

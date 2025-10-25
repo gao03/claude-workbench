@@ -492,19 +492,35 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     setSplitPosition(newState.splitPosition);
   };
 
-  // 🆕 撤回处理函数（使用消息ID）
-  const handleRevert = useCallback(async (messageId: string) => {
+  // 🆕 辅助函数：计算用户消息对应的 promptIndex
+  // 注意：这里的 messageArrayIndex 是 displayableMessages 的索引
+  const getPromptIndexForMessage = useCallback((displayableIndex: number): number => {
+    // 找到 displayableMessages[displayableIndex] 在 messages 中的实际位置
+    const displayableMessage = displayableMessages[displayableIndex];
+    const actualIndex = messages.findIndex(m => m === displayableMessage);
+    
+    if (actualIndex === -1) return -1;
+    
+    // 计算这是第几条用户消息
+    return messages.slice(0, actualIndex + 1)
+      .filter(m => m.type === 'user')
+      .length - 1;
+  }, [messages, displayableMessages]);
+
+
+  // 🆕 撤回处理函数
+  const handleRevert = useCallback(async (promptIndex: number) => {
     if (!effectiveSession) return;
     
     try {
-      console.log('[Prompt Revert] Reverting to message:', messageId);
+      console.log('[Prompt Revert] Reverting to prompt #', promptIndex);
       
       // 调用后端撤回（返回提示词文本）
       const promptText = await api.revertToPrompt(
         effectiveSession.id,
         effectiveSession.project_id,
         projectPath,
-        messageId
+        promptIndex
       );
       
       console.log('[Prompt Revert] Revert successful, reloading messages...');
@@ -570,6 +586,14 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         <AnimatePresence>
           {rowVirtualizer.getVirtualItems().map((virtualItem) => {
             const message = displayableMessages[virtualItem.index];
+            const promptIndex = message.type === 'user' 
+              ? getPromptIndexForMessage(virtualItem.index) 
+              : undefined;
+            
+            // 调试日志
+            if (message.type === 'user' && promptIndex !== undefined) {
+              console.log('[Render] User message at displayable index', virtualItem.index, '→ promptIndex:', promptIndex);
+            }
             
             return (
               <motion.div
@@ -591,6 +615,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                   onLinkDetected={handleLinkDetected}
                   claudeSettings={claudeSettings}
                   isStreaming={virtualItem.index === displayableMessages.length - 1 && isLoading}
+                  promptIndex={promptIndex}
                   onRevert={handleRevert}
                 />
               </motion.div>
