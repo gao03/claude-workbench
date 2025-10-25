@@ -98,15 +98,23 @@ fn truncate_session_to_prompt(
         // Parse line as JSON to check message type
         if let Ok(msg) = serde_json::from_str::<serde_json::Value>(line) {
             if msg.get("type").and_then(|t| t.as_str()) == Some("user") {
+                log::debug!("Found user message at line {}, count={}, looking for={}", 
+                    line_index, user_message_count, prompt_index);
+                
                 if user_message_count == prompt_index {
                     // Found the target prompt, truncate before it
                     truncate_at_line = line_index;
+                    log::info!("Target prompt #{} found at line {}", prompt_index, line_index);
                     break;
                 }
                 user_message_count += 1;
             }
         }
     }
+    
+    let total_lines = lines.len();
+    log::info!("Total lines: {}, will keep lines 0..{} (delete prompt #{} at line {} and after)", 
+        total_lines, truncate_at_line, prompt_index, truncate_at_line);
     
     // Truncate to the line before this prompt
     let truncated_lines: Vec<&str> = lines.into_iter().take(truncate_at_line).collect();
@@ -115,7 +123,8 @@ fn truncate_session_to_prompt(
     fs::write(&session_path, new_content)
         .context("Failed to write truncated session")?;
     
-    log::info!("Truncated session to {} lines (before prompt #{})", truncate_at_line, prompt_index);
+    log::info!("Truncated session: kept {} lines, deleted {} lines", 
+        truncate_at_line, total_lines - truncate_at_line);
     Ok(())
 }
 
