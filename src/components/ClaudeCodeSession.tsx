@@ -501,26 +501,15 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     
     if (actualIndex === -1) return -1;
     
-    // 计算这是第几条真实用户消息（排除 Warmup 等系统消息）
+    // 计算这是第几条真实用户消息
+    // 使用 isSidechain 字段：false = 真实用户消息, true = 系统消息
     return messages.slice(0, actualIndex + 1)
       .filter(m => {
         if (m.type !== 'user') return false;
         
-        // 提取消息文本（处理字符串和数组两种格式）
-        const content = m.message?.content;
-        let text = '';
-        
-        if (typeof content === 'string') {
-          text = content;
-        } else if (Array.isArray(content)) {
-          text = content
-            .filter((item: any) => item.type === 'text')
-            .map((item: any) => item.text)
-            .join('');
-        }
-        
-        // 排除系统消息
-        return !text.includes('Warmup') && !text.startsWith('System:');
+        // 检查 isSidechain 字段
+        const isSidechain = (m as any).isSidechain;
+        return isSidechain === false;  // 只计算 isSidechain=false 的用户消息
       })
       .length - 1;
   }, [messages, displayableMessages]);

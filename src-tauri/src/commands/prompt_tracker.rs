@@ -98,17 +98,14 @@ fn truncate_session_to_prompt(
         // Parse line as JSON to check message type
         if let Ok(msg) = serde_json::from_str::<serde_json::Value>(line) {
             if msg.get("type").and_then(|t| t.as_str()) == Some("user") {
-                // 检查是否是系统消息（Warmup 等）
-                let content = msg.get("message")
-                    .and_then(|m| m.get("content"))
-                    .and_then(|c| c.as_str())
-                    .unwrap_or("");
+                // 使用 isSidechain 字段判断是否是系统消息
+                let is_sidechain = msg.get("isSidechain")
+                    .and_then(|s| s.as_bool())
+                    .unwrap_or(false);
                 
-                let is_system = content.contains("Warmup") || content.starts_with("System:");
-                
-                if !is_system {
-                    // 只计算真实用户消息
-                    log::debug!("Found user message at line {}, count={}, looking for={}", 
+                if !is_sidechain {
+                    // 只计算真实用户消息（isSidechain=false）
+                    log::debug!("Found real user message at line {}, count={}, looking for={}", 
                         line_index, user_message_count, prompt_index);
                     
                     if user_message_count == prompt_index {
@@ -119,7 +116,7 @@ fn truncate_session_to_prompt(
                     }
                     user_message_count += 1;
                 } else {
-                    log::debug!("Skipping system message at line {}: {}", line_index, content);
+                    log::debug!("Skipping sidechain message at line {}", line_index);
                 }
             }
         }
