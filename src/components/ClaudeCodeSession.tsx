@@ -493,7 +493,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   };
 
   // 🆕 辅助函数：计算用户消息对应的 promptIndex
-  // 注意：这里的 messageArrayIndex 是 displayableMessages 的索引
+  // 只计算真实用户输入，排除系统消息
   const getPromptIndexForMessage = useCallback((displayableIndex: number): number => {
     // 找到 displayableMessages[displayableIndex] 在 messages 中的实际位置
     const displayableMessage = displayableMessages[displayableIndex];
@@ -501,9 +501,27 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     
     if (actualIndex === -1) return -1;
     
-    // 计算这是第几条用户消息
+    // 计算这是第几条真实用户消息（排除 Warmup 等系统消息）
     return messages.slice(0, actualIndex + 1)
-      .filter(m => m.type === 'user')
+      .filter(m => {
+        if (m.type !== 'user') return false;
+        
+        // 提取消息文本（处理字符串和数组两种格式）
+        const content = m.message?.content;
+        let text = '';
+        
+        if (typeof content === 'string') {
+          text = content;
+        } else if (Array.isArray(content)) {
+          text = content
+            .filter((item: any) => item.type === 'text')
+            .map((item: any) => item.text)
+            .join('');
+        }
+        
+        // 排除系统消息
+        return !text.includes('Warmup') && !text.startsWith('System:');
+      })
       .length - 1;
   }, [messages, displayableMessages]);
 
