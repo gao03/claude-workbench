@@ -9,22 +9,34 @@ pub fn is_git_repo(project_path: &str) -> bool {
 
 /// Ensure Git repository exists, initialize if needed
 pub fn ensure_git_repo(project_path: &str) -> Result<(), String> {
-    if is_git_repo(project_path) {
+    // Check if .git exists
+    let has_git_dir = is_git_repo(project_path);
+    
+    // Check if has commits (HEAD exists)
+    let has_commits = has_git_dir && git_current_commit(project_path).is_ok();
+    
+    if has_commits {
         log::info!("Git repository already exists at: {}", project_path);
         return Ok(());
     }
     
-    log::info!("Initializing Git repository at: {}", project_path);
+    if !has_git_dir {
+        log::info!("Initializing Git repository at: {}", project_path);
+    } else {
+        log::info!("Git repository exists but has no commits, creating initial commit");
+    }
     
-    // Initialize Git repository
-    let init_output = Command::new("git")
-        .args(["init"])
-        .current_dir(project_path)
-        .output()
-        .map_err(|e| format!("Failed to init git: {}", e))?;
-    
-    if !init_output.status.success() {
-        return Err(format!("Git init failed: {}", String::from_utf8_lossy(&init_output.stderr)));
+    // Initialize Git repository if needed
+    if !has_git_dir {
+        let init_output = Command::new("git")
+            .args(["init"])
+            .current_dir(project_path)
+            .output()
+            .map_err(|e| format!("Failed to init git: {}", e))?;
+        
+        if !init_output.status.success() {
+            return Err(format!("Git init failed: {}", String::from_utf8_lossy(&init_output.stderr)));
+        }
     }
     
     // Add all files
