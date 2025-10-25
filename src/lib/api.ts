@@ -1910,4 +1910,102 @@ export const api = {
     }
   },
 
+  // ==================== Prompt Revert System ====================
+
+  /**
+   * Check and initialize Git repository
+   */
+  async checkAndInitGit(projectPath: string): Promise<boolean> {
+    try {
+      return await invoke<boolean>("check_and_init_git", { projectPath });
+    } catch (error) {
+      console.error("Failed to check/init Git:", error);
+      return false;
+    }
+  },
+
+  /**
+   * Record a prompt being sent
+   */
+  async recordPromptSent(
+    sessionId: string,
+    projectId: string,
+    projectPath: string,
+    promptText: string
+  ): Promise<number> {
+    try {
+      return await invoke<number>("record_prompt_sent", {
+        sessionId,
+        projectId,
+        projectPath,
+        promptText
+      });
+    } catch (error) {
+      console.error("Failed to record prompt:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Mark a prompt as completed
+   */
+  async markPromptCompleted(
+    sessionId: string,
+    projectId: string,
+    projectPath: string,
+    promptIndex: number
+  ): Promise<void> {
+    try {
+      return await invoke<void>("mark_prompt_completed", {
+        sessionId,
+        projectId,
+        projectPath,
+        promptIndex
+      });
+    } catch (error) {
+      console.error("Failed to mark prompt completed:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Revert to a specific prompt
+   */
+  async revertToPrompt(
+    sessionId: string,
+    projectId: string,
+    projectPath: string,
+    promptIndex: number
+  ): Promise<string> {
+    try {
+      return await invoke<string>("revert_to_prompt", {
+        sessionId,
+        projectId,
+        projectPath,
+        promptIndex
+      });
+    } catch (error) {
+      console.error("Failed to revert to prompt:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get list of all prompts for a session
+   */
+  async getPromptList(
+    sessionId: string,
+    projectId: string
+  ): Promise<any[]> {
+    try {
+      return await invoke<any[]>("get_prompt_list", {
+        sessionId,
+        projectId
+      });
+    } catch (error) {
+      console.error("Failed to get prompt list:", error);
+      return [];
+    }
+  },
+
 };

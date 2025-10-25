@@ -180,6 +180,21 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     queuedPromptsRef.current = queuedPrompts;
   }, [queuedPrompts]);
 
+  // Auto-initialize Git when project is selected
+  useEffect(() => {
+    if (!projectPath) return;
+    
+    api.checkAndInitGit(projectPath).then(wasInitialized => {
+      if (wasInitialized) {
+        console.log('[Prompt Revert] Git repository auto-initialized');
+      } else {
+        console.log('[Prompt Revert] Git repository detected');
+      }
+    }).catch(err => {
+      console.error('[Prompt Revert] Failed to initialize Git:', err);
+    });
+  }, [projectPath]);
+
   // Get effective session info (from prop or extracted) - use useMemo to ensure it updates
   const effectiveSession = useMemo(() => {
     if (session) return session;

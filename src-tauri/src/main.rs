@@ -34,6 +34,12 @@ use commands::mcp::{
 use commands::usage::{
     get_session_stats, get_usage_by_date_range, get_usage_stats,
 };
+use commands::simple_git::{
+    check_and_init_git,
+};
+use commands::prompt_tracker::{
+    record_prompt_sent, mark_prompt_completed, revert_to_prompt, get_prompt_list,
+};
 use commands::storage::{
     storage_list_tables, storage_read_table, storage_update_row, storage_delete_row,
     storage_insert_row, storage_execute_sql, storage_reset_database,
@@ -232,6 +238,13 @@ fn main() {
             commands::context_commands::stop_auto_compact_monitoring,
             commands::context_commands::start_auto_compact_monitoring,
             commands::context_commands::get_auto_compact_status,
+
+            // Prompt Revert System
+            check_and_init_git,
+            record_prompt_sent,
+            mark_prompt_completed,
+            revert_to_prompt,
+            get_prompt_list,
 
         ])
         .run(tauri::generate_context!())
