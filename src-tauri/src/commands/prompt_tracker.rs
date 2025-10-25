@@ -129,6 +129,10 @@ pub async fn record_prompt_sent(
 ) -> Result<usize, String> {
     log::info!("Recording prompt sent for session: {}", session_id);
     
+    // Ensure Git repository is initialized
+    simple_git::ensure_git_repo(&project_path)
+        .map_err(|e| format!("Failed to ensure Git repo: {}", e))?;
+    
     // Get current commit (state before sending)
     let commit_before = simple_git::git_current_commit(&project_path)
         .map_err(|e| format!("Failed to get current commit: {}", e))?;

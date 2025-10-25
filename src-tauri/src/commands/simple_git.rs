@@ -142,9 +142,8 @@ pub fn git_stash_save(project_path: &str, message: &str) -> Result<(), String> {
 pub fn check_and_init_git(project_path: String) -> Result<bool, String> {
     let was_not_initialized = !is_git_repo(&project_path);
     
-    if was_not_initialized {
-        ensure_git_repo(&project_path)?;
-    }
+    // Always call ensure_git_repo - it will check for commits too
+    ensure_git_repo(&project_path)?;
     
     Ok(was_not_initialized)
 }
