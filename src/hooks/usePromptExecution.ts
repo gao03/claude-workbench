@@ -156,9 +156,11 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
       hasActiveSessionRef.current = true;
 
       // 🆕 记录提示词发送（在发送前保存 Git 状态）
-      // 只记录真实用户输入，不记录 Warmup 等系统消息
+      // 注意：handleSendPrompt 只被用户输入触发，isPlanMode 等都是真实用户操作
+      // Warmup 等系统消息通过其他途径发送，不会调用这个函数
+      // 所以这里可以安全地认为都是用户消息
       let recordedPromptIndex = -1;
-      const isUserInitiated = !prompt.includes('Warmup') && !prompt.startsWith('System:');
+      const isUserInitiated = true;  // handleSendPrompt 总是用户触发的
       
       if (effectiveSession && isUserInitiated) {
         try {
