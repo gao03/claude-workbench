@@ -98,16 +98,29 @@ fn truncate_session_to_prompt(
         // Parse line as JSON to check message type
         if let Ok(msg) = serde_json::from_str::<serde_json::Value>(line) {
             if msg.get("type").and_then(|t| t.as_str()) == Some("user") {
-                log::debug!("Found user message at line {}, count={}, looking for={}", 
-                    line_index, user_message_count, prompt_index);
+                // 检查是否是系统消息（Warmup 等）
+                let content = msg.get("message")
+                    .and_then(|m| m.get("content"))
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("");
                 
-                if user_message_count == prompt_index {
-                    // Found the target prompt, truncate before it
-                    truncate_at_line = line_index;
-                    log::info!("Target prompt #{} found at line {}", prompt_index, line_index);
-                    break;
+                let is_system = content.contains("Warmup") || content.starts_with("System:");
+                
+                if !is_system {
+                    // 只计算真实用户消息
+                    log::debug!("Found user message at line {}, count={}, looking for={}", 
+                        line_index, user_message_count, prompt_index);
+                    
+                    if user_message_count == prompt_index {
+                        // Found the target prompt, truncate before it
+                        truncate_at_line = line_index;
+                        log::info!("Target prompt #{} found at line {}", prompt_index, line_index);
+                        break;
+                    }
+                    user_message_count += 1;
+                } else {
+                    log::debug!("Skipping system message at line {}: {}", line_index, content);
                 }
-                user_message_count += 1;
             }
         }
     }
