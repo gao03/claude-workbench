@@ -493,11 +493,19 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   };
 
   // 🆕 辅助函数：计算用户消息对应的 promptIndex
-  const getPromptIndexForMessage = useCallback((messageArrayIndex: number): number => {
-    return messages.slice(0, messageArrayIndex + 1)
+  // 注意：这里的 messageArrayIndex 是 displayableMessages 的索引
+  const getPromptIndexForMessage = useCallback((displayableIndex: number): number => {
+    // 找到 displayableMessages[displayableIndex] 在 messages 中的实际位置
+    const displayableMessage = displayableMessages[displayableIndex];
+    const actualIndex = messages.findIndex(m => m === displayableMessage);
+    
+    if (actualIndex === -1) return -1;
+    
+    // 计算这是第几条用户消息
+    return messages.slice(0, actualIndex + 1)
       .filter(m => m.type === 'user')
       .length - 1;
-  }, [messages]);
+  }, [messages, displayableMessages]);
 
 
   // 🆕 撤回处理函数

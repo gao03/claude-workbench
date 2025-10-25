@@ -37,6 +37,17 @@ pub fn ensure_git_repo(project_path: &str) -> Result<(), String> {
         log::info!("Git repository exists but has no commits, creating initial commit");
     }
     
+    // Configure Git user if not set (needed for commits)
+    let _ = Command::new("git")
+        .args(["config", "user.name", "Claude Workbench"])
+        .current_dir(project_path)
+        .output();
+    
+    let _ = Command::new("git")
+        .args(["config", "user.email", "ai@claude.workbench"])
+        .current_dir(project_path)
+        .output();
+    
     // Always use --allow-empty to ensure commit is created
     let commit_output = Command::new("git")
         .args(["commit", "--allow-empty", "-m", "[Claude Workbench] Initial commit"])
