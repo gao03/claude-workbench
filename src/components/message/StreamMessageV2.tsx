@@ -11,6 +11,8 @@ interface StreamMessageV2Props {
   onLinkDetected?: (url: string) => void;
   claudeSettings?: { showSystemInitialization?: boolean };
   isStreaming?: boolean;
+  promptIndex?: number;
+  onRevert?: (promptIndex: number) => void;
 }
 
 /**
@@ -32,7 +34,9 @@ export const StreamMessageV2: React.FC<StreamMessageV2Props> = ({
   streamMessages,
   onLinkDetected,
   claudeSettings,
-  isStreaming = false
+  isStreaming = false,
+  promptIndex,
+  onRevert
 }) => {
   // 根据消息类型渲染不同组件
   const messageType = message.type;
@@ -56,6 +60,8 @@ export const StreamMessageV2: React.FC<StreamMessageV2Props> = ({
       <UserMessage
         message={message}
         className={className}
+        promptIndex={promptIndex}
+        onRevert={onRevert}
       />
     );
   }

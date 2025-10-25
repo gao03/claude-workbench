@@ -102,4 +102,5 @@ export interface FloatingPromptInputProps {
  */
 export interface FloatingPromptInputRef {
   addImage: (imagePath: string) => void;
+  setPrompt: (text: string) => void;
 }

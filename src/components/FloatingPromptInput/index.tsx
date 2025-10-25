@@ -142,6 +142,9 @@ const FloatingPromptInputInner = (
   // Imperative handle for ref
   useImperativeHandle(ref, () => ({
     addImage,
+    setPrompt: (text: string) => {
+      setPrompt(text);
+    },
   }));
 
   // Toggle thinking mode

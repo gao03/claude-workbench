@@ -492,6 +492,55 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     setSplitPosition(newState.splitPosition);
   };
 
+  // 🆕 辅助函数：计算用户消息对应的 promptIndex
+  const getPromptIndexForMessage = useCallback((messageArrayIndex: number): number => {
+    return messages.slice(0, messageArrayIndex + 1)
+      .filter(m => m.type === 'user')
+      .length - 1;
+  }, [messages]);
+
+
+  // 🆕 撤回处理函数
+  const handleRevert = useCallback(async (promptIndex: number) => {
+    if (!effectiveSession) return;
+    
+    try {
+      console.log('[Prompt Revert] Reverting to prompt #', promptIndex);
+      
+      // 调用后端撤回（返回提示词文本）
+      const promptText = await api.revertToPrompt(
+        effectiveSession.id,
+        effectiveSession.project_id,
+        projectPath,
+        promptIndex
+      );
+      
+      console.log('[Prompt Revert] Revert successful, reloading messages...');
+      
+      // 重新加载消息历史
+      const history = await api.loadSessionHistory(
+        effectiveSession.id,
+        effectiveSession.project_id
+      );
+      
+      if (Array.isArray(history)) {
+        setMessages(history);
+      } else if (history && typeof history === 'object' && 'messages' in history) {
+        setMessages((history as any).messages);
+      }
+      
+      // 恢复提示词到输入框
+      if (floatingPromptRef.current && promptText) {
+        console.log('[Prompt Revert] Restoring prompt to input:', promptText);
+        floatingPromptRef.current.setPrompt(promptText);
+      }
+      
+    } catch (error) {
+      console.error('[Prompt Revert] Failed to revert:', error);
+      setError('撤回失败：' + error);
+    }
+  }, [effectiveSession, projectPath]);
+
   // Cleanup event listeners and track mount state
   useEffect(() => {
     isMountedRef.current = true;
@@ -529,6 +578,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         <AnimatePresence>
           {rowVirtualizer.getVirtualItems().map((virtualItem) => {
             const message = displayableMessages[virtualItem.index];
+            const promptIndex = message.type === 'user' 
+              ? getPromptIndexForMessage(virtualItem.index) 
+              : undefined;
+            
             return (
               <motion.div
                 key={virtualItem.key}
@@ -549,6 +602,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                   onLinkDetected={handleLinkDetected}
                   claudeSettings={claudeSettings}
                   isStreaming={virtualItem.index === displayableMessages.length - 1 && isLoading}
+                  promptIndex={promptIndex}
+                  onRevert={handleRevert}
                 />
               </motion.div>
             );

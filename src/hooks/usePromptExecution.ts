@@ -155,6 +155,22 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
       setError(null);
       hasActiveSessionRef.current = true;
 
+      // 🆕 记录提示词发送（在发送前保存 Git 状态）
+      let recordedPromptIndex = -1;
+      if (effectiveSession) {
+        try {
+          recordedPromptIndex = await api.recordPromptSent(
+            effectiveSession.id,
+            effectiveSession.project_id,
+            projectPath,
+            prompt
+          );
+          console.log('[Prompt Revert] Recorded prompt #', recordedPromptIndex);
+        } catch (err) {
+          console.error('[Prompt Revert] Failed to record prompt:', err);
+        }
+      }
+
       // Translation state
       let processedPrompt = prompt;
       let userInputTranslation: TranslationResult | null = null;
@@ -243,6 +259,20 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
         // Helper: Process Completion
         // ====================================================================
         const processComplete = async () => {
+          // 🆕 标记提示词完成（记录完成后的 Git 状态）
+          if (recordedPromptIndex >= 0 && effectiveSession) {
+            api.markPromptCompleted(
+              effectiveSession.id,
+              effectiveSession.project_id,
+              projectPath,
+              recordedPromptIndex
+            ).then(() => {
+              console.log('[Prompt Revert] Marked prompt # as completed', recordedPromptIndex);
+            }).catch(err => {
+              console.error('[Prompt Revert] Failed to mark completed:', err);
+            });
+          }
+
           setIsLoading(false);
           hasActiveSessionRef.current = false;
           isListeningRef.current = false;
