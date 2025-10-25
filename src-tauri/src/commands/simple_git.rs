@@ -16,18 +16,14 @@ pub fn ensure_git_repo(project_path: &str) -> Result<(), String> {
     let has_commits = has_git_dir && git_current_commit(project_path).is_ok();
     
     if has_commits {
-        log::info!("Git repository already exists at: {}", project_path);
+        log::debug!("Git repository ready at: {}", project_path);
         return Ok(());
     }
     
+    // Need to initialize or create first commit
     if !has_git_dir {
         log::info!("Initializing Git repository at: {}", project_path);
-    } else {
-        log::info!("Git repository exists but has no commits, creating initial commit");
-    }
-    
-    // Initialize Git repository if needed
-    if !has_git_dir {
+        
         let init_output = Command::new("git")
             .args(["init"])
             .current_dir(project_path)
@@ -37,36 +33,24 @@ pub fn ensure_git_repo(project_path: &str) -> Result<(), String> {
         if !init_output.status.success() {
             return Err(format!("Git init failed: {}", String::from_utf8_lossy(&init_output.stderr)));
         }
+    } else {
+        log::info!("Git repository exists but has no commits, creating initial commit");
     }
     
-    // Add all files
-    let add_output = Command::new("git")
-        .args(["add", "."])
-        .current_dir(project_path)
-        .output()
-        .map_err(|e| format!("Failed to add files: {}", e))?;
-    
-    if !add_output.status.success() {
-        log::warn!("Git add warning: {}", String::from_utf8_lossy(&add_output.stderr));
-    }
-    
-    // Create initial commit
+    // Always use --allow-empty to ensure commit is created
     let commit_output = Command::new("git")
-        .args(["commit", "-m", "[Claude Workbench] Initial commit"])
+        .args(["commit", "--allow-empty", "-m", "[Claude Workbench] Initial commit"])
         .current_dir(project_path)
         .output()
         .map_err(|e| format!("Failed to create initial commit: {}", e))?;
     
     if !commit_output.status.success() {
-        // Try with --allow-empty if no files to commit
-        Command::new("git")
-            .args(["commit", "--allow-empty", "-m", "[Claude Workbench] Initial commit"])
-            .current_dir(project_path)
-            .output()
-            .map_err(|e| format!("Failed to create empty commit: {}", e))?;
+        let stderr = String::from_utf8_lossy(&commit_output.stderr);
+        log::error!("Git commit failed: {}", stderr);
+        return Err(format!("Failed to create initial commit: {}", stderr));
     }
     
-    log::info!("Git repository initialized successfully");
+    log::info!("Git repository initialized successfully with initial commit");
     Ok(())
 }
 

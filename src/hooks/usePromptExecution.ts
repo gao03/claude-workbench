@@ -316,6 +316,21 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
                 if (!extractedSessionInfo) {
                   const projectId = projectPath.replace(/[^a-zA-Z0-9]/g, '-');
                   setExtractedSessionInfo({ sessionId: msg.session_id, projectId });
+                  
+                  // 🆕 记录提示词（现在有 sessionId 和 projectId 了）
+                  if (recordedPromptIndex < 0) {
+                    try {
+                      recordedPromptIndex = await api.recordPromptSent(
+                        msg.session_id,
+                        projectId,
+                        projectPath,
+                        prompt
+                      );
+                      console.log('[Prompt Revert] Recorded prompt #', recordedPromptIndex, '(after session detected)');
+                    } catch (err) {
+                      console.error('[Prompt Revert] Failed to record prompt:', err);
+                    }
+                  }
                 }
 
                 // Switch to session-specific listeners
