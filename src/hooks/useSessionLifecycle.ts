@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { api, type Session } from '@/lib/api';
 import { normalizeUsageData } from '@/lib/utils';
+import { translationMiddleware } from '@/lib/translationMiddleware';
 import type { ClaudeStreamMessage } from '@/types/claude';
 
 /**
@@ -82,16 +83,32 @@ export function useSessionLifecycle(config: UseSessionLifecycleConfig): UseSessi
       // ✨ NEW: Immediate display - no more blocking on translation
       console.log('[useSessionLifecycle] 🚀 Displaying messages immediately:', loadedMessages.length);
       setMessages(processedMessages);
-
-      // ✨ NEW: Start progressive translation in background
-      initializeProgressiveTranslation(processedMessages);
       setRawJsonlOutput(history.map(h => JSON.stringify(h)));
+      
+      // ⚡ CRITICAL: Set loading to false IMMEDIATELY after messages are set
+      // This prevents the "Loading..." screen from showing unnecessarily
+      setIsLoading(false);
+
+      // ✨ NEW: Start progressive translation in TRUE background (non-blocking)
+      // ⚡ OPTIMIZATION: Only call if translation is enabled to avoid unnecessary async checks
+      setTimeout(async () => {
+        try {
+          const isTranslationEnabled = await translationMiddleware.isEnabled();
+          if (isTranslationEnabled) {
+            console.log('[useSessionLifecycle] Translation enabled, starting background translation');
+            await initializeProgressiveTranslation(processedMessages);
+          } else {
+            console.log('[useSessionLifecycle] Translation disabled, skipping background translation');
+          }
+        } catch (err) {
+          console.error('[useSessionLifecycle] Background translation check/execution failed:', err);
+        }
+      }, 0);
 
       // After loading history, we're continuing a conversation
     } catch (err) {
       console.error("Failed to load session history:", err);
       setError("加载会话历史记录失败");
-    } finally {
       setIsLoading(false);
     }
   }, [session, setIsLoading, setError, setMessages, setRawJsonlOutput, initializeProgressiveTranslation]);
