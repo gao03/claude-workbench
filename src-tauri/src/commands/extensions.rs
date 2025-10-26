@@ -211,8 +211,21 @@ fn scan_skills_directory(dir: &Path, scope: &str) -> Result<Vec<AgentSkillFile>,
             continue;
         }
         
-        // Extract skill name (remove SKILL.md suffix)
-        let name = file_name.trim_end_matches("SKILL.md").trim_end_matches('.').to_string();
+        // Extract skill name from parent directory or file name
+        // Skills can be:
+        // 1. {name}/SKILL.md -> use directory name
+        // 2. {name}.SKILL.md -> use file prefix
+        let name = if file_name == "SKILL.md" {
+            // Case 1: skill-name/SKILL.md -> use parent directory name
+            path.parent()
+                .and_then(|p| p.file_name())
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown")
+                .to_string()
+        } else {
+            // Case 2: skill-name.SKILL.md -> remove .SKILL.md suffix
+            file_name.trim_end_matches(".SKILL.md").to_string()
+        };
         
         // Read file content
         match fs::read_to_string(path) {
