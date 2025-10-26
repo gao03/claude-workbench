@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { api, type Session } from '@/lib/api';
 import { normalizeUsageData } from '@/lib/utils';
+import { translationMiddleware } from '@/lib/translationMiddleware';
 import type { ClaudeStreamMessage } from '@/types/claude';
 
 /**
@@ -81,25 +82,28 @@ export function useSessionLifecycle(config: UseSessionLifecycleConfig): UseSessi
 
       // ✨ NEW: Immediate display - no more blocking on translation
       console.log('[useSessionLifecycle] 🚀 Displaying messages immediately:', loadedMessages.length);
-      
-      // ⚡ CRITICAL FIX: Use React 18 batching to ensure atomic state update
-      // This ensures messages and loading state update together
       setMessages(processedMessages);
       setRawJsonlOutput(history.map(h => JSON.stringify(h)));
       
-      // MUST be in same synchronous block to ensure batching
+      // ⚡ CRITICAL: Set loading to false IMMEDIATELY after messages are set
+      // This prevents the "Loading..." screen from showing unnecessarily
       setIsLoading(false);
-      
-      console.log('[useSessionLifecycle] ✅ Loading state cleared, messages displayed');
 
-      // ✨ DISABLED: Progressive translation removed from session loading
-      // This was causing significant delays in production builds
-      // Translation can be re-enabled per-message if needed
-      // queueMicrotask(() => {
-      //   initializeProgressiveTranslation(processedMessages).catch(err => {
-      //     console.error('[useSessionLifecycle] Background translation failed:', err);
-      //   });
-      // });
+      // ✨ NEW: Start progressive translation in TRUE background (non-blocking)
+      // ⚡ OPTIMIZATION: Only call if translation is enabled to avoid unnecessary async checks
+      setTimeout(async () => {
+        try {
+          const isTranslationEnabled = await translationMiddleware.isEnabled();
+          if (isTranslationEnabled) {
+            console.log('[useSessionLifecycle] Translation enabled, starting background translation');
+            await initializeProgressiveTranslation(processedMessages);
+          } else {
+            console.log('[useSessionLifecycle] Translation disabled, skipping background translation');
+          }
+        } catch (err) {
+          console.error('[useSessionLifecycle] Background translation check/execution failed:', err);
+        }
+      }, 0);
 
       // After loading history, we're continuing a conversation
     } catch (err) {
@@ -205,12 +209,10 @@ export function useSessionLifecycle(config: UseSessionLifecycleConfig): UseSessi
 
     unlistenRefs.current = [outputUnlisten, errorUnlisten, completeUnlisten];
 
-    // ⚡ FIX: Don't set isLoading(true) when reconnecting to existing session
-    // The session is already active and messages are displayed
-    // Setting isLoading(true) here causes "Loading..." to flash unnecessarily
+    // Mark as loading to show the session is active
     if (isMountedRef.current) {
+      setIsLoading(true);
       hasActiveSessionRef.current = true;
-      console.log('[useSessionLifecycle] Reconnected to active session (no loading state change)');
     }
   }, [
     isMountedRef,

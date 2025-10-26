@@ -284,16 +284,12 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       // Set the claudeSessionId immediately when we have a session
       setClaudeSessionId(session.id);
 
-      // Load session history first, then check for active session in background
+      // Load session history first, then check for active session
       const initializeSession = async () => {
         await loadSessionHistory();
-        
-        // ⚡ OPTIMIZATION: Check for active session in background (non-blocking)
-        // This doesn't affect message display, so no need to await
+        // After loading history, check if the session is still active
         if (isMountedRef.current) {
-          checkForActiveSession().catch(err => {
-            console.error('[ClaudeCodeSession] Failed to check for active session:', err);
-          });
+          await checkForActiveSession();
         }
       };
 
@@ -851,12 +847,12 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               {projectPathInput}
               {messagesList}
 
-              {isLoading && messages.length === 0 && !session && (
+              {isLoading && messages.length === 0 && (
                 <div className="flex items-center justify-center h-full">
                   <div className="flex items-center gap-3">
                     <div className="rotating-symbol text-primary" />
                     <span className="text-sm text-muted-foreground">
-                      初始化 Claude Code...
+                      {session ? "加载会话历史记录..." : "初始化 Claude Code..."}
                     </span>
                   </div>
                 </div>
