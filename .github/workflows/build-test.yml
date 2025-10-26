@@ -88,13 +88,13 @@ jobs:
           path: |
             ~/.bun
             node_modules
-          key: ${{ matrix.platform.os }}-bun-${{ hashFiles('bun.lockb', 'package.json') }}
+          key: ${{ matrix.platform.os }}-bun-${{ hashFiles('bun.lock', 'package-lock.json', 'package.json') }}
           restore-keys: |
             ${{ matrix.platform.os }}-bun-
       
       # Install frontend dependencies
       - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
 
       # Build frontend
       - name: Build frontend
