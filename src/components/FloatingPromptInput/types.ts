@@ -92,6 +92,18 @@ export interface FloatingPromptInputProps {
    */
   sessionCost?: string;
   /**
+   * Detailed session statistics (optional)
+   */
+  sessionStats?: {
+    totalTokens: number;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    durationSeconds: number;
+    apiDurationSeconds: number;
+  };
+  /**
    * Whether there are messages (to show cost display)
    */
   hasMessages?: boolean;

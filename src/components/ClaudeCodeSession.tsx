@@ -1020,6 +1020,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               isPlanMode={isPlanMode}
               onTogglePlanMode={handleTogglePlanMode}
               sessionCost={formatCost(costStats.totalCost)}
+              sessionStats={costStats}
               hasMessages={messages.length > 0}
             />
           </div>
