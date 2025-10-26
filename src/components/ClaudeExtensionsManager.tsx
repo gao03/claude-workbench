@@ -114,8 +114,7 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
   const handleOpenPluginsDir = async () => {
     try {
       const dirPath = await api.openPluginsDirectory(projectPath);
-      const { open } = await import('@tauri-apps/plugin-shell');
-      await open(dirPath);
+      await api.openDirectoryInExplorer(dirPath);
     } catch (error) {
       console.error('Failed to open plugins directory:', error);
     }
@@ -124,8 +123,7 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
   const handleOpenAgentsDir = async () => {
     try {
       const dirPath = await api.openAgentsDirectory(projectPath);
-      const { open } = await import('@tauri-apps/plugin-shell');
-      await open(dirPath);
+      await api.openDirectoryInExplorer(dirPath);
     } catch (error) {
       console.error('Failed to open agents directory:', error);
     }
@@ -134,8 +132,7 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
   const handleOpenSkillsDir = async () => {
     try {
       const dirPath = await api.openSkillsDirectory(projectPath);
-      const { open } = await import('@tauri-apps/plugin-shell');
-      await open(dirPath);
+      await api.openDirectoryInExplorer(dirPath);
     } catch (error) {
       console.error('Failed to open skills directory:', error);
     }

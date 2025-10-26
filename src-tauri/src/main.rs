@@ -65,6 +65,9 @@ use commands::extensions::{
     list_subagents, list_agent_skills, read_subagent, read_skill,
     open_agents_directory, open_skills_directory, list_plugins, open_plugins_directory,
 };
+use commands::file_operations::{
+    open_directory_in_explorer,
+};
 use process::ProcessRegistryState;
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStatePlugin;
@@ -259,6 +262,9 @@ fn main() {
             open_plugins_directory,
             open_agents_directory,
             open_skills_directory,
+
+            // File Operations
+            open_directory_in_explorer,
 
         ])
         .run(tauri::generate_context!())

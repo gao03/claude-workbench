@@ -2106,4 +2106,16 @@ export const api = {
     }
   },
 
+  /**
+   * Open a directory in system file explorer (cross-platform)
+   */
+  async openDirectoryInExplorer(directoryPath: string): Promise<void> {
+    try {
+      return await invoke<void>("open_directory_in_explorer", { directoryPath });
+    } catch (error) {
+      console.error("Failed to open directory in explorer:", error);
+      throw error;
+    }
+  },
+
 };
