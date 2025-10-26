@@ -33,6 +33,7 @@ import {
   ChevronDown,
   Package2,
   Wrench,
+  ExternalLink,
   CheckSquare,
   type LucideIcon,
   Sparkles,
@@ -939,14 +940,40 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
     </div>
   );
 
+  // 在系统中打开文件
+  const handleOpenInSystem = async () => {
+    try {
+      const { open } = await import('@tauri-apps/plugin-shell');
+      await open(filePath);
+    } catch (error) {
+      console.error('Failed to open file in system:', error);
+    }
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
         <FileEdit className="h-4 w-4 text-primary" />
         <span className="text-sm">写入文件：</span>
-        <code className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate">
+        <code 
+          className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate cursor-pointer hover:bg-accent transition-colors"
+          onClick={() => setIsMaximized(true)}
+          title="点击查看完整内容"
+        >
           {filePath}
         </code>
+        
+        {/* 在系统中打开按钮 */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onClick={handleOpenInSystem}
+          title="用系统默认应用打开"
+        >
+          <ExternalLink className="h-3 w-3 mr-1" />
+          打开
+        </Button>
       </div>
       <CodePreview codeContent={displayContent} truncated={true} />
       <MaximizedView />
