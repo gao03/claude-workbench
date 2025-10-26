@@ -94,7 +94,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   }>({});
 
   // ✅ Refactored: Use custom Hook for session cost calculation
-  const { sessionCost, formatCost } = useSessionCostCalculation(messages);
+  const { stats: costStats, formatCost } = useSessionCostCalculation(messages);
 
   // ✅ Refactored: Use custom Hook for message filtering
   const displayableMessages = useDisplayableMessages(messages, {
@@ -1019,7 +1019,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               getConversationContext={getConversationContext}
               isPlanMode={isPlanMode}
               onTogglePlanMode={handleTogglePlanMode}
-              sessionCost={formatCost(sessionCost)}
+              sessionCost={formatCost(costStats.totalCost)}
               hasMessages={messages.length > 0}
             />
           </div>
