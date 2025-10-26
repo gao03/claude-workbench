@@ -786,6 +786,7 @@ export const BashWidget: React.FC<{
 export const WriteWidget: React.FC<{ filePath: string; content: string; result?: any }> = ({ filePath, content, result: _result }) => {
   const { theme } = useTheme();
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);  // 默认收起
   
   // Extract file extension for syntax highlighting
   const getLanguage = (path: string) => {
@@ -953,6 +954,17 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+        {/* 展开/收起按钮 */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-5 w-5 p-0"
+          onClick={() => setIsExpanded(!isExpanded)}
+          title={isExpanded ? "收起预览" : "展开预览"}
+        >
+          <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+        </Button>
+        
         <FileEdit className="h-4 w-4 text-primary" />
         <span className="text-sm">写入文件：</span>
         <code 
@@ -962,6 +974,11 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
         >
           {filePath}
         </code>
+        
+        {/* 文件大小提示 */}
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {(content.length / 1024).toFixed(1)} KB
+        </span>
         
         {/* 在系统中打开按钮 */}
         <Button
@@ -975,7 +992,10 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
           打开
         </Button>
       </div>
-      <CodePreview codeContent={displayContent} truncated={true} />
+      
+      {/* 预览内容 - 默认收起 */}
+      {isExpanded && <CodePreview codeContent={displayContent} truncated={true} />}
+      
       <MaximizedView />
     </div>
   );
