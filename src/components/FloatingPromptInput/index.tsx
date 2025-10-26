@@ -560,7 +560,7 @@ const FloatingPromptInputInner = (
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.2 }}
               >
-                <Tooltip>
+                <Tooltip delayDuration={200}>
                   <TooltipTrigger asChild>
                     <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-8 cursor-help">
                       <DollarSign className="h-3 w-3 text-green-600" />
@@ -569,7 +569,7 @@ const FloatingPromptInputInner = (
                     </Badge>
                   </TooltipTrigger>
                   {sessionStats && (
-                    <TooltipContent className="p-3 max-w-sm">
+                    <TooltipContent side="top" className="p-3 max-w-sm">
                       <div className="space-y-2">
                         <div className="font-medium text-sm border-b pb-1">会话统计</div>
                         <div className="space-y-1 text-xs">
