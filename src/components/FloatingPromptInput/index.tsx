@@ -569,7 +569,12 @@ const FloatingPromptInputInner = (
                     </Badge>
                   </TooltipTrigger>
                   {sessionStats && (
-                    <TooltipContent side="top" className="p-3 max-w-sm">
+                    <TooltipContent 
+                      side="top" 
+                      align="center"
+                      className="p-3 max-w-sm bg-popover border border-border shadow-lg"
+                      sideOffset={8}
+                    >
                       <div className="space-y-2">
                         <div className="font-medium text-sm border-b pb-1">会话统计</div>
                         <div className="space-y-1 text-xs">
