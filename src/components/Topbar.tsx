@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, Settings, BarChart3, Network, Eye } from "lucide-react";
+import { FileText, Settings, BarChart3, Network, Eye, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ClaudeStatusIndicator } from "@/components/ClaudeStatusIndicator";
@@ -26,6 +26,10 @@ interface TopbarProps {
    * Callback when MCP is clicked
    */
   onMCPClick: () => void;
+  /**
+   * Callback when Extensions is clicked
+   */
+  onExtensionsClick?: () => void;
   /**
    * Callback when Tabs is clicked
    */
@@ -64,6 +68,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   onSettingsClick,
   onUsageClick,
   onMCPClick,
+  onExtensionsClick,
   onTabsClick,
   tabsCount = 0,
   messages,
@@ -150,6 +155,19 @@ export const Topbar: React.FC<TopbarProps> = ({
           <Network className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
           {t('navigation.mcpManager')}
         </Button>
+        
+        {/* 扩展管理器 */}
+        {onExtensionsClick && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onExtensionsClick}
+            className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
+          >
+            <Package className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
+            扩展
+          </Button>
+        )}
 
         {/* 分隔线 */}
         <div className="h-5 w-px bg-border/50 mx-0.5" />

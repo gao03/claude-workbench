@@ -20,6 +20,7 @@ import { Toast, ToastContainer } from "@/components/ui/toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ProjectSettings } from '@/components/ProjectSettings';
 import { EnhancedHooksManager } from '@/components/EnhancedHooksManager';
+import { ClaudeExtensionsManager } from '@/components/ClaudeExtensionsManager';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type View =
@@ -32,7 +33,8 @@ type View =
   | "mcp"
   | "usage-dashboard"
   | "project-settings"
-  | "enhanced-hooks-manager";
+  | "enhanced-hooks-manager"
+  | "claude-extensions";
 
 /**
  * 主应用组件 - 管理 Claude 目录浏览器界面
@@ -294,6 +296,17 @@ function AppContent() {
             projectPath={projectForSettings?.path}
           />
         );
+      
+      case "claude-extensions":
+        return (
+          <div className="flex-1 overflow-y-auto">
+            <div className="container mx-auto p-6">
+              <ClaudeExtensionsManager
+                projectPath={projectForSettings?.path}
+              />
+            </div>
+          </div>
+        );
 
       case "editor":
         return (
@@ -506,6 +519,7 @@ function AppContent() {
               onSettingsClick={() => handleViewChange("settings")}
               onUsageClick={() => handleViewChange("usage-dashboard")}
               onMCPClick={() => handleViewChange("mcp")}
+              onExtensionsClick={() => handleViewChange("claude-extensions")}
               onTabsClick={() => handleViewChange("claude-tab-manager")}
               tabsCount={getTabStats().total}
             />
