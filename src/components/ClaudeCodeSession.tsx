@@ -847,12 +847,12 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               {projectPathInput}
               {messagesList}
 
-              {isLoading && messages.length === 0 && (
+              {isLoading && messages.length === 0 && !session && (
                 <div className="flex items-center justify-center h-full">
                   <div className="flex items-center gap-3">
                     <div className="rotating-symbol text-primary" />
                     <span className="text-sm text-muted-foreground">
-                      {session ? "加载会话历史记录..." : "初始化 Claude Code..."}
+                      初始化 Claude Code...
                     </span>
                   </div>
                 </div>

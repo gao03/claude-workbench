@@ -81,12 +81,16 @@ export function useSessionLifecycle(config: UseSessionLifecycleConfig): UseSessi
 
       // ✨ NEW: Immediate display - no more blocking on translation
       console.log('[useSessionLifecycle] 🚀 Displaying messages immediately:', loadedMessages.length);
+      
+      // ⚡ CRITICAL FIX: Use React 18 batching to ensure atomic state update
+      // This ensures messages and loading state update together
       setMessages(processedMessages);
       setRawJsonlOutput(history.map(h => JSON.stringify(h)));
       
-      // ⚡ CRITICAL: Set loading to false IMMEDIATELY after messages are set
-      // This prevents the "Loading..." screen from showing unnecessarily
+      // MUST be in same synchronous block to ensure batching
       setIsLoading(false);
+      
+      console.log('[useSessionLifecycle] ✅ Loading state cleared, messages displayed');
 
       // ✨ NEW: Start progressive translation in TRUE background (completely non-blocking)
       // ⚡ OPTIMIZATION: Use queueMicrotask + Promise to ensure zero blocking
