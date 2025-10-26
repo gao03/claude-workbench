@@ -1,7 +1,8 @@
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, Settings, BarChart3, Network, MessageSquare, Eye } from "lucide-react";
+import { FileText, Settings, BarChart3, Network, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ClaudeStatusIndicator } from "@/components/ClaudeStatusIndicator";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -90,7 +91,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         ease: [0.22, 1, 0.36, 1]
       }}
       className={cn(
-        "flex items-center justify-between px-6 py-3.5",
+        "flex items-center justify-between px-4 py-2",
         "border-b border-border/60",
         "bg-gradient-to-b from-background via-background to-muted/20",
         "backdrop-blur-lg supports-[backdrop-filter]:bg-background/80",
@@ -112,15 +113,21 @@ export const Topbar: React.FC<TopbarProps> = ({
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
-        className="flex items-center gap-1.5"
+        className="flex items-center gap-1"
       >
+        {/* 主题切换按钮 - 移到最前面 */}
+        <ThemeToggle variant="with-text" size="sm" className="hover:bg-muted/70 h-7 px-2 py-1 text-xs font-medium rounded-md" />
+
+        {/* 分隔线 */}
+        <div className="h-5 w-px bg-border/50 mx-0.5" />
+
         <Button
           variant="ghost"
           size="sm"
           onClick={onUsageClick}
-          className="text-sm font-medium px-3 hover:bg-muted/70 hover:scale-105 transition-all rounded-lg"
+          className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
         >
-          <BarChart3 className="mr-2 h-4 w-4" strokeWidth={2} />
+          <BarChart3 className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
           {t('navigation.usage')}
         </Button>
         
@@ -128,9 +135,9 @@ export const Topbar: React.FC<TopbarProps> = ({
           variant="ghost"
           size="sm"
           onClick={onClaudeClick}
-          className="text-sm font-medium px-3 hover:bg-muted/70 hover:scale-105 transition-all rounded-lg"
+          className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
         >
-          <FileText className="mr-2 h-4 w-4" strokeWidth={2} />
+          <FileText className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
           CLAUDE.md
         </Button>
         
@@ -138,37 +145,31 @@ export const Topbar: React.FC<TopbarProps> = ({
           variant="ghost"
           size="sm"
           onClick={onMCPClick}
-          className="text-sm font-medium px-3 hover:bg-muted/70 hover:scale-105 transition-all rounded-lg"
+          className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
         >
-          <Network className="mr-2 h-4 w-4" strokeWidth={2} />
+          <Network className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
           {t('navigation.mcpManager')}
         </Button>
 
         {/* 分隔线 */}
-        <div className="h-6 w-px bg-border/50 mx-1" />
+        <div className="h-5 w-px bg-border/50 mx-0.5" />
 
-        {/* 会话状态指示器 - 始终显示，即使没有打开的会话 */}
+        {/* 会话状态指示器 */}
         {onTabsClick && (
           <>
-            {tabsCount > 0 && (
-              <div className="flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs h-8">
-                <MessageSquare className="h-3 w-3" />
-                <span>{tabsCount}</span>
-              </div>
-            )}
             <Button
               variant="ghost"
               size="sm"
               onClick={onTabsClick}
-              className="text-sm font-medium px-3 hover:bg-muted/70 hover:scale-105 transition-all rounded-lg"
+              className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
             >
-              <Eye className="mr-2 h-4 w-4" strokeWidth={2} />
+              <Eye className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
               查看会话
-              {tabsCount > 0 && <span className="ml-1.5 text-xs">({tabsCount})</span>}
+              {tabsCount > 0 && <span className="ml-1 text-xs">({tabsCount})</span>}
             </Button>
 
             {/* 分隔线 */}
-            <div className="h-6 w-px bg-border/50 mx-1" />
+            <div className="h-5 w-px bg-border/50 mx-0.5" />
           </>
         )}
 
@@ -176,9 +177,9 @@ export const Topbar: React.FC<TopbarProps> = ({
           variant="secondary"
           size="sm"
           onClick={onSettingsClick}
-          className="text-sm font-medium px-3 shadow-sm hover:shadow-md hover:scale-105 transition-all rounded-lg"
+          className="text-xs font-medium px-2 py-1 h-7 shadow-sm hover:shadow-md transition-all rounded-md"
         >
-          <Settings className="mr-2 h-4 w-4" strokeWidth={2} />
+          <Settings className="mr-1.5 h-3.5 w-3.5" strokeWidth={2} />
           {t('navigation.settings')}
         </Button>
       </motion.div>

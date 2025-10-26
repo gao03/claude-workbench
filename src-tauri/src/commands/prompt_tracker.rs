@@ -98,14 +98,53 @@ fn truncate_session_to_prompt(
         // Parse line as JSON to check message type
         if let Ok(msg) = serde_json::from_str::<serde_json::Value>(line) {
             if msg.get("type").and_then(|t| t.as_str()) == Some("user") {
-                // 使用 isSidechain 字段判断是否是系统消息
-                let is_sidechain = msg.get("isSidechain")
-                    .and_then(|s| s.as_bool())
-                    .unwrap_or(false);
+                // 提取消息内容（支持字符串和数组两种格式）
+                let content_value = msg.get("message").and_then(|m| m.get("content"));
                 
-                if !is_sidechain {
-                    // 只计算真实用户消息（isSidechain=false）
-                    log::debug!("Found real user message at line {}, count={}, looking for={}", 
+                let mut extracted_text = String::new();
+                let mut has_text_content = false;
+                let mut has_tool_result = false;
+                
+                if let Some(content) = content_value {
+                    if let Some(text) = content.as_str() {
+                        // 字符串格式
+                        extracted_text = text.to_string();
+                        has_text_content = !text.trim().is_empty();
+                    } else if let Some(arr) = content.as_array() {
+                        // 数组格式（可能包含 text 和 tool_result）
+                        for item in arr {
+                            if let Some(item_type) = item.get("type").and_then(|t| t.as_str()) {
+                                if item_type == "text" {
+                                    if let Some(text) = item.get("text").and_then(|t| t.as_str()) {
+                                        extracted_text.push_str(text);
+                                        has_text_content = true;
+                                    }
+                                } else if item_type == "tool_result" {
+                                    has_tool_result = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 如果只有 tool_result 没有 text，跳过（这些是工具执行结果，不是用户输入）
+                if has_tool_result && !has_text_content {
+                    log::debug!("Skipping tool-result-only message at line {}", line_index);
+                    continue;
+                }
+                
+                // 必须有文本内容
+                if !has_text_content {
+                    log::debug!("Skipping empty user message at line {}", line_index);
+                    continue;
+                }
+                
+                // 检查是否是自动发送的 Warmup 消息
+                let is_warmup = extracted_text.contains("Warmup");
+                
+                if !is_warmup {
+                    // 只计算真实用户输入的消息（排除自动 Warmup）
+                    log::debug!("Found user message at line {}, count={}, looking for={}", 
                         line_index, user_message_count, prompt_index);
                     
                     if user_message_count == prompt_index {
@@ -116,13 +155,30 @@ fn truncate_session_to_prompt(
                     }
                     user_message_count += 1;
                 } else {
-                    log::debug!("Skipping sidechain message at line {}", line_index);
+                    log::debug!("Skipping Warmup message at line {}: {}", line_index, extracted_text.chars().take(50).collect::<String>());
                 }
             }
         }
     }
     
     let total_lines = lines.len();
+    
+    // 安全检查：如果没找到目标 prompt，返回错误而不是清空所有内容
+    if truncate_at_line == 0 && user_message_count == 0 {
+        return Err(anyhow::anyhow!(
+            "Prompt #{} not found in session (no user messages found)", 
+            prompt_index
+        ));
+    }
+    
+    if truncate_at_line == 0 && prompt_index > 0 {
+        return Err(anyhow::anyhow!(
+            "Prompt #{} not found in session (only {} user messages found)", 
+            prompt_index,
+            user_message_count
+        ));
+    }
+    
     log::info!("Total lines: {}, will keep lines 0..{} (delete prompt #{} at line {} and after)", 
         total_lines, truncate_at_line, prompt_index, truncate_at_line);
     

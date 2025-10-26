@@ -134,7 +134,6 @@ export const ClaudeStatusIndicator: React.FC<ClaudeStatusIndicatorProps> = ({
 
     relevantMessages.forEach(message => {
       const tokens = tokenExtractor.extract(message);
-      // const model = (message as any).model || 'claude-3-5-sonnet-20241022';
 
       // Simple cost calculation (per 1M tokens)
       const pricing = {

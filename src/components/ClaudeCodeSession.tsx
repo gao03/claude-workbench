@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { api, type Session, type Project } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { type UnlistenFn } from "@tauri-apps/api/event";
-// import { StreamMessage } from "./StreamMessage"; // 已替换为StreamMessageV2
 import { StreamMessageV2 } from "./message";
 import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -23,8 +22,6 @@ import { SplitPane } from "@/components/ui/split-pane";
 import { WebviewPreview } from "./WebviewPreview";
 import { type TranslationResult } from '@/lib/translationMiddleware';
 import { useVirtualizer } from "@tanstack/react-virtual";
-// Note: smartFilterMessages available from @/lib/messageFilter for future optimization
-// import { smartFilterMessages } from '@/lib/messageFilter';
 import { useSessionCostCalculation } from '@/hooks/useSessionCostCalculation';
 import { useDisplayableMessages } from '@/hooks/useDisplayableMessages';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -80,24 +77,29 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [_rawJsonlOutput, setRawJsonlOutput] = useState<string[]>([]); // Kept for hooks, not directly used
   const [isFirstPrompt, setIsFirstPrompt] = useState(!session); // Key state for session continuation
-  // const [totalTokens, setTotalTokens] = useState(0); // Removed token counter from header
   const [extractedSessionInfo, setExtractedSessionInfo] = useState<{ sessionId: string; projectId: string } | null>(null);
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
   const [showSlashCommandsSettings, setShowSlashCommandsSettings] = useState(false);
 
   // Plan Mode state
   const [isPlanMode, setIsPlanMode] = useState(false);
-  // const [planModeContent, setPlanModeContent] = useState<string | null>(null); // Reserved for future plan preview dialog
-  // const [showPlanDialog, setShowPlanDialog] = useState(false); // Reserved for future plan approval flow
 
   // Queued prompts state
   const [queuedPrompts, setQueuedPrompts] = useState<Array<{ id: string; prompt: string; model: "sonnet" | "opus" | "sonnet1m" }>>([]);
+
+  // Settings state to avoid repeated loading in StreamMessage components
+  const [claudeSettings, setClaudeSettings] = useState<{ 
+    showSystemInitialization?: boolean;
+    hideWarmupMessages?: boolean;
+  }>({});
 
   // ✅ Refactored: Use custom Hook for session cost calculation
   const { sessionCost, formatCost } = useSessionCostCalculation(messages);
 
   // ✅ Refactored: Use custom Hook for message filtering
-  const displayableMessages = useDisplayableMessages(messages);
+  const displayableMessages = useDisplayableMessages(messages, {
+    hideWarmupMessages: claudeSettings?.hideWarmupMessages
+  });
 
   // Stable callback for toggling plan mode (prevents unnecessary event listener re-registration)
   const handleTogglePlanMode = useCallback(() => {
@@ -121,9 +123,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   // MESSAGE-LEVEL OPERATIONS (Fine-grained Undo/Redo)
   // ============================================================================
   // Operations extracted to useMessageOperations Hook
-
-  // Settings state to avoid repeated loading in StreamMessage components
-  const [claudeSettings, setClaudeSettings] = useState<{ showSystemInitialization?: boolean }>({});
 
   // New state for preview feature
   const [showPreview, setShowPreview] = useState(false);
@@ -306,7 +305,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         setClaudeSettings(settings);
       } catch (error) {
         console.error("Failed to load Claude settings:", error);
-        setClaudeSettings({ showSystemInitialization: true }); // Default fallback
+        setClaudeSettings({ 
+          showSystemInitialization: true,
+          hideWarmupMessages: true // Default: hide warmup messages for better UX
+        }); // Default fallback
       }
     };
 
@@ -333,26 +335,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   // ✅ Keyboard shortcuts (ESC, Shift+Tab) extracted to useKeyboardShortcuts Hook
 
   // ✅ Smart scroll management (3 useEffect blocks) extracted to useSmartAutoScroll Hook
-
-  // Token calculation removed - no longer displayed in header
-  // useEffect(() => {
-  //   try {
-  //     if (messages.length > 0) {
-  //       const totalTokens = tokenExtractor.sessionTotal(messages);
-  //       setTotalTokens(totalTokens.total_tokens);
-  //       console.log('[ClaudeCodeSession] 📊 Enhanced token calculation:', {
-  //         messages: messages.length,
-  //         totalTokens: totalTokens.total_tokens,
-  //         efficiency: totalTokens.cache_read_tokens > 0 ? `${((totalTokens.cache_read_tokens / totalTokens.total_tokens) * 100).toFixed(1)}% cached` : 'no cache'
-  //       });
-  //     } else {
-  //       setTotalTokens(0);
-  //     }
-  //   } catch (err) {
-  //     console.error('[ClaudeCodeSession] Error in enhanced token calculation:', err);
-  //     setTotalTokens(0);
-  //   }
-  // }, [messages]);
 
   // ✅ Session lifecycle functions (loadSessionHistory, checkForActiveSession, reconnectToSession)
   // are now provided by useSessionLifecycle Hook
@@ -493,7 +475,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   };
 
   // 🆕 辅助函数：计算用户消息对应的 promptIndex
-  // 只计算真实用户输入，排除系统消息
+  // 只计算真实用户输入，排除系统消息和工具结果
   const getPromptIndexForMessage = useCallback((displayableIndex: number): number => {
     // 找到 displayableMessages[displayableIndex] 在 messages 中的实际位置
     const displayableMessage = displayableMessages[displayableIndex];
@@ -501,15 +483,40 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     
     if (actualIndex === -1) return -1;
     
-    // 计算这是第几条真实用户消息
-    // 使用 isSidechain 字段：false = 真实用户消息, true = 系统消息
+    // 计算这是第几条真实用户消息（排除 Warmup/System 和纯工具结果消息）
     return messages.slice(0, actualIndex + 1)
       .filter(m => {
         if (m.type !== 'user') return false;
         
-        // 检查 isSidechain 字段
-        const isSidechain = (m as any).isSidechain;
-        return isSidechain === false;  // 只计算 isSidechain=false 的用户消息
+        // 提取消息文本（处理字符串和数组两种格式）
+        const content = m.message?.content;
+        let text = '';
+        let hasTextContent = false;
+        
+        if (typeof content === 'string') {
+          text = content;
+          hasTextContent = text.trim().length > 0;
+        } else if (Array.isArray(content)) {
+          // 提取所有 text 类型的内容
+          const textItems = content.filter((item: any) => item.type === 'text');
+          text = textItems.map((item: any) => item.text || '').join('');
+          hasTextContent = textItems.length > 0 && text.trim().length > 0;
+          
+          // 如果只有 tool_result 没有 text，不计入（这些是工具执行的结果）
+          if (!hasTextContent && content.some((item: any) => item.type === 'tool_result')) {
+            return false;
+          }
+        }
+        
+        // 必须有文本内容
+        if (!hasTextContent) {
+          return false;
+        }
+        
+        // 排除自动发送的 Warmup 消息
+        // 这个逻辑要和 usePromptExecution.ts 里的 isUserInitiated 保持一致
+        const isWarmupMessage = text.includes('Warmup');
+        return !isWarmupMessage;
       })
       .length - 1;
   }, [messages, displayableMessages]);
@@ -521,6 +528,33 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     
     try {
       console.log('[Prompt Revert] Reverting to prompt #', promptIndex);
+      
+      // 🔍 索引对齐验证（可选，帮助调试）
+      try {
+        const promptList = await api.getPromptList(
+          effectiveSession.id,
+          effectiveSession.project_id
+        );
+        
+        if (promptIndex >= promptList.length) {
+          console.warn('[Prompt Revert] Index mismatch warning:', {
+            requestedIndex: promptIndex,
+            availablePrompts: promptList.length,
+            maxValidIndex: promptList.length - 1
+          });
+          
+          // 友好提示用户
+          setError(`索引不匹配：尝试撤回到 #${promptIndex}，但只有 ${promptList.length} 条提示词记录（#0-#${promptList.length - 1}）`);
+          return;
+        }
+        
+        console.log('[Prompt Revert] Index validation passed:', {
+          requestedIndex: promptIndex,
+          totalPrompts: promptList.length
+        });
+      } catch (validationError) {
+        console.warn('[Prompt Revert] Index validation failed (continuing anyway):', validationError);
+      }
       
       // 调用后端撤回（返回提示词文本）
       const promptText = await api.revertToPrompt(
@@ -540,8 +574,16 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       
       if (Array.isArray(history)) {
         setMessages(history);
+        console.log('[Prompt Revert] Loaded messages:', {
+          total: history.length,
+          hideWarmupSetting: claudeSettings?.hideWarmupMessages
+        });
       } else if (history && typeof history === 'object' && 'messages' in history) {
         setMessages((history as any).messages);
+        console.log('[Prompt Revert] Loaded messages:', {
+          total: (history as any).messages.length,
+          hideWarmupSetting: claudeSettings?.hideWarmupMessages
+        });
       }
       
       // 恢复提示词到输入框

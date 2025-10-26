@@ -9,23 +9,84 @@ import { useMemo } from 'react';
 import type { ClaudeStreamMessage } from '@/types/claude';
 
 /**
+ * 过滤选项
+ */
+interface DisplayableMessagesOptions {
+  /** 是否隐藏 Warmup 消息及其回复 */
+  hideWarmupMessages?: boolean;
+}
+
+/**
+ * 检查消息是否为 Warmup 消息
+ */
+function isWarmupMessage(message: ClaudeStreamMessage): boolean {
+  if (message.type !== 'user') return false;
+  
+  const content = message.message?.content;
+  let text = '';
+  
+  if (typeof content === 'string') {
+    text = content;
+  } else if (Array.isArray(content)) {
+    text = content
+      .filter((item: any) => item.type === 'text')
+      .map((item: any) => item.text || '')
+      .join('');
+  }
+  
+  return text.includes('Warmup');
+}
+
+/**
  * 过滤出可显示的消息
  *
  * 过滤规则：
  * 1. 跳过没有实际内容的元消息（isMeta && !leafUuid && !summary）
  * 2. 跳过只包含工具结果的用户消息（工具结果已在 assistant 消息中显示）
  * 3. 跳过空内容的用户消息
+ * 4. （可选）跳过 Warmup 消息及其回复
  *
  * @param messages - 原始消息列表
+ * @param options - 过滤选项
  * @returns 过滤后的可显示消息列表
  *
  * @example
- * const displayableMessages = useDisplayableMessages(messages);
+ * const displayableMessages = useDisplayableMessages(messages, { hideWarmupMessages: true });
  * // 用于渲染 UI
  */
-export function useDisplayableMessages(messages: ClaudeStreamMessage[]): ClaudeStreamMessage[] {
+export function useDisplayableMessages(
+  messages: ClaudeStreamMessage[],
+  options: DisplayableMessagesOptions = {}
+): ClaudeStreamMessage[] {
+  // 默认隐藏 Warmup（undefined 时为 true），只有明确设置为 false 时才显示
+  const hideWarmupMessages = options.hideWarmupMessages !== false;
+  
   return useMemo(() => {
+    // 如果需要隐藏 Warmup，先找到所有 Warmup 消息的索引
+    const warmupIndices = new Set<number>();
+    
+    if (hideWarmupMessages) {
+      messages.forEach((msg, idx) => {
+        if (isWarmupMessage(msg)) {
+          warmupIndices.add(idx);
+          // 找到紧跟其后的 assistant 回复（Warmup 的响应）
+          if (idx + 1 < messages.length && messages[idx + 1].type === 'assistant') {
+            warmupIndices.add(idx + 1);
+          }
+        }
+      });
+      console.log('[useDisplayableMessages] Hiding Warmup:', {
+        totalMessages: messages.length,
+        warmupIndices: Array.from(warmupIndices),
+        hideWarmupSetting: hideWarmupMessages
+      });
+    }
+    
     return messages.filter((message, index) => {
+      // 规则 0：隐藏 Warmup 消息及其回复
+      if (hideWarmupMessages && warmupIndices.has(index)) {
+        return false;
+      }
       // 规则 1：跳过没有实际内容的元消息
       if (message.isMeta && !message.leafUuid && !message.summary) {
         return false;
@@ -119,5 +180,5 @@ export function useDisplayableMessages(messages: ClaudeStreamMessage[]): ClaudeS
       // 其他情况保留消息
       return true;
     });
-  }, [messages]);
+  }, [messages, hideWarmupMessages]);
 }

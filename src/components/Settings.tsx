@@ -506,6 +506,21 @@ export const Settings: React.FC<SettingsProps> = ({
                       />
                     </div>
 
+                    {/* Hide Warmup Messages */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5 flex-1">
+                        <Label htmlFor="hideWarmup">隐藏 Warmup 消息</Label>
+                        <p className="text-xs text-muted-foreground">
+                          在会话消息中隐藏自动发送的 Warmup 消息及其回复（启动时的预热消息）
+                        </p>
+                      </div>
+                      <Switch
+                        id="hideWarmup"
+                        checked={settings?.hideWarmupMessages === true}
+                        onCheckedChange={(checked) => updateSetting("hideWarmupMessages", checked)}
+                      />
+                    </div>
+
                     {/* Include Co-authored By */}
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5 flex-1">

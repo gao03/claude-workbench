@@ -75,47 +75,49 @@ export const UserMessage: React.FC<UserMessageProps> = ({
 
   return (
     <>
-      <div className={cn("group relative", className)}>
-        <MessageBubble variant="user">
+    <div className={cn("group relative", className)}>
+      <MessageBubble variant="user">
           <div className="relative">
-            {/* 消息头部 */}
-            <MessageHeader 
-              variant="user" 
-              timestamp={message.timestamp}
-              showAvatar={false}
-            />
-            
-            {/* 消息内容 */}
-            <div className="text-sm leading-relaxed whitespace-pre-wrap">
-              {text}
-            </div>
-
-            {/* 撤回按钮 - 悬停显示 */}
-            {showRevertButton && (
-              <div className="flex items-center justify-end gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
-                        onClick={handleRevertClick}
-                      >
-                        <RotateCcw className="h-3 w-3 mr-1" />
-                        撤回
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      撤回到此消息，删除后续对话
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            )}
+        {/* 消息头部 */}
+        <MessageHeader 
+          variant="user" 
+          timestamp={message.timestamp}
+          showAvatar={false}
+        />
+        
+        {/* 消息内容和撤回按钮 - 同一行显示 */}
+        <div className="flex items-start gap-2">
+          {/* 消息内容 */}
+          <div className="text-sm leading-relaxed whitespace-pre-wrap flex-1">
+            {text}
           </div>
-        </MessageBubble>
-      </div>
+
+          {/* 撤回按钮 - 始终显示，圆形边框样式 */}
+          {showRevertButton && (
+            <div className="flex-shrink-0">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 w-7 p-0 rounded-full border-primary-foreground/20 text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 hover:border-primary-foreground/40 transition-all"
+                      onClick={handleRevertClick}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    撤回到此消息
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
+        </div>
+        </div>
+      </MessageBubble>
+    </div>
 
       {/* 撤回确认对话框 */}
       {showConfirmDialog && (
