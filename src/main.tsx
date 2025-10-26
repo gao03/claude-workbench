@@ -5,27 +5,23 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import "./assets/shimmer.css";
 import "./styles.css";
+import "./i18n"; // ✅ i18n 必须同步加载（App 立即需要使用）
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-// ⚡ 优化：移除同步初始化，改为异步延迟加载
-// 旧版本在这里同步初始化 i18n 和 toolRegistry，会阻塞应用启动
-// import "./i18n"; // ❌ 同步阻塞
-// initializeToolRegistry(); // ❌ 同步阻塞
+// ⚡ 优化：只异步加载 toolRegistry（可以延迟）
+// import { initializeToolRegistry } from "./lib/toolRegistryInit"; // ❌ 改为异步
 
 // 防止窗口闪烁的React包装组件
 const AppWrapper: React.FC = () => {
   React.useEffect(() => {
-    // ⚡ 性能优化：异步初始化不阻塞主渲染
-    const initializeAsync = async () => {
+    // ⚡ 性能优化：异步加载 toolRegistry（可以延迟，不阻塞 UI）
+    const initializeToolRegistry = async () => {
       try {
-        // 异步加载 i18n 和 toolRegistry（不阻塞 UI）
-        await Promise.all([
-          import('./i18n'),
-          import('./lib/toolRegistryInit').then(m => m.initializeToolRegistry())
-        ]);
-        console.log('[AppWrapper] ✅ Async initialization complete');
+        const { initializeToolRegistry: init } = await import('./lib/toolRegistryInit');
+        init();
+        console.log('[AppWrapper] ✅ ToolRegistry initialized asynchronously');
       } catch (error) {
-        console.error('[AppWrapper] Async initialization failed:', error);
+        console.error('[AppWrapper] ToolRegistry initialization failed:', error);
       }
     };
     
@@ -40,11 +36,11 @@ const AppWrapper: React.FC = () => {
       }
     };
     
-    // 立即开始异步初始化（不阻塞）
-    initializeAsync();
+    // 后台异步初始化 toolRegistry（不阻塞）
+    initializeToolRegistry();
     
-    // 延迟显示窗口（生产模式需要更长时间）
-    const timer = setTimeout(showWindow, 200);
+    // 立即显示窗口（生产模式已优化，不需要长延迟）
+    const timer = setTimeout(showWindow, 50);
     return () => clearTimeout(timer);
   }, []);
 
