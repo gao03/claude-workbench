@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { api, type Session } from '@/lib/api';
 import { normalizeUsageData } from '@/lib/utils';
-import { translationMiddleware } from '@/lib/translationMiddleware';
 import type { ClaudeStreamMessage } from '@/types/claude';
 
 /**
@@ -89,21 +88,14 @@ export function useSessionLifecycle(config: UseSessionLifecycleConfig): UseSessi
       // This prevents the "Loading..." screen from showing unnecessarily
       setIsLoading(false);
 
-      // ✨ NEW: Start progressive translation in TRUE background (non-blocking)
-      // ⚡ OPTIMIZATION: Only call if translation is enabled to avoid unnecessary async checks
-      setTimeout(async () => {
-        try {
-          const isTranslationEnabled = await translationMiddleware.isEnabled();
-          if (isTranslationEnabled) {
-            console.log('[useSessionLifecycle] Translation enabled, starting background translation');
-            await initializeProgressiveTranslation(processedMessages);
-          } else {
-            console.log('[useSessionLifecycle] Translation disabled, skipping background translation');
-          }
-        } catch (err) {
-          console.error('[useSessionLifecycle] Background translation check/execution failed:', err);
-        }
-      }, 0);
+      // ✨ NEW: Start progressive translation in TRUE background (completely non-blocking)
+      // ⚡ OPTIMIZATION: Use queueMicrotask + Promise to ensure zero blocking
+      // The initializeProgressiveTranslation function will check if translation is enabled internally
+      queueMicrotask(() => {
+        initializeProgressiveTranslation(processedMessages).catch(err => {
+          console.error('[useSessionLifecycle] Background translation failed:', err);
+        });
+      });
 
       // After loading history, we're continuing a conversation
     } catch (err) {
