@@ -67,6 +67,7 @@ use commands::extensions::{
 };
 use commands::file_operations::{
     open_directory_in_explorer,
+    open_file_with_default_app,
 };
 use process::ProcessRegistryState;
 use tauri::Manager;
@@ -265,6 +266,7 @@ fn main() {
 
             // File Operations
             open_directory_in_explorer,
+            open_file_with_default_app,
 
         ])
         .run(tauri::generate_context!())

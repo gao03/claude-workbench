@@ -266,7 +266,11 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
           ) : agents.length > 0 ? (
             <div className="space-y-2">
               {agents.map((agent) => (
-                <Card key={agent.path} className="p-4">
+                <Card 
+                  key={agent.path} 
+                  className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                  onClick={() => api.openFileWithDefaultApp(agent.path)}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
                       <Bot className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
@@ -287,16 +291,20 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
                         </code>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleOpenAgentsDir}
-                    >
-                      <FolderOpen className="h-3.5 w-3.5" />
-                    </Button>
                   </div>
                 </Card>
               ))}
+              
+              {/* 打开目录按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleOpenAgentsDir}
+              >
+                <FolderOpen className="h-3.5 w-3.5 mr-2" />
+                打开子代理目录
+              </Button>
             </div>
           ) : (
             <Card className="p-6 text-center border-dashed">
@@ -336,7 +344,11 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
           ) : skills.length > 0 ? (
             <div className="space-y-2">
               {skills.map((skill) => (
-                <Card key={skill.path} className="p-4">
+                <Card 
+                  key={skill.path} 
+                  className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                  onClick={() => api.openFileWithDefaultApp(skill.path)}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
                       <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
@@ -357,16 +369,20 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
                         </code>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleOpenSkillsDir}
-                    >
-                      <FolderOpen className="h-3.5 w-3.5" />
-                    </Button>
                   </div>
                 </Card>
               ))}
+              
+              {/* 打开目录按钮 */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleOpenSkillsDir}
+              >
+                <FolderOpen className="h-3.5 w-3.5 mr-2" />
+                打开 Skills 目录
+              </Button>
             </div>
           ) : (
             <Card className="p-6 text-center border-dashed">

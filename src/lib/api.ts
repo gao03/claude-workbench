@@ -2118,4 +2118,16 @@ export const api = {
     }
   },
 
+  /**
+   * Open a file with system default application (cross-platform)
+   */
+  async openFileWithDefaultApp(filePath: string): Promise<void> {
+    try {
+      return await invoke<void>("open_file_with_default_app", { filePath });
+    } catch (error) {
+      console.error("Failed to open file with default app:", error);
+      throw error;
+    }
+  },
+
 };
