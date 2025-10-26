@@ -121,7 +121,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         className="flex items-center gap-1"
       >
         {/* 主题切换按钮 - 移到最前面 */}
-        <ThemeToggle variant="with-text" size="sm" className="hover:bg-muted/70 h-7 px-2 py-1 text-xs font-medium rounded-md gap-0" />
+        <ThemeToggle variant="with-text" size="sm" className="hover:bg-muted/70 h-7 px-2 py-1 text-xs font-medium rounded-md gap-0 border border-border/40 shadow-sm hover:shadow" />
 
         {/* 分隔线 */}
         <div className="h-5 w-px bg-border/50 mx-0.5" />
@@ -130,7 +130,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           variant="ghost"
           size="sm"
           onClick={onUsageClick}
-          className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0"
+          className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0 border border-border/40 shadow-sm hover:shadow"
         >
           <BarChart3 className="h-3.5 w-3.5" strokeWidth={2} />
           {t('navigation.usage')}
@@ -140,7 +140,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           variant="ghost"
           size="sm"
           onClick={onClaudeClick}
-          className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0"
+          className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0 border border-border/40 shadow-sm hover:shadow"
         >
           <FileText className="h-3.5 w-3.5" strokeWidth={2} />
           CLAUDE.md
@@ -150,7 +150,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           variant="ghost"
           size="sm"
           onClick={onMCPClick}
-          className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0"
+          className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0 border border-border/40 shadow-sm hover:shadow"
         >
           <Network className="h-3.5 w-3.5" strokeWidth={2} />
           {t('navigation.mcpManager')}
@@ -162,7 +162,7 @@ export const Topbar: React.FC<TopbarProps> = ({
             variant="ghost"
             size="sm"
             onClick={onExtensionsClick}
-            className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0"
+            className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0 border border-border/40 shadow-sm hover:shadow"
           >
             <Package className="h-3.5 w-3.5" strokeWidth={2} />
             扩展
@@ -179,7 +179,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               variant="ghost"
               size="sm"
               onClick={onTabsClick}
-              className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0"
+              className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md gap-0 border border-border/40 shadow-sm hover:shadow"
             >
               <Eye className="h-3.5 w-3.5" strokeWidth={2} />
               查看会话
