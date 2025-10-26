@@ -118,7 +118,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
-        className="flex items-center gap-1"
+        className="flex items-center gap-1.5"
       >
         {/* 主题切换按钮 - 移到最前面 */}
         <ThemeToggle variant="with-text" size="sm" className="hover:bg-muted/70 h-7 px-2 py-1 text-xs font-medium rounded-md" />
@@ -132,7 +132,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           onClick={onUsageClick}
           className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
         >
-          <BarChart3 className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+          <BarChart3 className="mr-0.5 h-3.5 w-3.5" strokeWidth={2} />
           {t('navigation.usage')}
         </Button>
         
@@ -142,7 +142,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           onClick={onClaudeClick}
           className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
         >
-          <FileText className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+          <FileText className="mr-0.5 h-3.5 w-3.5" strokeWidth={2} />
           CLAUDE.md
         </Button>
         
@@ -152,7 +152,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           onClick={onMCPClick}
           className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
         >
-          <Network className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+          <Network className="mr-0.5 h-3.5 w-3.5" strokeWidth={2} />
           {t('navigation.mcpManager')}
         </Button>
         
@@ -164,7 +164,7 @@ export const Topbar: React.FC<TopbarProps> = ({
             onClick={onExtensionsClick}
             className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
           >
-            <Package className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+            <Package className="mr-0.5 h-3.5 w-3.5" strokeWidth={2} />
             扩展
           </Button>
         )}
@@ -181,7 +181,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               onClick={onTabsClick}
               className="text-xs font-medium px-2 py-1 h-7 hover:bg-muted/70 transition-all rounded-md"
             >
-              <Eye className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+              <Eye className="mr-0.5 h-3.5 w-3.5" strokeWidth={2} />
               查看会话
               {tabsCount > 0 && <span className="ml-1 text-xs">({tabsCount})</span>}
             </Button>
@@ -197,7 +197,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           onClick={onSettingsClick}
           className="text-xs font-medium px-2 py-1 h-7 shadow-sm hover:shadow-md transition-all rounded-md"
         >
-          <Settings className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+          <Settings className="mr-0.5 h-3.5 w-3.5" strokeWidth={2} />
           {t('navigation.settings')}
         </Button>
       </motion.div>
