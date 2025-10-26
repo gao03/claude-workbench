@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use walkdir::WalkDir;
 use log::{debug, info};
 
@@ -77,7 +77,7 @@ fn parse_description_from_content(content: &str) -> Option<String> {
     
     // Check for YAML frontmatter
     if lines.len() > 2 && lines[0] == "---" {
-        for (i, line) in lines.iter().enumerate().skip(1) {
+        for line in lines.iter().skip(1) {
             if *line == "---" {
                 // Found end of frontmatter
                 break;
