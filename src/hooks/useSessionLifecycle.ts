@@ -205,10 +205,12 @@ export function useSessionLifecycle(config: UseSessionLifecycleConfig): UseSessi
 
     unlistenRefs.current = [outputUnlisten, errorUnlisten, completeUnlisten];
 
-    // Mark as loading to show the session is active
+    // ⚡ FIX: Don't set isLoading(true) when reconnecting to existing session
+    // The session is already active and messages are displayed
+    // Setting isLoading(true) here causes "Loading..." to flash unnecessarily
     if (isMountedRef.current) {
-      setIsLoading(true);
       hasActiveSessionRef.current = true;
+      console.log('[useSessionLifecycle] Reconnected to active session (no loading state change)');
     }
   }, [
     isMountedRef,
