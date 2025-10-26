@@ -2008,7 +2008,31 @@ export const api = {
     }
   },
 
-  // ==================== Claude Extensions (Subagents & Skills) ====================
+  // ==================== Claude Extensions (Plugins, Subagents & Skills) ====================
+
+  /**
+   * List all installed plugins
+   */
+  async listPlugins(projectPath?: string): Promise<any[]> {
+    try {
+      return await invoke<any[]>("list_plugins", { projectPath });
+    } catch (error) {
+      console.error("Failed to list plugins:", error);
+      return [];
+    }
+  },
+
+  /**
+   * Open plugins directory
+   */
+  async openPluginsDirectory(projectPath?: string): Promise<string> {
+    try {
+      return await invoke<string>("open_plugins_directory", { projectPath });
+    } catch (error) {
+      console.error("Failed to open plugins directory:", error);
+      throw error;
+    }
+  },
 
   /**
    * List all subagents

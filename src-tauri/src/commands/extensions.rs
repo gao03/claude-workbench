@@ -7,6 +7,38 @@ use log::{debug, info};
 
 use super::claude::get_claude_dir;
 
+/// Represents a Plugin
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginInfo {
+    /// Plugin name
+    pub name: String,
+    /// Plugin description
+    pub description: Option<String>,
+    /// Plugin version
+    pub version: String,
+    /// Author information
+    pub author: Option<String>,
+    /// Marketplace source
+    pub marketplace: Option<String>,
+    /// Plugin directory path
+    pub path: String,
+    /// Whether plugin is enabled
+    pub enabled: bool,
+    /// Components count
+    pub components: PluginComponents,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginComponents {
+    pub commands: usize,
+    pub agents: usize,
+    pub skills: usize,
+    pub hooks: usize,
+    pub mcp_servers: usize,
+}
+
 /// Represents a Subagent file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -252,5 +284,171 @@ pub async fn open_skills_directory(project_path: Option<String>) -> Result<Strin
         .map_err(|e| format!("Failed to create skills directory: {}", e))?;
     
     Ok(skills_dir.to_string_lossy().to_string())
+}
+
+/// List all installed plugins
+#[tauri::command]
+pub async fn list_plugins(project_path: Option<String>) -> Result<Vec<PluginInfo>, String> {
+    info!("Listing installed plugins");
+    let mut plugins = Vec::new();
+    
+    // User-level plugins (~/.claude/plugins/)
+    if let Ok(claude_dir) = get_claude_dir() {
+        let user_plugins_dir = claude_dir.join("plugins");
+        if user_plugins_dir.exists() {
+            plugins.extend(scan_plugins_directory(&user_plugins_dir)?);
+        }
+    }
+    
+    // Project-level plugins (.claude/plugins/)
+    if let Some(proj_path) = project_path {
+        let project_plugins_dir = Path::new(&proj_path).join(".claude").join("plugins");
+        if project_plugins_dir.exists() {
+            plugins.extend(scan_plugins_directory(&project_plugins_dir)?);
+        }
+    }
+    
+    Ok(plugins)
+}
+
+/// Scan plugins directory
+fn scan_plugins_directory(dir: &Path) -> Result<Vec<PluginInfo>, String> {
+    let mut plugins = Vec::new();
+    
+    let entries = fs::read_dir(dir)
+        .map_err(|e| format!("Failed to read plugins directory: {}", e))?;
+    
+    for entry in entries.flatten() {
+        let path = entry.path();
+        
+        if !path.is_dir() {
+            continue;
+        }
+        
+        // Look for .claude-plugin/plugin.json
+        let plugin_json_path = path.join(".claude-plugin").join("plugin.json");
+        
+        if plugin_json_path.exists() {
+            if let Ok(content) = fs::read_to_string(&plugin_json_path) {
+                if let Ok(manifest) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let name = manifest.get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+                    
+                    let description = manifest.get("description")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    
+                    let version = manifest.get("version")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("0.0.0")
+                        .to_string();
+                    
+                    let author = manifest.get("author")
+                        .and_then(|v| v.get("name"))
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    
+                    // Count components
+                    let components = count_plugin_components(&path);
+                    
+                    plugins.push(PluginInfo {
+                        name,
+                        description,
+                        version,
+                        author,
+                        marketplace: None,
+                        path: path.to_string_lossy().to_string(),
+                        enabled: true,  // TODO: 从配置读取实际状态
+                        components,
+                    });
+                }
+            }
+        }
+    }
+    
+    Ok(plugins)
+}
+
+/// Count plugin components
+fn count_plugin_components(plugin_dir: &Path) -> PluginComponents {
+    let mut components = PluginComponents {
+        commands: 0,
+        agents: 0,
+        skills: 0,
+        hooks: 0,
+        mcp_servers: 0,
+    };
+    
+    // Count commands
+    let commands_dir = plugin_dir.join("commands");
+    if commands_dir.exists() {
+        components.commands = WalkDir::new(&commands_dir)
+            .max_depth(2)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("md"))
+            .count();
+    }
+    
+    // Count agents
+    let agents_dir = plugin_dir.join("agents");
+    if agents_dir.exists() {
+        components.agents = WalkDir::new(&agents_dir)
+            .max_depth(2)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("md"))
+            .count();
+    }
+    
+    // Count skills
+    let skills_dir = plugin_dir.join("skills");
+    if skills_dir.exists() {
+        components.skills = WalkDir::new(&skills_dir)
+            .max_depth(2)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path().file_name()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.ends_with("SKILL.md"))
+                    .unwrap_or(false)
+            })
+            .count();
+    }
+    
+    // Check for hooks
+    let hooks_file = plugin_dir.join("hooks").join("hooks.json");
+    if hooks_file.exists() {
+        components.hooks = 1;
+    }
+    
+    // Check for MCP servers
+    let mcp_file = plugin_dir.join(".mcp.json");
+    if mcp_file.exists() {
+        components.mcp_servers = 1;
+    }
+    
+    components
+}
+
+/// Open plugins directory
+#[tauri::command]
+pub async fn open_plugins_directory(project_path: Option<String>) -> Result<String, String> {
+    let plugins_dir = if let Some(proj_path) = project_path {
+        Path::new(&proj_path).join(".claude").join("plugins")
+    } else {
+        get_claude_dir()
+            .map_err(|e| e.to_string())?
+            .join("plugins")
+    };
+    
+    // Create directory if it doesn't exist
+    fs::create_dir_all(&plugins_dir)
+        .map_err(|e| format!("Failed to create plugins directory: {}", e))?;
+    
+    Ok(plugins_dir.to_string_lossy().to_string())
 }
 

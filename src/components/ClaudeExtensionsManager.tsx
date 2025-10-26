@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Bot,
-  Code,
   FolderOpen,
   Plus,
   Package,
@@ -18,6 +17,23 @@ import { api } from "@/lib/api";
 interface ClaudeExtensionsManagerProps {
   projectPath?: string;
   className?: string;
+}
+
+interface PluginInfo {
+  name: string;
+  description?: string;
+  version: string;
+  author?: string;
+  marketplace?: string;
+  path: string;
+  enabled: boolean;
+  components: {
+    commands: number;
+    agents: number;
+    skills: number;
+    hooks: number;
+    mcpServers: number;
+  };
 }
 
 interface AgentFile {
@@ -46,10 +62,25 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
   projectPath,
   className
 }) => {
+  const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [agents, setAgents] = useState<AgentFile[]>([]);
   const [skills, setSkills] = useState<SkillFile[]>([]);
-  const [activeTab, setActiveTab] = useState("agents");
+  const [activeTab, setActiveTab] = useState("plugins");
   const [loading, setLoading] = useState(false);
+
+  // 加载插件
+  const loadPlugins = async () => {
+    try {
+      setLoading(true);
+      const result = await api.listPlugins(projectPath);
+      setPlugins(result);
+      console.log('[ClaudeExtensions] Loaded', result.length, 'plugins');
+    } catch (error) {
+      console.error('[ClaudeExtensions] Failed to load plugins:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 加载子代理
   const loadAgents = async () => {
@@ -80,6 +111,16 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
   };
 
   // 打开目录
+  const handleOpenPluginsDir = async () => {
+    try {
+      const dirPath = await api.openPluginsDirectory(projectPath);
+      const { open } = await import('@tauri-apps/plugin-shell');
+      await open(dirPath);
+    } catch (error) {
+      console.error('Failed to open plugins directory:', error);
+    }
+  };
+
   const handleOpenAgentsDir = async () => {
     try {
       const dirPath = await api.openAgentsDirectory(projectPath);
@@ -101,6 +142,7 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
   };
 
   useEffect(() => {
+    loadPlugins();
     loadAgents();
     loadSkills();
   }, [projectPath]);
@@ -108,16 +150,101 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
   return (
     <div className={cn("space-y-4", className)}>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="plugins">
+            <Package className="h-4 w-4 mr-2" />
+            Plugins
+          </TabsTrigger>
           <TabsTrigger value="agents">
             <Bot className="h-4 w-4 mr-2" />
-            子代理 (Subagents)
+            Subagents
           </TabsTrigger>
           <TabsTrigger value="skills">
             <Sparkles className="h-4 w-4 mr-2" />
-            Agent Skills
+            Skills
           </TabsTrigger>
         </TabsList>
+
+        {/* Plugins Tab */}
+        <TabsContent value="plugins" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Plugins</h3>
+              <p className="text-sm text-muted-foreground">
+                已安装的插件（可包含 commands、agents、skills、hooks、MCP servers）
+              </p>
+            </div>
+          </div>
+
+          {/* 插件列表 */}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : plugins.length > 0 ? (
+            <div className="space-y-2">
+              {plugins.map((plugin) => (
+                <Card key={plugin.path} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <Package className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{plugin.name}</h4>
+                          <Badge variant="outline" className="text-xs">
+                            v{plugin.version}
+                          </Badge>
+                          {plugin.enabled && (
+                            <Badge variant="default" className="text-xs bg-green-600">
+                              已启用
+                            </Badge>
+                          )}
+                        </div>
+                        {plugin.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {plugin.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          {plugin.components.commands > 0 && <span>📝 {plugin.components.commands} 命令</span>}
+                          {plugin.components.agents > 0 && <span>🤖 {plugin.components.agents} 代理</span>}
+                          {plugin.components.skills > 0 && <span>✨ {plugin.components.skills} 技能</span>}
+                          {plugin.components.hooks > 0 && <span>🪝 钩子</span>}
+                          {plugin.components.mcpServers > 0 && <span>🔌 MCP</span>}
+                        </div>
+                        {plugin.author && (
+                          <p className="text-xs text-muted-foreground mt-1">作者: {plugin.author}</p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenPluginsDir}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-6 text-center border-dashed">
+              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h4 className="font-medium mb-2">暂无已安装的 Plugins</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Plugins 存储在 .claude/plugins/ 目录下
+              </p>
+              <div className="text-xs text-muted-foreground mb-4">
+                使用 <code className="bg-muted px-1 py-0.5 rounded">/plugin</code> 命令管理插件
+              </div>
+              <Button variant="outline" size="sm" onClick={handleOpenPluginsDir}>
+                <FolderOpen className="h-4 w-4 mr-2" />
+                打开目录
+              </Button>
+            </Card>
+          )}
+        </TabsContent>
 
         {/* Subagents Tab */}
         <TabsContent value="agents" className="space-y-4">
@@ -259,22 +386,6 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
           )}
         </TabsContent>
       </Tabs>
-
-      {/* 链接到 Slash Commands */}
-      <Card className="p-4 bg-muted/30">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Code className="h-5 w-5 text-primary" />
-            <div>
-              <h4 className="font-medium">Slash Commands</h4>
-              <p className="text-xs text-muted-foreground">
-                自定义斜杠命令 - 已有独立管理器
-              </p>
-            </div>
-          </div>
-          <Badge variant="outline">已实现</Badge>
-        </div>
-      </Card>
 
       {/* 官方文档链接 */}
       <div className="text-xs text-muted-foreground border-t pt-4">

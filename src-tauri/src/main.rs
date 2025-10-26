@@ -63,7 +63,7 @@ use commands::enhanced_hooks::{
 };
 use commands::extensions::{
     list_subagents, list_agent_skills, read_subagent, read_skill,
-    open_agents_directory, open_skills_directory,
+    open_agents_directory, open_skills_directory, list_plugins, open_plugins_directory,
 };
 use process::ProcessRegistryState;
 use tauri::Manager;
@@ -250,11 +250,13 @@ fn main() {
             revert_to_prompt,
             get_prompt_list,
 
-            // Claude Extensions (Subagents & Skills)
+            // Claude Extensions (Plugins, Subagents & Skills)
+            list_plugins,
             list_subagents,
             list_agent_skills,
             read_subagent,
             read_skill,
+            open_plugins_directory,
             open_agents_directory,
             open_skills_directory,
 
