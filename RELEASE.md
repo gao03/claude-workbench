@@ -1,9 +1,9 @@
-# Claude Workbench v4.0.0 发布说明
+# Claude Workbench v4.0.1 发布说明
 
-## 🎉 v4.0.0 - 重大更新
+## 🎉 v4.0.1 - 扩展管理器与成本优化
 
 **发布日期**: 2025-10-26  
-**重要性**: 重大功能改进和 bug 修复
+**重要性**: 新增扩展管理器，成本计算优化，UI 改进
 
 ---
 
@@ -114,11 +114,62 @@
 
 ---
 
+## 🆕 v4.0.1 新增功能
+
+### Claude 扩展管理器 ⭐⭐⭐⭐⭐
+
+**顶栏新增"扩展"入口**，可查看：
+- **Plugins** - 已安装的插件（包含 commands/agents/skills/hooks/MCP）
+- **Subagents** - 专用子代理列表
+- **Agent Skills** - 专用技能列表
+
+**功能**：
+- ✅ 扫描用户级和项目级扩展
+- ✅ 显示插件组件统计
+- ✅ 点击卡片直接打开 .md 文件
+- ✅ 打开目录浏览所有文件
+- ✅ 链接到官方文档和资源
+
+### 成本计算优化 ⭐⭐⭐⭐⭐
+
+**多模型定价支持**：
+- ✅ 准确计算混合模型会话成本
+- ✅ 支持 Opus 4.1、Sonnet 4.5、Sonnet 3.5
+- ✅ 每条消息使用实际模型定价
+
+**详细统计**：
+- ✅ 鼠标悬停查看详细信息
+- ✅ Token 分类（输入/输出/Cache 读/Cache 写）
+- ✅ 会话时长（wall time）
+- ✅ API 执行时长
+- ✅ 符合官方 /cost 命令格式
+
+### UI/UX 改进 ⭐⭐⭐⭐
+
+**顶栏优化**：
+- ✅ 图标和文字紧凑（0px 间距）
+- ✅ 按钮间距清晰（4px）
+- ✅ 微妙阴影和边框
+- ✅ 视觉层次更清晰
+
+**交互优化**：
+- ✅ 成本详情悬停显示（不用点击）
+- ✅ Popover 定位准确
+- ✅ 实心背景清晰可读
+
+### 性能优化 ⭐⭐⭐⭐
+
+- ✅ 修复生产构建加载会话慢的问题
+- ✅ 翻译未启用时完全跳过检查
+- ✅ 会话历史秒开（与开发模式一致）
+
+---
+
 ## 📦 安装方式
 
 ### 预构建版本
 
-从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.0) 下载：
+从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.1) 下载：
 
 **Windows**:
 - MSI 安装包
@@ -133,7 +184,7 @@
 ```bash
 git clone https://github.com/anyme123/claude-workbench.git
 cd claude-workbench
-git checkout v4.0.0
+git checkout v4.0.1
 
 # 安装依赖
 npm install
@@ -187,6 +238,31 @@ npm run tauri build
 ---
 
 ## 📋 完整更新日志
+
+### v4.0.1 (2025-10-26)
+
+**新功能**：
+- Claude 扩展管理器（Plugins/Subagents/Skills）
+- 多模型成本计算（准确定价）
+- 成本详情悬停显示（Token 分类、时长统计）
+- Git 代码变更统计 API
+- 点击打开 .md 文件功能
+
+**性能优化**：
+- 会话历史加载速度优化
+- 翻译检查优化（未启用时跳过）
+- API 时长记录
+
+**UI 改进**：
+- 顶栏紧凑设计（图标文字 0px 间距）
+- 按钮阴影和边框
+- Plan Mode 快捷键对齐官方（单次 Shift+Tab）
+- 成本 Popover 定位修复
+
+**Bug 修复**：
+- Agent Skill 名称提取
+- 目录打开功能（跨平台）
+- Rust 编译警告清理
 
 ### v4.0.0 (2025-10-26)
 
