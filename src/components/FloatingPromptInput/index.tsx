@@ -61,6 +61,7 @@ const FloatingPromptInputInner = (
   const [selectedModel, setSelectedModel] = useState<ModelType>(defaultModel);
   const [selectedThinkingMode, setSelectedThinkingMode] = useState<ThinkingMode>("on");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showCostPopover, setShowCostPopover] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
 
   // Refs
@@ -559,10 +560,14 @@ const FloatingPromptInputInner = (
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.2 }}
+                onMouseEnter={() => setShowCostPopover(true)}
+                onMouseLeave={() => setShowCostPopover(false)}
               >
                 <Popover
+                  open={showCostPopover}
+                  onOpenChange={setShowCostPopover}
                   trigger={
-                    <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-8 cursor-help hover:bg-accent transition-colors">
+                    <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-8 cursor-default hover:bg-accent transition-colors">
                       <DollarSign className="h-3 w-3 text-green-600" />
                       <span className="font-mono text-xs">{sessionCost}</span>
                       <Info className="h-3 w-3 text-muted-foreground ml-1" />
