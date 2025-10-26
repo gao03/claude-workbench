@@ -12,7 +12,7 @@ import { ImagePreview } from "../ImagePreview";
 import { ModelSelector } from "./ModelSelector";
 import { ThinkingModeToggle } from "./ThinkingModeToggle";
 import { PlanModeToggle } from "./PlanModeToggle";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover } from "@/components/ui/popover";
 import { FloatingPromptInputProps, FloatingPromptInputRef, ThinkingMode, ModelType } from "./types";
 import { THINKING_MODES } from "./constants";
 import { formatDuration } from "@/lib/pricing";
@@ -554,72 +554,82 @@ const FloatingPromptInputInner = (
             )}
 
             {/* Session Cost with Details */}
-            {hasMessages && sessionCost && (
+            {hasMessages && sessionCost && sessionStats && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.2 }}
               >
-                <Tooltip delayDuration={200}>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-8 cursor-help">
+                <Popover
+                  trigger={
+                    <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-8 cursor-help hover:bg-accent transition-colors">
                       <DollarSign className="h-3 w-3 text-green-600" />
                       <span className="font-mono text-xs">{sessionCost}</span>
-                      {sessionStats && <Info className="h-3 w-3 text-muted-foreground ml-1" />}
+                      <Info className="h-3 w-3 text-muted-foreground ml-1" />
                     </Badge>
-                  </TooltipTrigger>
-                  {sessionStats && (
-                    <TooltipContent 
-                      side="top" 
-                      align="center"
-                      className="p-3 max-w-sm bg-popover border border-border shadow-lg"
-                      sideOffset={8}
-                    >
-                      <div className="space-y-2">
-                        <div className="font-medium text-sm border-b pb-1">会话统计</div>
-                        <div className="space-y-1 text-xs">
-                          <div className="flex justify-between gap-4">
-                            <span className="text-muted-foreground">总成本:</span>
-                            <span className="font-mono font-medium">{sessionCost}</span>
-                          </div>
-                          <div className="flex justify-between gap-4">
-                            <span className="text-muted-foreground">总 Tokens:</span>
-                            <span className="font-mono">{sessionStats.totalTokens.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between gap-4 text-muted-foreground">
-                            <span>├─ 输入:</span>
-                            <span className="font-mono">{sessionStats.inputTokens.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between gap-4 text-muted-foreground">
-                            <span>├─ 输出:</span>
-                            <span className="font-mono">{sessionStats.outputTokens.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between gap-4 text-muted-foreground">
-                            <span>├─ Cache 读:</span>
-                            <span className="font-mono">{sessionStats.cacheReadTokens.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between gap-4 text-muted-foreground">
-                            <span>└─ Cache 写:</span>
-                            <span className="font-mono">{sessionStats.cacheWriteTokens.toLocaleString()}</span>
-                          </div>
-                          {sessionStats.durationSeconds > 0 && (
-                            <>
-                              <div className="border-t pt-1 mt-1"></div>
-                              <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">会话时长:</span>
-                                <span className="font-mono">{formatDuration(sessionStats.durationSeconds)}</span>
-                              </div>
-                              <div className="flex justify-between gap-4 text-muted-foreground">
-                                <span>API 时长:</span>
-                                <span className="font-mono">{formatDuration(sessionStats.apiDurationSeconds)}</span>
-                              </div>
-                            </>
-                          )}
+                  }
+                  content={
+                    <div className="space-y-2">
+                      <div className="font-medium text-sm border-b pb-1">会话统计</div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">总成本:</span>
+                          <span className="font-mono font-medium">{sessionCost}</span>
                         </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">总 Tokens:</span>
+                          <span className="font-mono">{sessionStats.totalTokens.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 text-muted-foreground">
+                          <span>├─ 输入:</span>
+                          <span className="font-mono">{sessionStats.inputTokens.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 text-muted-foreground">
+                          <span>├─ 输出:</span>
+                          <span className="font-mono">{sessionStats.outputTokens.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 text-muted-foreground">
+                          <span>├─ Cache 读:</span>
+                          <span className="font-mono">{sessionStats.cacheReadTokens.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 text-muted-foreground">
+                          <span>└─ Cache 写:</span>
+                          <span className="font-mono">{sessionStats.cacheWriteTokens.toLocaleString()}</span>
+                        </div>
+                        {sessionStats.durationSeconds > 0 && (
+                          <>
+                            <div className="border-t pt-1 mt-1"></div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">会话时长:</span>
+                              <span className="font-mono">{formatDuration(sessionStats.durationSeconds)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4 text-muted-foreground">
+                              <span>API 时长:</span>
+                              <span className="font-mono">{formatDuration(sessionStats.apiDurationSeconds)}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
+                    </div>
+                  }
+                  side="top"
+                  align="center"
+                  className="w-80"
+                />
+              </motion.div>
+            )}
+            
+            {/* Session Cost without Details (fallback) */}
+            {hasMessages && sessionCost && !sessionStats && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-8">
+                  <DollarSign className="h-3 w-3 text-green-600" />
+                  <span className="font-mono text-xs">{sessionCost}</span>
+                </Badge>
               </motion.div>
             )}
 
