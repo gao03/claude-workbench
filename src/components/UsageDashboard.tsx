@@ -107,10 +107,8 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
     }
 
     try {
-      // Don't show loading spinner if we have cached data for a different range
-      if (!stats && !sessionStats) {
-        setLoading(true);
-      }
+      // Always show loading when fetching
+      setLoading(true);
       setError(null);
 
       // Get today's date range
@@ -179,7 +177,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
     } finally {
       setLoading(false);
     }
-  }, [selectedDateRange, getCachedData, setCachedData, stats, sessionStats]);
+  }, [selectedDateRange, getCachedData, setCachedData]);  // ⚡ 移除 stats, sessionStats 依赖，避免无限循环
 
   // Load data on mount and when date range changes
   useEffect(() => {
