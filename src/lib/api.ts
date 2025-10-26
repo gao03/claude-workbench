@@ -2008,4 +2008,78 @@ export const api = {
     }
   },
 
+  // ==================== Claude Extensions (Subagents & Skills) ====================
+
+  /**
+   * List all subagents
+   */
+  async listSubagents(projectPath?: string): Promise<any[]> {
+    try {
+      return await invoke<any[]>("list_subagents", { projectPath });
+    } catch (error) {
+      console.error("Failed to list subagents:", error);
+      return [];
+    }
+  },
+
+  /**
+   * List all agent skills
+   */
+  async listAgentSkills(projectPath?: string): Promise<any[]> {
+    try {
+      return await invoke<any[]>("list_agent_skills", { projectPath });
+    } catch (error) {
+      console.error("Failed to list agent skills:", error);
+      return [];
+    }
+  },
+
+  /**
+   * Read a subagent file
+   */
+  async readSubagent(filePath: string): Promise<string> {
+    try {
+      return await invoke<string>("read_subagent", { filePath });
+    } catch (error) {
+      console.error("Failed to read subagent:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Read a skill file
+   */
+  async readSkill(filePath: string): Promise<string> {
+    try {
+      return await invoke<string>("read_skill", { filePath });
+    } catch (error) {
+      console.error("Failed to read skill:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Open agents directory in file explorer
+   */
+  async openAgentsDirectory(projectPath?: string): Promise<string> {
+    try {
+      return await invoke<string>("open_agents_directory", { projectPath });
+    } catch (error) {
+      console.error("Failed to open agents directory:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Open skills directory in file explorer
+   */
+  async openSkillsDirectory(projectPath?: string): Promise<string> {
+    try {
+      return await invoke<string>("open_skills_directory", { projectPath });
+    } catch (error) {
+      console.error("Failed to open skills directory:", error);
+      throw error;
+    }
+  },
+
 };

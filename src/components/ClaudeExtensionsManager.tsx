@@ -5,13 +5,15 @@ import {
   FolderOpen,
   Plus,
   Package,
-  Sparkles
+  Sparkles,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 interface ClaudeExtensionsManagerProps {
   projectPath?: string;
@@ -44,26 +46,63 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
   projectPath,
   className
 }) => {
-  const [_agents, _setAgents] = useState<AgentFile[]>([]);
-  const [_skills, _setSkills] = useState<SkillFile[]>([]);
+  const [agents, setAgents] = useState<AgentFile[]>([]);
+  const [skills, setSkills] = useState<SkillFile[]>([]);
   const [activeTab, setActiveTab] = useState("agents");
+  const [loading, setLoading] = useState(false);
 
-  // 扫描文件的模拟实现（需要后端 API 支持）
+  // 加载子代理
   const loadAgents = async () => {
-    // TODO: 实现后端 API 扫描 .claude/agents/ 目录
-    console.log('[ClaudeExtensions] Loading agents from .claude/agents/');
+    try {
+      setLoading(true);
+      const result = await api.listSubagents(projectPath);
+      setAgents(result);
+      console.log('[ClaudeExtensions] Loaded', result.length, 'subagents');
+    } catch (error) {
+      console.error('[ClaudeExtensions] Failed to load agents:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // 加载 Agent Skills
   const loadSkills = async () => {
-    // TODO: 实现后端 API 扫描 .claude/skills/ 目录
-    console.log('[ClaudeExtensions] Loading skills from .claude/skills/');
+    try {
+      setLoading(true);
+      const result = await api.listAgentSkills(projectPath);
+      setSkills(result);
+      console.log('[ClaudeExtensions] Loaded', result.length, 'skills');
+    } catch (error) {
+      console.error('[ClaudeExtensions] Failed to load skills:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 打开目录
+  const handleOpenAgentsDir = async () => {
+    try {
+      const dirPath = await api.openAgentsDirectory(projectPath);
+      const { open } = await import('@tauri-apps/plugin-shell');
+      await open(dirPath);
+    } catch (error) {
+      console.error('Failed to open agents directory:', error);
+    }
+  };
+
+  const handleOpenSkillsDir = async () => {
+    try {
+      const dirPath = await api.openSkillsDirectory(projectPath);
+      const { open } = await import('@tauri-apps/plugin-shell');
+      await open(dirPath);
+    } catch (error) {
+      console.error('Failed to open skills directory:', error);
+    }
   };
 
   useEffect(() => {
-    if (projectPath) {
-      loadAgents();
-      loadSkills();
-    }
+    loadAgents();
+    loadSkills();
   }, [projectPath]);
 
   return (
@@ -95,28 +134,59 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
             </Button>
           </div>
 
-          {/* 提示：需要后端 API */}
-          <Card className="p-6 text-center border-dashed">
-            <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h4 className="font-medium mb-2">查看已配置的子代理</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              根据官方文档，子代理存储为 .claude/agents/ 目录下的 Markdown 文件
-            </p>
-            <div className="space-y-2 text-xs text-muted-foreground text-left max-w-md mx-auto">
-              <div className="flex items-start gap-2">
-                <span className="text-primary">•</span>
-                <span>项目级: <code className="bg-muted px-1 py-0.5 rounded">{projectPath}/.claude/agents/</code></span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-primary">•</span>
-                <span>用户级: <code className="bg-muted px-1 py-0.5 rounded">~/.claude/agents/</code></span>
-              </div>
+          {/* 子代理列表 */}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-            <Button variant="outline" size="sm" className="mt-4" disabled>
-              <FolderOpen className="h-4 w-4 mr-2" />
-              打开目录
-            </Button>
-          </Card>
+          ) : agents.length > 0 ? (
+            <div className="space-y-2">
+              {agents.map((agent) => (
+                <Card key={agent.path} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <Bot className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{agent.name}</h4>
+                          <Badge variant={agent.scope === 'project' ? 'default' : 'outline'} className="text-xs">
+                            {agent.scope}
+                          </Badge>
+                        </div>
+                        {agent.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {agent.description}
+                          </p>
+                        )}
+                        <code className="text-xs text-muted-foreground mt-2 block truncate">
+                          {agent.path}
+                        </code>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenAgentsDir}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-6 text-center border-dashed">
+              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h4 className="font-medium mb-2">暂无子代理</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                子代理存储在 .claude/agents/ 目录下
+              </p>
+              <Button variant="outline" size="sm" onClick={handleOpenAgentsDir}>
+                <FolderOpen className="h-4 w-4 mr-2" />
+                打开目录
+              </Button>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Agent Skills Tab */}
@@ -134,28 +204,59 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
             </Button>
           </div>
 
-          {/* 提示：需要后端 API */}
-          <Card className="p-6 text-center border-dashed">
-            <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h4 className="font-medium mb-2">查看已配置的 Agent Skills</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              根据官方文档，Agent Skills 存储为 .claude/skills/ 目录下的 SKILL.md 文件
-            </p>
-            <div className="space-y-2 text-xs text-muted-foreground text-left max-w-md mx-auto">
-              <div className="flex items-start gap-2">
-                <span className="text-primary">•</span>
-                <span>项目级: <code className="bg-muted px-1 py-0.5 rounded">{projectPath}/.claude/skills/</code></span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-primary">•</span>
-                <span>用户级: <code className="bg-muted px-1 py-0.5 rounded">~/.claude/skills/</code></span>
-              </div>
+          {/* Agent Skills 列表 */}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-            <Button variant="outline" size="sm" className="mt-4" disabled>
-              <FolderOpen className="h-4 w-4 mr-2" />
-              打开目录
-            </Button>
-          </Card>
+          ) : skills.length > 0 ? (
+            <div className="space-y-2">
+              {skills.map((skill) => (
+                <Card key={skill.path} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{skill.name}</h4>
+                          <Badge variant={skill.scope === 'project' ? 'default' : 'outline'} className="text-xs">
+                            {skill.scope}
+                          </Badge>
+                        </div>
+                        {skill.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {skill.description}
+                          </p>
+                        )}
+                        <code className="text-xs text-muted-foreground mt-2 block truncate">
+                          {skill.path}
+                        </code>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenSkillsDir}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-6 text-center border-dashed">
+              <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h4 className="font-medium mb-2">暂无 Agent Skills</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Agent Skills 存储在 .claude/skills/ 目录下（文件名格式：NAME.SKILL.md）
+              </p>
+              <Button variant="outline" size="sm" onClick={handleOpenSkillsDir}>
+                <FolderOpen className="h-4 w-4 mr-2" />
+                打开目录
+              </Button>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 

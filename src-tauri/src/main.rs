@@ -61,6 +61,10 @@ use commands::translator::{
 use commands::enhanced_hooks::{
     trigger_hook_event, test_hook_condition, execute_pre_commit_review,
 };
+use commands::extensions::{
+    list_subagents, list_agent_skills, read_subagent, read_skill,
+    open_agents_directory, open_skills_directory,
+};
 use process::ProcessRegistryState;
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStatePlugin;
@@ -245,6 +249,14 @@ fn main() {
             mark_prompt_completed,
             revert_to_prompt,
             get_prompt_list,
+
+            // Claude Extensions (Subagents & Skills)
+            list_subagents,
+            list_agent_skills,
+            read_subagent,
+            read_skill,
+            open_agents_directory,
+            open_skills_directory,
 
         ])
         .run(tauri::generate_context!())
