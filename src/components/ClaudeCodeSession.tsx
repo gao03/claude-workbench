@@ -240,7 +240,8 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     count: displayableMessages.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 200, // 增加估计高度，减少重复测量
-    overscan: 8, // 增加 overscan 确保流畅滚动
+    overscan: 2, // ⚡ 减少 overscan 从 8 到 2（加快初始渲染）
+    enabled: displayableMessages.length > 20,  // ⚡ 消息少时禁用虚拟化
     measureElement: (element) => {
       // 确保元素完全渲染后再测量
       return element?.getBoundingClientRect().height ?? 200;
