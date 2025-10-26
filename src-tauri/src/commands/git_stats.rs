@@ -1,6 +1,9 @@
 use std::process::Command as StdCommand;
 use serde::{Serialize, Deserialize};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 /// Git 代码变更统计
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

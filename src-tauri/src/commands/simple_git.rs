@@ -2,6 +2,9 @@ use std::path::Path;
 use std::process::Command;
 use log;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 /// Check if a directory is a Git repository
 pub fn is_git_repo(project_path: &str) -> bool {
     Path::new(project_path).join(".git").exists()
@@ -24,10 +27,14 @@ pub fn ensure_git_repo(project_path: &str) -> Result<(), String> {
     if !has_git_dir {
         log::info!("Initializing Git repository at: {}", project_path);
         
-        let init_output = Command::new("git")
-            .args(["init"])
-            .current_dir(project_path)
-            .output()
+        let mut cmd = Command::new("git");
+        cmd.args(["init"]);
+        cmd.current_dir(project_path);
+        
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        
+        let init_output = cmd.output()
             .map_err(|e| format!("Failed to init git: {}", e))?;
         
         if !init_output.status.success() {
@@ -38,21 +45,29 @@ pub fn ensure_git_repo(project_path: &str) -> Result<(), String> {
     }
     
     // Configure Git user if not set (needed for commits)
-    let _ = Command::new("git")
-        .args(["config", "user.name", "Claude Workbench"])
-        .current_dir(project_path)
-        .output();
+    let mut config_name = Command::new("git");
+    config_name.args(["config", "user.name", "Claude Workbench"]);
+    config_name.current_dir(project_path);
+    #[cfg(target_os = "windows")]
+    config_name.creation_flags(0x08000000);
+    let _ = config_name.output();
     
-    let _ = Command::new("git")
-        .args(["config", "user.email", "ai@claude.workbench"])
-        .current_dir(project_path)
-        .output();
+    let mut config_email = Command::new("git");
+    config_email.args(["config", "user.email", "ai@claude.workbench"]);
+    config_email.current_dir(project_path);
+    #[cfg(target_os = "windows")]
+    config_email.creation_flags(0x08000000);
+    let _ = config_email.output();
     
     // Always use --allow-empty to ensure commit is created
-    let commit_output = Command::new("git")
-        .args(["commit", "--allow-empty", "-m", "[Claude Workbench] Initial commit"])
-        .current_dir(project_path)
-        .output()
+    let mut commit_cmd = Command::new("git");
+    commit_cmd.args(["commit", "--allow-empty", "-m", "[Claude Workbench] Initial commit"]);
+    commit_cmd.current_dir(project_path);
+    
+    #[cfg(target_os = "windows")]
+    commit_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    
+    let commit_output = commit_cmd.output()
         .map_err(|e| format!("Failed to create initial commit: {}", e))?;
     
     if !commit_output.status.success() {
@@ -67,10 +82,14 @@ pub fn ensure_git_repo(project_path: &str) -> Result<(), String> {
 
 /// Get current HEAD commit hash
 pub fn git_current_commit(project_path: &str) -> Result<String, String> {
-    let output = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .current_dir(project_path)
-        .output()
+    let mut cmd = Command::new("git");
+    cmd.args(["rev-parse", "HEAD"]);
+    cmd.current_dir(project_path);
+    
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    
+    let output = cmd.output()
         .map_err(|e| format!("Failed to get current commit: {}", e))?;
     
     if !output.status.success() {
@@ -89,10 +108,14 @@ pub fn git_current_commit(project_path: &str) -> Result<String, String> {
 pub fn git_reset_hard(project_path: &str, commit: &str) -> Result<(), String> {
     log::info!("Resetting repository to commit: {}", commit);
     
-    let output = Command::new("git")
-        .args(["reset", "--hard", commit])
-        .current_dir(project_path)
-        .output()
+    let mut cmd = Command::new("git");
+    cmd.args(["reset", "--hard", commit]);
+    cmd.current_dir(project_path);
+    
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    
+    let output = cmd.output()
         .map_err(|e| format!("Failed to reset: {}", e))?;
     
     if !output.status.success() {
@@ -106,10 +129,14 @@ pub fn git_reset_hard(project_path: &str, commit: &str) -> Result<(), String> {
 /// Save uncommitted changes to stash
 pub fn git_stash_save(project_path: &str, message: &str) -> Result<(), String> {
     // Check if there are uncommitted changes
-    let status_output = Command::new("git")
-        .args(["status", "--porcelain"])
-        .current_dir(project_path)
-        .output()
+    let mut status_cmd = Command::new("git");
+    status_cmd.args(["status", "--porcelain"]);
+    status_cmd.current_dir(project_path);
+    
+    #[cfg(target_os = "windows")]
+    status_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    
+    let status_output = status_cmd.output()
         .map_err(|e| format!("Failed to check status: {}", e))?;
     
     if status_output.stdout.is_empty() {
@@ -119,10 +146,14 @@ pub fn git_stash_save(project_path: &str, message: &str) -> Result<(), String> {
     
     log::info!("Stashing uncommitted changes: {}", message);
     
-    let output = Command::new("git")
-        .args(["stash", "save", "-u", message])
-        .current_dir(project_path)
-        .output()
+    let mut stash_cmd = Command::new("git");
+    stash_cmd.args(["stash", "save", "-u", message]);
+    stash_cmd.current_dir(project_path);
+    
+    #[cfg(target_os = "windows")]
+    stash_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    
+    let output = stash_cmd.output()
         .map_err(|e| format!("Failed to stash: {}", e))?;
     
     if !output.status.success() {
