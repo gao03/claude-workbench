@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { api, type Project, type Session, type ClaudeMdFile } from "@/lib/api";
 import { OutputCacheProvider } from "@/lib/outputCache";
@@ -7,24 +7,21 @@ import { ProjectList } from "@/components/ProjectList";
 import { SessionList } from "@/components/SessionList";
 import { RunningClaudeSessions } from "@/components/RunningClaudeSessions";
 import { Topbar } from "@/components/Topbar";
+import { MarkdownEditor } from "@/components/MarkdownEditor";
+import { ClaudeFileEditor } from "@/components/ClaudeFileEditor";
+import { Settings } from "@/components/Settings";
+import { ClaudeCodeSession } from "@/components/ClaudeCodeSession";
+import { TabManager } from "@/components/TabManager";
+import { TabProvider, useTabs } from "@/hooks/useTabs";
+import { UsageDashboard } from "@/components/UsageDashboard";
+import { MCPManager } from "@/components/MCPManager";
+import { ClaudeBinaryDialog } from "@/components/ClaudeBinaryDialog";
 import { Toast, ToastContainer } from "@/components/ui/toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ProjectSettings } from '@/components/ProjectSettings';
+import { EnhancedHooksManager } from '@/components/EnhancedHooksManager';
+import { ClaudeExtensionsManager } from '@/components/ClaudeExtensionsManager';
 import { useTranslation } from '@/hooks/useTranslation';
-
-// ⚡ PERFORMANCE: 懒加载大组件，减少初始 bundle 大小
-const MarkdownEditor = lazy(() => import("@/components/MarkdownEditor").then(m => ({ default: m.MarkdownEditor })));
-const ClaudeFileEditor = lazy(() => import("@/components/ClaudeFileEditor").then(m => ({ default: m.ClaudeFileEditor })));
-const Settings = lazy(() => import("@/components/Settings").then(m => ({ default: m.Settings })));
-const ClaudeCodeSession = lazy(() => import("@/components/ClaudeCodeSession").then(m => ({ default: m.ClaudeCodeSession })));
-const TabManager = lazy(() => import("@/components/TabManager").then(m => ({ default: m.TabManager })));
-const UsageDashboard = lazy(() => import("@/components/UsageDashboard").then(m => ({ default: m.UsageDashboard })));
-const MCPManager = lazy(() => import("@/components/MCPManager").then(m => ({ default: m.MCPManager })));
-const ClaudeBinaryDialog = lazy(() => import("@/components/ClaudeBinaryDialog").then(m => ({ default: m.ClaudeBinaryDialog })));
-const ProjectSettings = lazy(() => import('@/components/ProjectSettings').then(m => ({ default: m.ProjectSettings })));
-const EnhancedHooksManager = lazy(() => import('@/components/EnhancedHooksManager').then(m => ({ default: m.EnhancedHooksManager })));
-const ClaudeExtensionsManager = lazy(() => import('@/components/ClaudeExtensionsManager').then(m => ({ default: m.ClaudeExtensionsManager })));
-
-import { TabProvider, useTabs } from "@/hooks/useTabs";
 
 type View =
   | "projects"
@@ -86,12 +83,8 @@ function AppContent() {
     console.log('[App] useEffect triggered, view:', view, 'hasLoaded:', hasLoadedProjectsRef.current);
     if (view === "projects" && !hasLoadedProjectsRef.current) {
       console.log('[App] Loading projects...');
+      loadProjects();
       hasLoadedProjectsRef.current = true;
-      
-      // ⚡ PERFORMANCE: 延迟加载项目，让 UI 先渲染
-      requestAnimationFrame(() => {
-        loadProjects();
-      });
     }
   }, [view]);
 
@@ -294,54 +287,39 @@ function AppContent() {
     }
   };
 
-  // ⚡ 懒加载组件的 Loading fallback
-  const LazyLoadingFallback = () => (
-    <div className="flex items-center justify-center h-full">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  );
-
   const renderContent = () => {
     switch (view) {
       case "enhanced-hooks-manager":
         return (
-          <Suspense fallback={<LazyLoadingFallback />}>
-            <EnhancedHooksManager
-              onBack={handleSmartBack}
-              projectPath={projectForSettings?.path}
-            />
-          </Suspense>
+          <EnhancedHooksManager
+            onBack={handleSmartBack}
+            projectPath={projectForSettings?.path}
+          />
         );
       
       case "claude-extensions":
         return (
-          <Suspense fallback={<LazyLoadingFallback />}>
-            <div className="flex-1 overflow-y-auto">
-              <div className="container mx-auto p-6">
-                <ClaudeExtensionsManager
-                  projectPath={projectForSettings?.path}
-                />
-              </div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="container mx-auto p-6">
+              <ClaudeExtensionsManager
+                projectPath={projectForSettings?.path}
+              />
             </div>
-          </Suspense>
+          </div>
         );
 
       case "editor":
         return (
-          <Suspense fallback={<LazyLoadingFallback />}>
-            <div className="flex-1 overflow-hidden">
-              <MarkdownEditor onBack={handleSmartBack} />
-            </div>
-          </Suspense>
+          <div className="flex-1 overflow-hidden">
+            <MarkdownEditor onBack={handleSmartBack} />
+          </div>
         );
       
       case "settings":
         return (
-          <Suspense fallback={<LazyLoadingFallback />}>
-            <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
-              <Settings onBack={handleSmartBack} />
-            </div>
-          </Suspense>
+          <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
+            <Settings onBack={handleSmartBack} />
+          </div>
         );
       
       case "projects":

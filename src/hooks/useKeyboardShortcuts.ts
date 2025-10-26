@@ -63,12 +63,12 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
   useEffect(() => {
     const handlePlanModeToggle = (event: KeyboardEvent) => {
       if (event.key === 'Tab' && event.shiftKey && isActive) {
-        event.preventDefault();
-        event.stopPropagation();
+          event.preventDefault();
+          event.stopPropagation();
 
         // Toggle Plan Mode (single press, as per official Claude Code)
-        onTogglePlanMode();
-        console.log('[KeyboardShortcuts] Shift+Tab detected - toggling Plan Mode');
+          onTogglePlanMode();
+          console.log('[KeyboardShortcuts] Shift+Tab detected - toggling Plan Mode');
       }
     };
 

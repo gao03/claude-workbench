@@ -179,20 +179,14 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     queuedPromptsRef.current = queuedPrompts;
   }, [queuedPrompts]);
 
-  // Auto-initialize Git when project is selected
-  useEffect(() => {
-    if (!projectPath) return;
-    
-    api.checkAndInitGit(projectPath).then(wasInitialized => {
-      if (wasInitialized) {
-        console.log('[Prompt Revert] Git repository auto-initialized');
-      } else {
-        console.log('[Prompt Revert] Git repository detected');
-      }
-    }).catch(err => {
-      console.error('[Prompt Revert] Failed to initialize Git:', err);
-    });
-  }, [projectPath]);
+  // ⚡ PERFORMANCE FIX: Git 初始化延迟到真正需要时
+  // 原问题：每次加载会话都立即执行 git init + git add + git commit
+  // 在大项目中，git add . 可能需要数秒，导致会话加载卡顿
+  // 解决方案：只在发送提示词时才初始化 Git（在 recordPromptSent 中已有）
+  // useEffect(() => {
+  //   if (!projectPath) return;
+  //   api.checkAndInitGit(projectPath).then(...);
+  // }, [projectPath]);
 
   // Get effective session info (from prop or extracted) - use useMemo to ensure it updates
   const effectiveSession = useMemo(() => {
@@ -240,8 +234,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
     count: displayableMessages.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 200, // 增加估计高度，减少重复测量
-    overscan: 2, // ⚡ 减少 overscan 从 8 到 2（加快初始渲染）
-    enabled: displayableMessages.length > 20,  // ⚡ 消息少时禁用虚拟化
+    overscan: 8, // 增加 overscan 确保流畅滚动
     measureElement: (element) => {
       // 确保元素完全渲染后再测量
       return element?.getBoundingClientRect().height ?? 200;
@@ -300,7 +293,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
   // Load Claude settings once for all StreamMessage components
   useEffect(() => {
-    // ⚡ PERFORMANCE: 延迟加载设置，不阻塞会话渲染
     const loadSettings = async () => {
       try {
         const settings = await api.getClaudeSettings();
@@ -314,10 +306,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       }
     };
 
-    // 延迟加载，让主界面先显示
-    setTimeout(() => {
-      loadSettings();
-    }, 0);
+    loadSettings();
   }, []);
 
   // Report streaming state changes

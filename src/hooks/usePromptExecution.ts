@@ -154,7 +154,7 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
       setIsLoading(true);
       setError(null);
       hasActiveSessionRef.current = true;
-      
+
       // 🆕 记录 API 开始时间
       const apiStartTime = Date.now();
 

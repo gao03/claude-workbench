@@ -87,33 +87,33 @@ export const UserMessage: React.FC<UserMessageProps> = ({
         
         {/* 消息内容和撤回按钮 - 同一行显示 */}
         <div className="flex items-start gap-2">
-          {/* 消息内容 */}
+        {/* 消息内容 */}
           <div className="text-sm leading-relaxed whitespace-pre-wrap flex-1">
-            {text}
-          </div>
+          {text}
+            </div>
 
           {/* 撤回按钮 - 始终显示，圆形边框样式 */}
-          {showRevertButton && (
+            {showRevertButton && (
             <div className="flex-shrink-0">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
                       variant="outline"
-                      size="sm"
+                        size="sm"
                       className="h-7 w-7 p-0 rounded-full border-primary-foreground/20 text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10 hover:border-primary-foreground/40 transition-all"
-                      onClick={handleRevertClick}
-                    >
+                        onClick={handleRevertClick}
+                      >
                       <RotateCcw className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
+                      </Button>
+                    </TooltipTrigger>
                   <TooltipContent side="top">
                     撤回到此消息
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
         </div>
         </div>
       </MessageBubble>
