@@ -829,8 +829,12 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
   };
 
   const language = getLanguage(filePath);
-  const isLargeContent = content.length > 1000;
-  const displayContent = isLargeContent ? content.substring(0, 1000) + "\n..." : content;
+  
+  // Markdown 文件和小文件不截断，其他大文件截断到 5000 字符
+  const isMarkdown = filePath.toLowerCase().endsWith('.md');
+  const truncateLimit = isMarkdown ? 10000 : 5000;  // .md 文件限制更高
+  const isLargeContent = content.length > truncateLimit;
+  const displayContent = isLargeContent ? content.substring(0, truncateLimit) + "\n..." : content;
 
   // Maximized view as a modal
   const MaximizedView = () => {
@@ -901,13 +905,14 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
         {isLargeContent && truncated && (
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs whitespace-nowrap">
-              截断为 1000 个字符
+              截断为 {truncateLimit.toLocaleString()} 个字符
             </Badge>
             <Button 
               variant="ghost" 
               size="icon" 
               className="h-6 w-6"
               onClick={() => setIsMaximized(true)}
+              title="查看完整内容"
             >
               <Maximize2 className="h-3 w-3" />
             </Button>
