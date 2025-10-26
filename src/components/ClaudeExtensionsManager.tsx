@@ -404,9 +404,9 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
       <div className="text-xs text-muted-foreground border-t pt-4">
         <p className="mb-2">📚 官方文档参考：</p>
         <ul className="space-y-1 ml-4">
-          <li>• <a href="https://docs.claude.com/en/docs/claude-code/subagents" target="_blank" className="text-primary hover:underline">Subagents 文档</a></li>
-          <li>• <a href="https://docs.claude.com/en/docs/claude-code/agent-skills" target="_blank" className="text-primary hover:underline">Agent Skills 文档</a></li>
-          <li>• <a href="https://docs.claude.com/en/docs/claude-code/slash-commands" target="_blank" className="text-primary hover:underline">Slash Commands 文档</a></li>
+          <li>• <a href="https://docs.claude.com/en/docs/claude-code/plugins" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Plugins 文档</a></li>
+          <li>• <a href="https://docs.claude.com/en/docs/claude-code/subagents" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Subagents 文档</a></li>
+          <li>• <a href="https://docs.claude.com/en/docs/claude-code/agent-skills" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Agent Skills 文档</a></li>
         </ul>
       </div>
     </div>
