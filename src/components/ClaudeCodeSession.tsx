@@ -299,6 +299,7 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
   // Load Claude settings once for all StreamMessage components
   useEffect(() => {
+    // ⚡ PERFORMANCE: 延迟加载设置，不阻塞会话渲染
     const loadSettings = async () => {
       try {
         const settings = await api.getClaudeSettings();
@@ -312,7 +313,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       }
     };
 
-    loadSettings();
+    // 延迟加载，让主界面先显示
+    setTimeout(() => {
+      loadSettings();
+    }, 0);
   }, []);
 
   // Report streaming state changes

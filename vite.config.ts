@@ -43,23 +43,54 @@ export default defineConfig(async () => ({
     // Increase chunk size warning limit to 2000 KB
     chunkSizeWarningLimit: 2000,
     
-    // Additional optimizations for smaller bundle size
+    // Additional optimizations for smaller bundle size and faster loading
     minify: 'esbuild',
     target: 'es2020',
     cssMinify: true,
+    sourcemap: false,  // ⚡ 禁用 sourcemap 加快加载
+    reportCompressedSize: false,  // ⚡ 跳过压缩大小报告
     
     rollupOptions: {
       output: {
-        // Manual chunks for better code splitting
-        manualChunks: {
-          // Vendor chunks
-          'react-vendor': ['react', 'react-dom'],
-          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@radix-ui/react-switch', '@radix-ui/react-popover'],
-          'editor-vendor': ['@uiw/react-md-editor'],
-          'syntax-vendor': ['react-syntax-highlighter'],
-          // Tauri and other utilities
-          'tauri': ['@tauri-apps/api', '@tauri-apps/plugin-dialog', '@tauri-apps/plugin-shell'],
-          'utils': ['date-fns', 'clsx', 'tailwind-merge'],
+        // Manual chunks for better code splitting and faster loading
+        manualChunks: (id) => {
+          // ⚡ 优化：更激进的代码分割，减少主 bundle 大小
+          if (id.includes('node_modules')) {
+            // React core
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            // Radix UI components
+            if (id.includes('@radix-ui')) {
+              return 'ui-vendor';
+            }
+            // Editor (large, lazy load)
+            if (id.includes('@uiw/react-md-editor')) {
+              return 'editor-vendor';
+            }
+            // Syntax highlighter (large, lazy load)
+            if (id.includes('react-syntax-highlighter')) {
+              return 'syntax-vendor';
+            }
+            // Tauri
+            if (id.includes('@tauri-apps')) {
+              return 'tauri';
+            }
+            // Framer Motion (large)
+            if (id.includes('framer-motion')) {
+              return 'framer';
+            }
+            // Utils
+            if (id.includes('date-fns') || id.includes('clsx') || id.includes('tailwind-merge')) {
+              return 'utils';
+            }
+            // i18n (可能是瓶颈)
+            if (id.includes('i18next')) {
+              return 'i18n-vendor';
+            }
+            // 其他 node_modules
+            return 'vendor';
+          }
         },
       },
     },

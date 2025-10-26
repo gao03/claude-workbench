@@ -54,7 +54,13 @@ const AppWrapper: React.FC = () => {
 };
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
+  // ⚡ PERFORMANCE: 移除 StrictMode 在生产环境（避免双重渲染）
+  // StrictMode 在开发时有用，但在生产环境会导致组件渲染两次
+  process.env.NODE_ENV === 'development' ? (
+    <React.StrictMode>
+      <AppWrapper />
+    </React.StrictMode>
+  ) : (
     <AppWrapper />
-  </React.StrictMode>,
+  )
 );
