@@ -400,14 +400,29 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
         </TabsContent>
       </Tabs>
 
-      {/* 官方文档链接 */}
-      <div className="text-xs text-muted-foreground border-t pt-4">
-        <p className="mb-2">📚 官方文档参考：</p>
-        <ul className="space-y-1 ml-4">
-          <li>• <a href="https://docs.claude.com/en/docs/claude-code/plugins" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Plugins 文档</a></li>
-          <li>• <a href="https://docs.claude.com/en/docs/claude-code/subagents" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Subagents 文档</a></li>
-          <li>• <a href="https://docs.claude.com/en/docs/claude-code/agent-skills" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Agent Skills 文档</a></li>
-        </ul>
+      {/* 官方文档和资源链接 */}
+      <div className="text-xs text-muted-foreground border-t pt-4 space-y-3">
+        <div>
+          <p className="mb-2 font-medium">📚 官方文档：</p>
+          <ul className="space-y-1 ml-4">
+            <li>• <a href="https://docs.claude.com/en/docs/claude-code/plugins" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Plugins 文档</a></li>
+            <li>• <a href="https://docs.claude.com/en/docs/claude-code/subagents" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Subagents 文档</a></li>
+            <li>• <a href="https://docs.claude.com/en/docs/claude-code/agent-skills" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Agent Skills 文档</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <p className="mb-2 font-medium">🎯 官方资源：</p>
+          <ul className="space-y-1 ml-4">
+            <li>• <a href="https://github.com/anthropics/skills" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
+              Anthropic Skills 仓库
+              <span className="text-muted-foreground">(13.7k ⭐)</span>
+            </a></li>
+          </ul>
+          <p className="text-muted-foreground mt-2 ml-4 text-[11px]">
+            包含官方示例 Skills：文档处理、创意设计、开发工具等
+          </p>
+        </div>
       </div>
     </div>
   );
