@@ -47,7 +47,7 @@ export const PlanModeToggle: React.FC<PlanModeToggleProps> = ({
           <p className="text-xs text-muted-foreground max-w-[200px]">
             {isPlanMode 
               ? "Plan Mode: 可以分析、搜索、规划，但不能修改文件或执行命令"
-              : "启用 Plan Mode - 只读研究和规划模式（快捷键: Shift+Tab 两次）"
+              : "启用 Plan Mode - 只读研究和规划模式（快捷键: Shift+Tab）"
             }
           </p>
         </TooltipContent>

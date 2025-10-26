@@ -29,7 +29,6 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
   const { isActive, onTogglePlanMode } = config;
 
   const [lastEscapeTime, setLastEscapeTime] = useState(0);
-  const [lastShiftTabTime, setLastShiftTabTime] = useState(0);
 
   // Double ESC key detection for future rewind dialog
   // NOTE: Currently placeholder - rewind dialog UI not implemented yet
@@ -60,23 +59,16 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
     };
   }, [lastEscapeTime, isActive]);
 
-  // Shift+Tab double press detection for Plan Mode toggle
+  // Shift+Tab for Plan Mode toggle (single press, consistent with Claude Code official)
   useEffect(() => {
     const handlePlanModeToggle = (event: KeyboardEvent) => {
       if (event.key === 'Tab' && event.shiftKey && isActive) {
-        const now = Date.now();
+        event.preventDefault();
+        event.stopPropagation();
 
-        // Check if this is a double Shift+Tab within 500ms
-        if (now - lastShiftTabTime < 500) {
-          event.preventDefault();
-          event.stopPropagation();
-
-          // Toggle Plan Mode
-          onTogglePlanMode();
-          console.log('[KeyboardShortcuts] Shift+Tab detected - toggling Plan Mode');
-        }
-
-        setLastShiftTabTime(now);
+        // Toggle Plan Mode (single press, as per official Claude Code)
+        onTogglePlanMode();
+        console.log('[KeyboardShortcuts] Shift+Tab detected - toggling Plan Mode');
       }
     };
 
@@ -87,5 +79,5 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
     return () => {
       document.removeEventListener('keydown', handlePlanModeToggle, { capture: true });
     };
-  }, [lastShiftTabTime, isActive, onTogglePlanMode]);
+  }, [isActive, onTogglePlanMode]);
 }
