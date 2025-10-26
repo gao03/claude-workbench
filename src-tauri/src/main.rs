@@ -69,6 +69,10 @@ use commands::file_operations::{
     open_directory_in_explorer,
     open_file_with_default_app,
 };
+use commands::git_stats::{
+    get_git_diff_stats,
+    get_session_code_changes,
+};
 use process::ProcessRegistryState;
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStatePlugin;
@@ -267,6 +271,10 @@ fn main() {
             // File Operations
             open_directory_in_explorer,
             open_file_with_default_app,
+
+            // Git Statistics
+            get_git_diff_stats,
+            get_session_code_changes,
 
         ])
         .run(tauri::generate_context!())

@@ -2130,4 +2130,37 @@ export const api = {
     }
   },
 
+  // ==================== Git Statistics ====================
+
+  /**
+   * Get Git diff statistics between commits
+   */
+  async getGitDiffStats(
+    projectPath: string,
+    fromCommit: string,
+    toCommit?: string
+  ): Promise<{ linesAdded: number; linesRemoved: number; filesChanged: number }> {
+    try {
+      return await invoke("get_git_diff_stats", { projectPath, fromCommit, toCommit });
+    } catch (error) {
+      console.error("Failed to get git diff stats:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get code changes for current session
+   */
+  async getSessionCodeChanges(
+    projectPath: string,
+    sessionStartCommit: string
+  ): Promise<{ linesAdded: number; linesRemoved: number; filesChanged: number }> {
+    try {
+      return await invoke("get_session_code_changes", { projectPath, sessionStartCommit });
+    } catch (error) {
+      console.error("Failed to get session code changes:", error);
+      throw error;
+    }
+  },
+
 };

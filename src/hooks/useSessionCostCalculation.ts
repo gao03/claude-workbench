@@ -23,8 +23,10 @@ export interface SessionCostStats {
   cacheReadTokens: number;
   /** Cache 写入 tokens */
   cacheWriteTokens: number;
-  /** 会话时长（秒） */
+  /** 会话时长（秒） - wall time */
   durationSeconds: number;
+  /** API 执行时长（秒） - 累计所有 API 调用时间 */
+  apiDurationSeconds: number;
 }
 
 interface SessionCostResult {
@@ -57,7 +59,8 @@ export function useSessionCostCalculation(messages: ClaudeStreamMessage[]): Sess
         outputTokens: 0,
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
-        durationSeconds: 0
+        durationSeconds: 0,
+        apiDurationSeconds: 0
       };
     }
 
@@ -86,7 +89,7 @@ export function useSessionCostCalculation(messages: ClaudeStreamMessage[]): Sess
                     tokens.cache_creation_tokens + tokens.cache_read_tokens;
     });
 
-    // 计算会话时长（从第一条到最后一条消息）
+    // 计算会话时长（wall time - 从第一条到最后一条消息）
     let durationSeconds = 0;
     if (messages.length >= 2) {
       const firstTime = messages[0].timestamp || messages[0].receivedAt;
@@ -99,6 +102,11 @@ export function useSessionCostCalculation(messages: ClaudeStreamMessage[]): Sess
       }
     }
 
+    // 计算 API 执行时长（TODO: 需要从消息中提取实际 API 响应时间）
+    // 目前使用简化估算：每条 assistant 消息平均 2-10 秒
+    const assistantMessages = relevantMessages.filter(m => m.type === 'assistant');
+    const apiDurationSeconds = assistantMessages.length * 5; // 粗略估算
+
     return {
       totalCost,
       totalTokens,
@@ -106,7 +114,8 @@ export function useSessionCostCalculation(messages: ClaudeStreamMessage[]): Sess
       outputTokens,
       cacheReadTokens,
       cacheWriteTokens,
-      durationSeconds
+      durationSeconds,
+      apiDurationSeconds
     };
   }, [messages.length]); // 优化：仅在消息数量变化时重新计算
 

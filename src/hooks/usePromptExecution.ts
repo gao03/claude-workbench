@@ -154,6 +154,9 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
       setIsLoading(true);
       setError(null);
       hasActiveSessionRef.current = true;
+      
+      // 🆕 记录 API 开始时间
+      const apiStartTime = Date.now();
 
       // 🆕 记录提示词发送（在发送前保存 Git 状态）
       // 只记录真实用户输入，不记录自动发送的 Warmup 消息
@@ -262,6 +265,10 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
         // Helper: Process Completion
         // ====================================================================
         const processComplete = async () => {
+          // 🆕 计算 API 执行时长
+          const apiDuration = (Date.now() - apiStartTime) / 1000; // 秒
+          console.log('[usePromptExecution] API duration:', apiDuration.toFixed(1), 'seconds');
+          
           // 🆕 标记提示词完成（记录完成后的 Git 状态）
           if (recordedPromptIndex >= 0 && effectiveSession) {
             api.markPromptCompleted(

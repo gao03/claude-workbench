@@ -14,3 +14,4 @@ pub mod simple_git;
 pub mod prompt_tracker;
 pub mod extensions;
 pub mod file_operations;
+pub mod git_stats;
