@@ -92,14 +92,14 @@ export function useSessionLifecycle(config: UseSessionLifecycleConfig): UseSessi
       
       console.log('[useSessionLifecycle] ✅ Loading state cleared, messages displayed');
 
-      // ✨ NEW: Start progressive translation in TRUE background (completely non-blocking)
-      // ⚡ OPTIMIZATION: Use queueMicrotask + Promise to ensure zero blocking
-      // The initializeProgressiveTranslation function will check if translation is enabled internally
-      queueMicrotask(() => {
-        initializeProgressiveTranslation(processedMessages).catch(err => {
-          console.error('[useSessionLifecycle] Background translation failed:', err);
-        });
-      });
+      // ✨ DISABLED: Progressive translation removed from session loading
+      // This was causing significant delays in production builds
+      // Translation can be re-enabled per-message if needed
+      // queueMicrotask(() => {
+      //   initializeProgressiveTranslation(processedMessages).catch(err => {
+      //     console.error('[useSessionLifecycle] Background translation failed:', err);
+      //   });
+      // });
 
       // After loading history, we're continuing a conversation
     } catch (err) {
