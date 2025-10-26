@@ -121,7 +121,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         className="flex items-center gap-1"
       >
         {/* 主题切换按钮 - 移到最前面 */}
-        <ThemeToggle variant="with-text" size="sm" className="hover:bg-muted/70 h-7 px-2 py-1 text-xs font-medium rounded-md" />
+        <ThemeToggle variant="with-text" size="sm" className="hover:bg-muted/70 h-7 px-2 py-1 text-xs font-medium rounded-md gap-0" />
 
         {/* 分隔线 */}
         <div className="h-5 w-px bg-border/50 mx-0.5" />
