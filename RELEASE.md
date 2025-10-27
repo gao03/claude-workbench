@@ -1,9 +1,9 @@
-# Claude Workbench v4.0.2 发布说明
+# Claude Workbench v4.0.3 发布说明
 
-## 🎉 v4.0.2 - 性能大幅优化
+## 🎉 v4.0.3 - macOS 兼容性和体验优化
 
 **发布日期**: 2025-10-27  
-**重要性**: 修复严重性能问题和BUG，生产版本性能提升
+**重要性**: macOS 兼容性修复，UI 优化，使用统计改进
 
 ---
 
@@ -114,6 +114,37 @@
 
 ---
 
+## 🍎 v4.0.3 新增改进
+
+### macOS 兼容性增强 ⭐⭐⭐⭐⭐
+
+**Claude Code 检测增强**：
+- ✅ 新增 10+ 个 macOS 特定路径
+- ✅ Homebrew NPM 路径支持
+- ✅ pnpm 包管理器支持
+- ✅ 版本管理器支持（asdf、volta、n、nvm）
+- ✅ 解决最新 macOS 系统找不到 Claude Code 的问题
+
+**UI 对齐修复**：
+- ✅ 修复 WebKit 渲染器下的居中问题
+- ✅ 添加 -webkit- 前缀确保兼容性
+- ✅ Container 强制居中
+- ✅ Flexbox 对齐修复
+
+### 用户体验优化 ⭐⭐⭐⭐
+
+**使用统计改进**：
+- ✅ "今日"选项添加到日期范围过滤器
+- ✅ 移除重复的今日卡片
+- ✅ 全面汉化（概览、按模型、按项目等）
+- ✅ 界面更统一简洁
+
+**扩展管理器**：
+- ✅ 添加返回主页按钮
+- ✅ 页面标题和描述
+
+---
+
 ## 🚀 v4.0.2 性能优化
 
 ### 🔴 修复的严重问题 ⭐⭐⭐⭐⭐
@@ -214,7 +245,7 @@
 
 ### 预构建版本
 
-从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.2) 下载：
+从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.3) 下载：
 
 **Windows**:
 - MSI 安装包
@@ -229,7 +260,7 @@
 ```bash
 git clone https://github.com/anyme123/claude-workbench.git
 cd claude-workbench
-git checkout v4.0.2
+git checkout v4.0.3
 
 # 安装依赖
 npm install
@@ -283,6 +314,20 @@ npm run tauri build
 ---
 
 ## 📋 完整更新日志
+
+### v4.0.3 (2025-10-27)
+
+**macOS 兼容性**：
+- 增强 Claude Code 检测（新增10+路径）
+- Homebrew NPM、pnpm、版本管理器支持
+- UI 对齐修复（WebKit 兼容性）
+- Container 居中修复
+
+**用户体验**：
+- 使用统计"今日"选项
+- 使用统计全面汉化
+- 扩展管理器返回按钮
+- 界面更统一
 
 ### v4.0.2 (2025-10-27)
 
