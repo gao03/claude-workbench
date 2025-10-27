@@ -352,9 +352,12 @@ export const FilePicker: React.FC<FilePickerProps> = ({
     }
   };
 
-  // ⚡ 修复：使用 Ref 追踪点击，避免双击被单击覆盖
+  // ⚡ 优化：直观的鼠标操作
+  // 单击 → 进入目录 / 悬停预览文件
+  // 双击 → 选中文件或目录
   const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
   const clickCountRef = useRef(0);
+  const [hoveredEntry, setHoveredEntry] = useState<FileEntry | null>(null);
 
   const handleEntryClick = (entry: FileEntry) => {
     clickCountRef.current += 1;
@@ -367,23 +370,25 @@ export const FilePicker: React.FC<FilePickerProps> = ({
     // 等待判断是单击还是双击
     clickTimerRef.current = setTimeout(() => {
       if (clickCountRef.current === 1) {
-        // 单击：选择（文件或目录）
-        onSelect(entry);
-      } else if (clickCountRef.current >= 2) {
-        // 双击：导航到目录
+        // 单击：如果是目录就进入，文件就不处理（等双击）
         if (entry.is_directory) {
           navigateToDirectory(entry.path);
-        } else {
-          // 文件双击也是选择
-          onSelect(entry);
         }
       }
       clickCountRef.current = 0;
-    }, 250); // 250ms 内的点击视为双击
+    }, 250);
   };
   
-  const handleEntryDoubleClick = (_entry: FileEntry) => {
-    // 已在 handleEntryClick 中处理（通过计数器）
+  const handleEntryDoubleClick = (entry: FileEntry) => {
+    // 清除单击定时器
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    clickCountRef.current = 0;
+    
+    // 双击：选中文件或目录
+    onSelect(entry);
   };
 
   return (
@@ -471,14 +476,19 @@ export const FilePicker: React.FC<FilePickerProps> = ({
                   data-index={index}
                   onClick={() => handleEntryClick(entry)}
                   onDoubleClick={() => handleEntryDoubleClick(entry)}
-                  onMouseEnter={() => setSelectedIndex(index)}
+                  onMouseEnter={() => {
+                    setSelectedIndex(index);
+                    setHoveredEntry(entry);
+                  }}
+                  onMouseLeave={() => setHoveredEntry(null)}
                   className={cn(
                     "w-full flex items-center gap-2 px-2 py-1.5 rounded-md",
-                    "hover:bg-accent transition-colors",
+                    "hover:bg-accent/80 hover:border hover:border-primary/30 transition-all",
                     "text-left text-sm",
-                    isSelected && "bg-accent"
+                    isSelected && "bg-accent/50",
+                    hoveredEntry?.path === entry.path && "ring-1 ring-primary/20"
                   )}
-                  title={entry.is_directory ? "单击选择 • 双击进入" : "单击选择"}
+                  title={entry.is_directory ? "单击进入 • 双击选中" : "双击选中"}
                 >
                   <Icon className={cn(
                     "h-4 w-4 flex-shrink-0",
@@ -511,10 +521,25 @@ export const FilePicker: React.FC<FilePickerProps> = ({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-border p-2">
+      {/* Footer with status */}
+      <div className="border-t border-border p-2 space-y-1">
+        {/* 悬停状态提示 */}
+        {hoveredEntry && (
+          <div className="text-xs text-primary font-medium truncate text-center">
+            {hoveredEntry.is_directory ? (
+              <span>📁 单击进入"{hoveredEntry.name}" • 双击选中</span>
+            ) : (
+              <span>📄 双击选中"{hoveredEntry.name}"</span>
+            )}
+          </div>
+        )}
+        {/* 操作提示 */}
         <p className="text-xs text-muted-foreground text-center">
-          ↑↓ 导航 • Enter 选择 • → 进入目录 • ← 返回 • Esc 关闭
+          {hoveredEntry ? (
+            "目录:单击进入 双击选中 • 文件:双击选中"
+          ) : (
+            "↑↓ 导航 • Enter 选择 • → 进入目录 • ← 返回 • Esc 关闭"
+          )}
         </p>
       </div>
     </motion.div>
