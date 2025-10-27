@@ -303,6 +303,7 @@ function AppContent() {
             <div className="container mx-auto p-6">
               <ClaudeExtensionsManager
                 projectPath={projectForSettings?.path}
+                onBack={handleSmartBack}
               />
             </div>
           </div>
