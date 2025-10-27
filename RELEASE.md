@@ -1,9 +1,9 @@
-# Claude Workbench v4.0.3 发布说明
+# Claude Workbench v4.0.4 发布说明
 
-## 🎉 v4.0.3 - macOS 兼容性和体验优化
+## 🎉 v4.0.4 - FilePicker 交互优化
 
 **发布日期**: 2025-10-27  
-**重要性**: macOS 兼容性修复，UI 优化，使用统计改进
+**重要性**: 文件选择器完全重构，交互体验大幅提升
 
 ---
 
@@ -111,6 +111,34 @@
 - ✅ **Windows 10/11**: 完全支持（主要开发平台）
 - ✅ **macOS**: 完全支持（已验证适配）
 - ✅ **Linux**: 理论支持（Tauri 天然支持）
+
+---
+
+## 🎯 v4.0.4 交互优化
+
+### FilePicker 完全重构 ⭐⭐⭐⭐⭐
+
+**修复的BUG**：
+- ✅ 键盘导航完全失效 → 全部正常
+- ✅ 双击导航不工作 → 双击选中文件
+- ✅ 事件冲突问题 → 完全隔离
+
+**新的交互方式**：
+- 单击目录 → **进入目录**（更直观）
+- 单击文件 → 无操作（等待双击）
+- 双击 → **选中文件/目录**（插入路径）
+
+**视觉反馈**：
+- ✅ 键盘选中：主色边框 + 光晕 + 加粗文字
+- ✅ 鼠标悬停：动态操作提示
+- ✅ 底部状态栏：实时显示可执行操作
+
+**键盘导航**（全部正常）：
+- ↑↓ 导航项目（明显的选中效果）
+- Enter 选择当前项
+- → 进入目录
+- ← 返回上级
+- Esc 关闭
 
 ---
 
@@ -245,7 +273,7 @@
 
 ### 预构建版本
 
-从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.3) 下载：
+从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.4) 下载：
 
 **Windows**:
 - MSI 安装包
@@ -260,7 +288,7 @@
 ```bash
 git clone https://github.com/anyme123/claude-workbench.git
 cd claude-workbench
-git checkout v4.0.3
+git checkout v4.0.4
 
 # 安装依赖
 npm install
@@ -314,6 +342,15 @@ npm run tauri build
 ---
 
 ## 📋 完整更新日志
+
+### v4.0.4 (2025-10-27)
+
+**FilePicker 改进**：
+- 修复键盘导航完全失效的BUG
+- 修复双击导航不工作的BUG
+- 增强选中项视觉反馈（主色边框+光晕）
+- 优化交互方式（单击进入目录，双击选中）
+- 动态底部状态提示
 
 ### v4.0.3 (2025-10-27)
 
