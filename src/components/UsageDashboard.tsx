@@ -32,7 +32,6 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<UsageStats | null>(null);
-  const [todayStats, setTodayStats] = useState<UsageStats | null>(null);
   const [sessionStats, setSessionStats] = useState<ProjectUsage[] | null>(null);
   const [selectedDateRange, setSelectedDateRange] = useState<"today" | "7d" | "30d" | "all">("7d");
   const [activeTab, setActiveTab] = useState("overview");
@@ -96,12 +95,10 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
     // Check cache first
     const cachedStats = getCachedData(`${cacheKey}-stats`);
     const cachedSessions = getCachedData(`${cacheKey}-sessions`);
-    const cachedTodayStats = getCachedData('usage-today');
     
-    if (cachedStats && cachedSessions && cachedTodayStats) {
+    if (cachedStats && cachedSessions) {
       setStats(cachedStats);
       setSessionStats(cachedSessions);
-      setTodayStats(cachedTodayStats);
       setLoading(false);
       return;
     }
@@ -118,7 +115,6 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
 
       let statsData: UsageStats;
       let sessionData: ProjectUsage[] = [];
-      let todayData: UsageStats;
       
       if (selectedDateRange === "today") {
         // Today only
@@ -128,17 +124,14 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
         ]);
         statsData = statsResult;
         sessionData = sessionResult;
-        todayData = statsResult; // 当日数据就是主数据
       } else if (selectedDateRange === "all") {
         // Fetch all data in parallel
-        const [statsResult, sessionResult, todayResult] = await Promise.all([
+        const [statsResult, sessionResult] = await Promise.all([
           api.getUsageStats(),
-          api.getSessionStats(),
-          api.getUsageByDateRange(todayStart.toISOString(), todayEnd.toISOString())
+          api.getSessionStats()
         ]);
         statsData = statsResult;
         sessionData = sessionResult;
-        todayData = todayResult;
       } else {
         const endDate = new Date();
         const startDate = new Date();
@@ -153,7 +146,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
         }
 
         // Fetch all data in parallel for better performance
-        const [statsResult, sessionResult, todayResult] = await Promise.all([
+        const [statsResult, sessionResult] = await Promise.all([
           api.getUsageByDateRange(
             startDate.toISOString(),
             endDate.toISOString()
@@ -162,24 +155,20 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
             formatDateForApi(startDate),
             formatDateForApi(endDate),
             'desc'
-          ),
-          api.getUsageByDateRange(todayStart.toISOString(), todayEnd.toISOString())
+          )
         ]);
         
         statsData = statsResult;
         sessionData = sessionResult;
-        todayData = todayResult;
       }
       
       // Update state
       setStats(statsData);
       setSessionStats(sessionData);
-      setTodayStats(todayData);
       
       // Cache the data
       setCachedData(`${cacheKey}-stats`, statsData);
       setCachedData(`${cacheKey}-sessions`, sessionData);
-      setCachedData('usage-today', todayData);
     } catch (err: any) {
       console.error("Failed to load usage stats:", err);
       setError("Failed to load usage statistics. Please try again.");
