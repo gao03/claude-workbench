@@ -169,7 +169,10 @@ async function callOpenAIFormat(
     requestBody.max_tokens = provider.maxTokens;
   }
 
-  const response = await fetch(`${provider.apiUrl}/chat/completions`, {
+  // ⚡ 修复：处理 apiUrl 末尾可能有的斜杠
+  const baseUrl = provider.apiUrl.endsWith('/') ? provider.apiUrl.slice(0, -1) : provider.apiUrl;
+  
+  const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -224,8 +227,11 @@ async function callGeminiFormat(
     requestBody.generationConfig = generationConfig;
   }
 
+  // ⚡ 修复：处理 apiUrl 末尾可能有的斜杠，避免双斜杠
+  const baseUrl = provider.apiUrl.endsWith('/') ? provider.apiUrl.slice(0, -1) : provider.apiUrl;
+  
   // Gemini API 格式：/v1beta/models/{model}:generateContent
-  const endpoint = `${provider.apiUrl}/v1beta/models/${provider.model}:generateContent?key=${provider.apiKey}`;
+  const endpoint = `${baseUrl}/v1beta/models/${provider.model}:generateContent?key=${provider.apiKey}`;
 
   const response = await fetch(endpoint, {
     method: 'POST',
