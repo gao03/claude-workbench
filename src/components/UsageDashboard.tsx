@@ -223,51 +223,6 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
     });
   }, [activeTab, stats, loading])
 
-  // Memoize today's usage card
-  const todayCard = useMemo(() => {
-    if (!todayStats) return null;
-    
-    return (
-      <Card className="p-6 mb-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-label font-semibold flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            今日用量
-          </h3>
-          <span className="text-caption text-muted-foreground">
-            {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <p className="text-caption text-muted-foreground mb-1">今日费用</p>
-            <p className="text-heading-3 font-semibold text-primary">
-              {formatCurrency(todayStats.total_cost)}
-            </p>
-          </div>
-          <div>
-            <p className="text-caption text-muted-foreground mb-1">今日会话</p>
-            <p className="text-heading-3 font-semibold">
-              {formatNumber(todayStats.total_sessions)}
-            </p>
-          </div>
-          <div>
-            <p className="text-caption text-muted-foreground mb-1">今日令牌</p>
-            <p className="text-heading-3 font-semibold">
-              {formatTokens(todayStats.total_tokens)}
-            </p>
-          </div>
-          <div>
-            <p className="text-caption text-muted-foreground mb-1">缓存读取</p>
-            <p className="text-heading-3 font-semibold text-green-600">
-              {formatTokens(todayStats.total_cache_read_tokens)}
-            </p>
-          </div>
-        </div>
-      </Card>
-    );
-  }, [todayStats, formatCurrency, formatNumber, formatTokens]);
-
   // Memoize expensive computations
   const summaryCards = useMemo(() => {
     if (!stats) return null;
