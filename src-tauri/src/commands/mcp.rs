@@ -506,36 +506,40 @@ pub async fn mcp_add_from_claude_desktop(
                 "Claude Desktop configuration not found. Please make sure Claude Desktop is installed.".to_string()
             })?
     } else if cfg!(target_os = "macos") {
-        // ⚡ 新增：macOS 支持
+        // ⚡ 修复：macOS 使用 Claude Code CLI 配置，不是 Claude Desktop
         let home_dir = dirs::home_dir()
             .ok_or_else(|| "Could not find home directory".to_string())?;
         
+        // Claude Code 配置文件路径（不是 Claude Desktop）
         let possible_paths = vec![
+            home_dir.join(".claude").join("settings.json"),     // Claude Code 主配置
+            home_dir.join(".claude.json"),                      // Claude Code 旧版配置
+            // 如果用户确实想从 Claude Desktop 导入，也保留支持
             home_dir.join("Library").join("Application Support").join("Claude").join("claude_desktop_config.json"),
-            home_dir.join(".config").join("Claude").join("claude_desktop_config.json"),
         ];
         
         possible_paths
             .into_iter()
             .find(|path| path.exists())
             .ok_or_else(|| {
-                "Claude Desktop configuration not found. Please make sure Claude Desktop is installed on macOS.".to_string()
+                "Claude Code configuration not found. Please make sure Claude Code is installed and configured.".to_string()
             })?
     } else {
-        // Linux
+        // Linux - 同样使用 Claude Code CLI 配置
         let home_dir = dirs::home_dir()
             .ok_or_else(|| "Could not find home directory".to_string())?;
         
         let possible_paths = vec![
-            home_dir.join(".config").join("Claude").join("claude_desktop_config.json"),
-            home_dir.join(".claude").join("claude_desktop_config.json"),
+            home_dir.join(".claude").join("settings.json"),     // Claude Code 主配置
+            home_dir.join(".claude.json"),                      // Claude Code 旧版配置
+            home_dir.join(".config").join("Claude").join("claude_desktop_config.json"),  // Claude Desktop
         ];
         
         possible_paths
             .into_iter()
             .find(|path| path.exists())
             .ok_or_else(|| {
-                "Claude Desktop configuration not found. Please make sure Claude Desktop is installed.".to_string()
+                "Claude Code configuration not found. Please make sure Claude Code is installed and configured.".to_string()
             })?
     };
 
