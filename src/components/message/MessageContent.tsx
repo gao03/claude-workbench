@@ -98,6 +98,19 @@ export const MessageContent: React.FC<MessageContentProps> = ({
                     language={language}
                     PreTag="div"
                     showLineNumbers={true}
+                    customStyle={{
+                      margin: 0,
+                      background: 'transparent',
+                      lineHeight: '1.6'
+                    }}
+                    codeTagProps={{
+                      style: {
+                        fontSize: '0.875rem',
+                        userSelect: 'text',
+                        WebkitUserSelect: 'text',
+                        cursor: 'text'
+                      }
+                    }}
                   >
                     {String(children).replace(/\n$/, '')}
                   </SyntaxHighlighter>
