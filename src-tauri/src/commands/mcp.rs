@@ -475,73 +475,24 @@ pub async fn mcp_add_from_claude_desktop(
         scope
     );
 
-    // Get Claude Desktop config path (cross-platform)
-    let config_path = if cfg!(target_os = "windows") {
-        // Windows paths
-        let app_data_dir = dirs::config_dir()
-            .or_else(|| dirs::data_dir())
-            .ok_or_else(|| "Could not find application data directory".to_string())?;
-        
-        let possible_paths = vec![
-            app_data_dir.join("Claude").join("claude_desktop_config.json"),
-            app_data_dir.join("Anthropic").join("Claude").join("claude_desktop_config.json"),
-            dirs::home_dir()
-                .ok_or_else(|| "Could not find home directory".to_string())?
-                .join("AppData")
-                .join("Roaming")
-                .join("Claude")
-                .join("claude_desktop_config.json"),
-            dirs::home_dir()
-                .ok_or_else(|| "Could not find home directory".to_string())?
-                .join("AppData")
-                .join("Local")
-                .join("Claude")
-                .join("claude_desktop_config.json"),
-        ];
-        
-        possible_paths
-            .into_iter()
-            .find(|path| path.exists())
-            .ok_or_else(|| {
-                "Claude Desktop configuration not found. Please make sure Claude Desktop is installed.".to_string()
-            })?
-    } else if cfg!(target_os = "macos") {
-        // ⚡ 修复：macOS 使用 Claude Code CLI 配置，不是 Claude Desktop
-        let home_dir = dirs::home_dir()
-            .ok_or_else(|| "Could not find home directory".to_string())?;
-        
-        // Claude Code 配置文件路径（不是 Claude Desktop）
-        let possible_paths = vec![
-            home_dir.join(".claude").join("settings.json"),     // Claude Code 主配置
-            home_dir.join(".claude.json"),                      // Claude Code 旧版配置
-            // 如果用户确实想从 Claude Desktop 导入，也保留支持
-            home_dir.join("Library").join("Application Support").join("Claude").join("claude_desktop_config.json"),
-        ];
-        
-        possible_paths
-            .into_iter()
-            .find(|path| path.exists())
-            .ok_or_else(|| {
-                "Claude Code configuration not found. Please make sure Claude Code is installed and configured.".to_string()
-            })?
-    } else {
-        // Linux - 同样使用 Claude Code CLI 配置
-        let home_dir = dirs::home_dir()
-            .ok_or_else(|| "Could not find home directory".to_string())?;
-        
-        let possible_paths = vec![
-            home_dir.join(".claude").join("settings.json"),     // Claude Code 主配置
-            home_dir.join(".claude.json"),                      // Claude Code 旧版配置
-            home_dir.join(".config").join("Claude").join("claude_desktop_config.json"),  // Claude Desktop
-        ];
-        
-        possible_paths
-            .into_iter()
-            .find(|path| path.exists())
-            .ok_or_else(|| {
-                "Claude Code configuration not found. Please make sure Claude Code is installed and configured.".to_string()
-            })?
-    };
+    // ⚡ 正确修复：所有平台的 Claude Code CLI 配置都在同一位置
+    // Windows, macOS, Linux 都使用 ~/.claude/ 目录
+    let home_dir = dirs::home_dir()
+        .ok_or_else(|| "Could not find home directory".to_string())?;
+    
+    let possible_paths = vec![
+        // Claude Code CLI 配置文件（所有平台统一）
+        home_dir.join(".claude").join("settings.json"),     // 主配置文件
+        home_dir.join(".claude.json"),                      // 旧版配置文件
+    ];
+    
+    let config_path = possible_paths
+        .into_iter()
+        .find(|path| path.exists())
+        .ok_or_else(|| {
+            "Claude Code configuration not found. Please make sure Claude Code is installed and configured.\n\
+             Expected: ~/.claude/settings.json or ~/.claude.json".to_string()
+        })?;
 
     // Read and parse the config file
     let config_content = fs::read_to_string(&config_path)
