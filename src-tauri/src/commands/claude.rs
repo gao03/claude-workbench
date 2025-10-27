@@ -191,8 +191,12 @@ fn get_project_path_from_sessions(project_dir: &PathBuf) -> Result<String, Strin
                         // Parse the JSON and extract cwd
                         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&first_line) {
                             if let Some(cwd) = json.get("cwd").and_then(|v| v.as_str()) {
-                                // Apply consistent path normalization to ensure project paths are unified
-                                let normalized_cwd = std::path::Path::new(cwd)
+                                // ⚡ 修复：处理双反斜杠路径（JSON 转义）
+                                // CC CLI 可能保存为 "C:\\Users\\..." 格式
+                                let cleaned_cwd = cwd.replace("\\\\", "\\");
+                                
+                                // Apply consistent path normalization
+                                let normalized_cwd = std::path::Path::new(&cleaned_cwd)
                                     .canonicalize()
                                     .map(|p| {
                                         let path_str = p.to_string_lossy().to_string();
@@ -203,7 +207,7 @@ fn get_project_path_from_sessions(project_dir: &PathBuf) -> Result<String, Strin
                                             path_str
                                         }
                                     })
-                                    .unwrap_or_else(|_| cwd.to_string());
+                                    .unwrap_or_else(|_| cleaned_cwd.clone());
                                 return Ok(normalized_cwd);
                             }
                         }
@@ -254,6 +258,10 @@ fn decode_project_path(encoded: &str) -> String {
 /// This handles case sensitivity, path separators, and trailing slashes
 fn normalize_path_for_comparison(path: &str) -> String {
     let mut normalized = path.to_lowercase();
+    
+    // ⚡ 修复：先处理双反斜杠（JSON 转义格式）
+    // CC CLI 可能保存为 "C:\\Users\\..." 格式
+    normalized = normalized.replace("\\\\", "\\");
     
     // Remove Windows long path prefix if present (\\?\ or \\?\UNC\)
     if normalized.starts_with("\\\\?\\") {
