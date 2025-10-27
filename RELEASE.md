@@ -1,9 +1,9 @@
-# Claude Workbench v4.0.8 发布说明
+# Claude Workbench v4.0.9 发布说明
 
-## 🎉 v4.0.8 - API URL 规范化修复
+## 🎉 v4.0.9 - Skills 支持与转义修复
 
 **发布日期**: 2025-10-27  
-**重要性**: 修复 API URL 拼接导致的双斜杠问题
+**重要性**: 关键修复 - Skills 消息支持，多行提示词显示
 
 ---
 
@@ -111,6 +111,34 @@
 - ✅ **Windows 10/11**: 完全支持（主要开发平台）
 - ✅ **macOS**: 完全支持（已验证适配）
 - ✅ **Linux**: 理论支持（Tauri 天然支持）
+
+---
+
+## 🔧 v4.0.9 关键修复
+
+### Skills 消息完全支持 ⭐⭐⭐⭐⭐
+
+**撤回功能兼容**：
+- ✅ Skills 消息不计入撤回索引
+- ✅ 前后端索引对齐
+- ✅ 撤回到正确的用户消息
+
+**显示优化**：
+- ✅ 解析 XML 标签（`<command-name>`）
+- ✅ 格式化显示（✓ + Skill名称）
+- ✅ 隐藏撤回按钮（Skills 不应撤回）
+
+### 多行提示词显示修复 ⭐⭐⭐⭐⭐
+
+**根本原因**：
+- JSONL 保存：`\\n`（双反斜杠+n）
+- serde_json 解析：`\n`（反斜杠+n，字符串）
+- 显示错误：看到 `\n` 而不是换行
+
+**正确修复**：
+- 使用正则 `/\\\\n/g` 匹配双反斜杠
+- 替换为真正的换行符
+- 处理所有转义序列（`\\n`, `\\r`, `\\t`, `\\"`）
 
 ---
 
@@ -355,7 +383,7 @@
 
 ### 预构建版本
 
-从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.8) 下载：
+从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.9) 下载：
 
 **Windows**:
 - MSI 安装包
@@ -370,7 +398,7 @@
 ```bash
 git clone https://github.com/anyme123/claude-workbench.git
 cd claude-workbench
-git checkout v4.0.8
+git checkout v4.0.9
 
 # 安装依赖
 npm install
@@ -424,6 +452,17 @@ npm run tauri build
 ---
 
 ## 📋 完整更新日志
+
+### v4.0.9 (2025-10-27)
+
+**Skills 支持**：
+- Skills 消息排除撤回索引
+- 格式化显示 Skills 消息
+- 前后端索引对齐
+
+**转义修复**：
+- 正确处理双反斜杠（\\n → 换行）
+- 多行提示词正确显示
 
 ### v4.0.8 (2025-10-27)
 
