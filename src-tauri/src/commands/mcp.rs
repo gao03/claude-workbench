@@ -475,43 +475,24 @@ pub async fn mcp_add_from_claude_desktop(
         scope
     );
 
-    // Get Claude Desktop config path for Windows
-    let config_path = if cfg!(target_os = "windows") {
-        // Check common Windows locations for Claude Desktop
-        let app_data_dir = dirs::config_dir()
-            .or_else(|| dirs::data_dir())
-            .ok_or_else(|| "Could not find application data directory".to_string())?;
-        
-        // Try common Windows paths for Claude Desktop
-        let possible_paths = vec![
-            app_data_dir.join("Claude").join("claude_desktop_config.json"),
-            app_data_dir.join("Anthropic").join("Claude").join("claude_desktop_config.json"),
-            dirs::home_dir()
-                .ok_or_else(|| "Could not find home directory".to_string())?
-                .join("AppData")
-                .join("Roaming")
-                .join("Claude")
-                .join("claude_desktop_config.json"),
-            dirs::home_dir()
-                .ok_or_else(|| "Could not find home directory".to_string())?
-                .join("AppData")
-                .join("Local")
-                .join("Claude")
-                .join("claude_desktop_config.json"),
-        ];
-        
-        // Find the first existing path
-        possible_paths
-            .into_iter()
-            .find(|path| path.exists())
-            .ok_or_else(|| {
-                "Claude Desktop configuration not found. Please make sure Claude Desktop is installed on Windows.".to_string()
-            })?
-    } else {
-        return Err(
-            "This Windows-optimized version only supports importing from Claude Desktop on Windows.".to_string(),
-        );
-    };
+    // ⚡ 正确修复：所有平台的 Claude Code CLI 配置都在同一位置
+    // Windows, macOS, Linux 都使用 ~/.claude/ 目录
+    let home_dir = dirs::home_dir()
+        .ok_or_else(|| "Could not find home directory".to_string())?;
+    
+    let possible_paths = vec![
+        // Claude Code CLI 配置文件（所有平台统一）
+        home_dir.join(".claude").join("settings.json"),     // 主配置文件
+        home_dir.join(".claude.json"),                      // 旧版配置文件
+    ];
+    
+    let config_path = possible_paths
+        .into_iter()
+        .find(|path| path.exists())
+        .ok_or_else(|| {
+            "Claude Code configuration not found. Please make sure Claude Code is installed and configured.\n\
+             Expected: ~/.claude/settings.json or ~/.claude.json".to_string()
+        })?;
 
     // Read and parse the config file
     let config_content = fs::read_to_string(&config_path)

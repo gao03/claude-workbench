@@ -1091,6 +1091,93 @@ code::-webkit-scrollbar-thumb:hover,
   }
 }
 
+/* ========================================
+   🍎 macOS 兼容性修复
+   ======================================== */
+
+/* macOS 字体大小调整 - 解决文字过大问题 */
+@supports (-webkit-backdrop-filter: blur(1px)) {
+  /* 检测 macOS Safari/WebKit */
+  body {
+    font-size: 13px !important; /* macOS 默认 14px 会显得大，改为 13px */
+  }
+  
+  /* 标签页标题字体缩小 */
+  [role="tab"],
+  [data-state="active"],
+  [data-state="inactive"] {
+    font-size: 0.8rem !important; /* 12.8px，比默认小 */
+  }
+  
+  /* Tooltip 和 Popover 字体缩小 */
+  [role="tooltip"],
+  [data-radix-popper-content-wrapper],
+  .tooltip-content,
+  .popover-content {
+    font-size: 0.75rem !important; /* 12px */
+  }
+  
+  /* 按钮文字缩小 */
+  button {
+    font-size: 0.8rem !important;
+  }
+  
+  /* 输入框文字适当缩小 */
+  input, textarea, select {
+    font-size: 0.85rem !important;
+  }
+}
+
+/* Ensure container is centered on all platforms */
+.container {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100%;
+  max-width: 1280px; /* 确保有最大宽度 */
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* macOS specific fixes for WebKit */
+@supports (-webkit-backdrop-filter: blur(1px)) {
+  /* Fix flexbox centering on macOS Safari/WebKit */
+  .flex {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+  }
+  
+  .items-center {
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+  }
+  
+  .justify-center {
+    -webkit-box-pack: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+  }
+  
+  .justify-between {
+    -webkit-box-pack: justify;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+  }
+  
+  /* 确保 mx-auto 在 macOS 上正常工作 */
+  .mx-auto {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  
+  /* Fix text alignment */
+  .text-center {
+    -webkit-text-align: center;
+    text-align: center;
+  }
+}
+
 /* Force minimum contrast ratios for accessibility */
 @media (prefers-contrast: high) {
   :root, .dark {

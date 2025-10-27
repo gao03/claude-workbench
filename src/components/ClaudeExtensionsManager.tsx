@@ -5,7 +5,8 @@ import {
   Plus,
   Package,
   Sparkles,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { api } from "@/lib/api";
 interface ClaudeExtensionsManagerProps {
   projectPath?: string;
   className?: string;
+  onBack?: () => void;
 }
 
 interface PluginInfo {
@@ -60,7 +62,8 @@ interface SkillFile {
  */
 export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = ({
   projectPath,
-  className
+  className,
+  onBack
 }) => {
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [agents, setAgents] = useState<AgentFile[]>([]);
@@ -146,6 +149,25 @@ export const ClaudeExtensionsManager: React.FC<ClaudeExtensionsManagerProps> = (
 
   return (
     <div className={cn("space-y-4", className)}>
+      {/* 返回按钮 */}
+      {onBack && (
+        <div className="flex items-center gap-3 mb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onBack}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            返回主页
+          </Button>
+          <div>
+            <h2 className="text-lg font-semibold">Claude 扩展管理器</h2>
+            <p className="text-sm text-muted-foreground">管理 Plugins、Subagents 和 Agent Skills</p>
+          </div>
+        </div>
+      )}
+      
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="plugins">

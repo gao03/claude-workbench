@@ -32,9 +32,8 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<UsageStats | null>(null);
-  const [todayStats, setTodayStats] = useState<UsageStats | null>(null);
   const [sessionStats, setSessionStats] = useState<ProjectUsage[] | null>(null);
-  const [selectedDateRange, setSelectedDateRange] = useState<"all" | "7d" | "30d">("7d");
+  const [selectedDateRange, setSelectedDateRange] = useState<"today" | "7d" | "30d" | "all">("7d");
   const [activeTab, setActiveTab] = useState("overview");
   const [hasLoadedTabs, setHasLoadedTabs] = useState<Set<string>>(new Set(["overview"]));
   
@@ -96,12 +95,10 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
     // Check cache first
     const cachedStats = getCachedData(`${cacheKey}-stats`);
     const cachedSessions = getCachedData(`${cacheKey}-sessions`);
-    const cachedTodayStats = getCachedData('usage-today');
     
-    if (cachedStats && cachedSessions && cachedTodayStats) {
+    if (cachedStats && cachedSessions) {
       setStats(cachedStats);
       setSessionStats(cachedSessions);
-      setTodayStats(cachedTodayStats);
       setLoading(false);
       return;
     }
@@ -118,18 +115,23 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
 
       let statsData: UsageStats;
       let sessionData: ProjectUsage[] = [];
-      let todayData: UsageStats;
       
-      if (selectedDateRange === "all") {
-        // Fetch all data in parallel
-        const [statsResult, sessionResult, todayResult] = await Promise.all([
-          api.getUsageStats(),
-          api.getSessionStats(),
-          api.getUsageByDateRange(todayStart.toISOString(), todayEnd.toISOString())
+      if (selectedDateRange === "today") {
+        // Today only
+        const [statsResult, sessionResult] = await Promise.all([
+          api.getUsageByDateRange(todayStart.toISOString(), todayEnd.toISOString()),
+          api.getSessionStats()
         ]);
         statsData = statsResult;
         sessionData = sessionResult;
-        todayData = todayResult;
+      } else if (selectedDateRange === "all") {
+        // Fetch all data in parallel
+        const [statsResult, sessionResult] = await Promise.all([
+          api.getUsageStats(),
+          api.getSessionStats()
+        ]);
+        statsData = statsResult;
+        sessionData = sessionResult;
       } else {
         const endDate = new Date();
         const startDate = new Date();
@@ -144,7 +146,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
         }
 
         // Fetch all data in parallel for better performance
-        const [statsResult, sessionResult, todayResult] = await Promise.all([
+        const [statsResult, sessionResult] = await Promise.all([
           api.getUsageByDateRange(
             startDate.toISOString(),
             endDate.toISOString()
@@ -153,24 +155,20 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
             formatDateForApi(startDate),
             formatDateForApi(endDate),
             'desc'
-          ),
-          api.getUsageByDateRange(todayStart.toISOString(), todayEnd.toISOString())
+          )
         ]);
         
         statsData = statsResult;
         sessionData = sessionResult;
-        todayData = todayResult;
       }
       
       // Update state
       setStats(statsData);
       setSessionStats(sessionData);
-      setTodayStats(todayData);
       
       // Cache the data
       setCachedData(`${cacheKey}-stats`, statsData);
       setCachedData(`${cacheKey}-sessions`, sessionData);
-      setCachedData('usage-today', todayData);
     } catch (err: any) {
       console.error("Failed to load usage stats:", err);
       setError("Failed to load usage statistics. Please try again.");
@@ -214,36 +212,12 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
     });
   }, [activeTab, stats, loading])
 
-  // Memoize today's usage card
-  // 今日统计改为小卡片样式
-  const todayCard = useMemo(() => {
-    if (!todayStats) return null;
-    
-    return (
-      <Card className="p-4 shimmer-hover border-primary/30">
-        <div className="flex items-center gap-2 mb-2">
-          <Calendar className="h-4 w-4 text-primary" />
-          <p className="text-caption text-muted-foreground">今日费用</p>
-        </div>
-        <p className="text-display-2 font-semibold text-primary">
-          {formatCurrency(todayStats.total_cost)}
-        </p>
-        <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
-          {formatNumber(todayStats.total_sessions)} 会话 · {formatTokens(todayStats.total_tokens)} tokens
-        </div>
-      </Card>
-    );
-  }, [todayStats, formatCurrency, formatNumber, formatTokens]);
-
-  // 统计卡片（包含今日统计）
+  // Memoize expensive computations
   const summaryCards = useMemo(() => {
     if (!stats) return null;
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* 今日统计卡片 */}
-        {todayCard}
-        
         <Card className="p-4 shimmer-hover">
           <div>
             <p className="text-caption text-muted-foreground">总费用</p>
@@ -270,9 +244,22 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
             </p>
           </div>
         </Card>
+
+        <Card className="p-4 shimmer-hover">
+          <div>
+                        <p className="text-caption text-muted-foreground">平均成本/会话</p>
+            <p className="text-display-2 mt-1">
+              {formatCurrency(
+                stats.total_sessions > 0 
+                  ? stats.total_cost / stats.total_sessions 
+                  : 0
+              )}
+            </p>
+          </div>
+        </Card>
       </div>
     );
-  }, [stats, todayCard, formatCurrency, formatNumber, formatTokens]);
+  }, [stats, formatCurrency, formatNumber, formatTokens]);
 
   // Memoize the most used models section
   const mostUsedModels = useMemo(() => {
@@ -363,7 +350,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
             <div className="flex items-center space-x-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <div className="flex space-x-1">
-                {(["7d", "30d", "all"] as const).map((range) => (
+                {(["today", "7d", "30d", "all"] as const).map((range) => (
                   <Button
                     key={range}
                     variant={selectedDateRange === range ? "default" : "outline"}
@@ -371,7 +358,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
                     onClick={() => setSelectedDateRange(range)}
                     disabled={loading}
                   >
-                    {range === "all" ? "All Time" : range === "7d" ? "Last 7 Days" : "Last 30 Days"}
+                    {range === "today" ? "今日" : range === "all" ? "全部" : range === "7d" ? "最近7天" : "最近30天"}
                   </Button>
                 ))}
               </div>
@@ -394,7 +381,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
             </div>
           ) : stats ? (
             <div className="space-y-6">
-              {/* Summary Cards (including today) */}
+              {/* Summary Cards */}
               {summaryCards}
 
               {/* Tabs for different views */}
@@ -403,32 +390,32 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
                 setHasLoadedTabs(prev => new Set([...prev, value]));
               }} className="w-full">
                 <TabsList className="grid grid-cols-5 w-full mb-6 h-auto p-1">
-                  <TabsTrigger value="overview" className="py-2.5 px-3">Overview</TabsTrigger>
-                  <TabsTrigger value="models" className="py-2.5 px-3">By Model</TabsTrigger>
-                  <TabsTrigger value="projects" className="py-2.5 px-3">By Project</TabsTrigger>
-                  <TabsTrigger value="sessions" className="py-2.5 px-3">By Session</TabsTrigger>
-                  <TabsTrigger value="timeline" className="py-2.5 px-3">Timeline</TabsTrigger>
+                  <TabsTrigger value="overview" className="py-2.5 px-3">概览</TabsTrigger>
+                  <TabsTrigger value="models" className="py-2.5 px-3">按模型</TabsTrigger>
+                  <TabsTrigger value="projects" className="py-2.5 px-3">按项目</TabsTrigger>
+                  <TabsTrigger value="sessions" className="py-2.5 px-3">按会话</TabsTrigger>
+                  <TabsTrigger value="timeline" className="py-2.5 px-3">时间线</TabsTrigger>
                 </TabsList>
 
                 {/* Overview Tab */}
                 <TabsContent value="overview" className="space-y-6 mt-6">
                   <Card className="p-6">
-                    <h3 className="text-label mb-4">Token Breakdown</h3>
+                    <h3 className="text-label mb-4">Token 统计</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
-                        <p className="text-caption text-muted-foreground">Input Tokens</p>
+                        <p className="text-caption text-muted-foreground">输入 Tokens</p>
                         <p className="text-heading-4">{formatTokens(stats.total_input_tokens)}</p>
                       </div>
                       <div>
-                        <p className="text-caption text-muted-foreground">Output Tokens</p>
+                        <p className="text-caption text-muted-foreground">输出 Tokens</p>
                         <p className="text-heading-4">{formatTokens(stats.total_output_tokens)}</p>
                       </div>
                       <div>
-                        <p className="text-caption text-muted-foreground">Cache Write</p>
+                        <p className="text-caption text-muted-foreground">Cache 写入</p>
                         <p className="text-heading-4">{formatTokens(stats.total_cache_creation_tokens)}</p>
                       </div>
                       <div>
-                        <p className="text-caption text-muted-foreground">Cache Read</p>
+                        <p className="text-caption text-muted-foreground">Cache 读取</p>
                         <p className="text-heading-4">{formatTokens(stats.total_cache_read_tokens)}</p>
                       </div>
                     </div>
@@ -437,14 +424,14 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
                   {/* Quick Stats */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Card className="p-6">
-                      <h3 className="text-label mb-4">Most Used Models</h3>
+                      <h3 className="text-label mb-4">最常用模型</h3>
                       <div className="space-y-3">
                         {mostUsedModels}
                       </div>
                     </Card>
 
                     <Card className="p-6">
-                      <h3 className="text-label mb-4">Top Projects</h3>
+                      <h3 className="text-label mb-4">热门项目</h3>
                       <div className="space-y-3">
                         {topProjects}
                       </div>
@@ -457,7 +444,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
                   {hasLoadedTabs.has("models") && stats && (
                     <div style={{ display: activeTab === "models" ? "block" : "none" }}>
                       <Card className="p-6">
-                        <h3 className="text-sm font-semibold mb-4">Usage by Model</h3>
+                        <h3 className="text-sm font-semibold mb-4">按模型统计</h3>
                         <div className="space-y-4">
                           {stats.by_model.map((model) => (
                           <div key={model.model} className="space-y-2">
@@ -509,7 +496,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
                     <div style={{ display: activeTab === "projects" ? "block" : "none" }}>
                       <Card className="p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-semibold">Usage by Project</h3>
+                        <h3 className="text-sm font-semibold">按项目统计</h3>
                         <span className="text-xs text-muted-foreground">
                           {stats.by_project.length} total projects
                         </span>
@@ -591,7 +578,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
                     <div style={{ display: activeTab === "sessions" ? "block" : "none" }}>
                       <Card className="p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-semibold">Usage by Session</h3>
+                        <h3 className="text-sm font-semibold">按会话统计</h3>
                         {sessionStats && sessionStats.length > 0 && (
                           <span className="text-xs text-muted-foreground">
                             {sessionStats.length} total sessions
@@ -678,7 +665,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
                       <Card className="p-6">
                       <h3 className="text-sm font-semibold mb-6 flex items-center space-x-2">
                         <Calendar className="h-4 w-4" />
-                        <span>Daily Usage</span>
+                        <span>每日使用量</span>
                       </h3>
                       {timelineChartData ? (
                         <div className="relative pl-8 pr-4">
@@ -705,7 +692,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
                                     <div className="bg-background border border-border rounded-lg shadow-lg p-3 whitespace-nowrap">
                                       <p className="text-sm font-semibold">{formattedDate}</p>
                                       <p className="text-sm text-muted-foreground mt-1">
-                                        Cost: {formatCurrency(day.total_cost)}
+                                        成本: {formatCurrency(day.total_cost)}
                                       </p>
                                       <p className="text-xs text-muted-foreground">
                                         {formatTokens(day.total_tokens)} tokens
@@ -738,7 +725,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
                           
                           {/* X-axis label */}
                           <div className="mt-10 text-center text-xs text-muted-foreground">
-                            Daily Usage Over Time
+                            每日使用趋势
                           </div>
                         </div>
                       ) : (

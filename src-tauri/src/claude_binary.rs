@@ -622,6 +622,8 @@ fn find_macos_installations() -> Vec<ClaudeInstallation> {
     let mut installations = Vec::new();
     let mut paths_to_check: Vec<(String, String)> = vec![];
 
+    // ⚡ 增强：添加更多 macOS 新系统的路径
+
     // Homebrew paths (both Intel and Apple Silicon)
     paths_to_check.extend(vec![
         ("/usr/local/bin/claude".to_string(), "homebrew-intel".to_string()),
@@ -631,11 +633,33 @@ fn find_macos_installations() -> Vec<ClaudeInstallation> {
     // MacPorts
     paths_to_check.push(("/opt/local/bin/claude".to_string(), "macports".to_string()));
 
-    // System-wide installations
+    // NPM 全局安装路径（最新 macOS 常见）
     paths_to_check.extend(vec![
-        ("/usr/bin/claude".to_string(), "system".to_string()),
         ("/usr/local/share/npm/bin/claude".to_string(), "npm-system".to_string()),
+        ("/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/bin/claude.js".to_string(), "homebrew-npm".to_string()),
+        ("/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.js".to_string(), "npm-lib".to_string()),
     ]);
+
+    // System-wide installations
+    paths_to_check.push(("/usr/bin/claude".to_string(), "system".to_string()));
+
+    // 检查用户目录下的 npm/pnpm 路径
+    if let Ok(home) = get_home_dir() {
+        paths_to_check.extend(vec![
+            // npm prefix 自定义路径
+            (format!("{}/npm/bin/claude", home), "npm-custom".to_string()),
+            (format!("{}/.npm/bin/claude", home), "npm-hidden".to_string()),
+            // pnpm 全局路径
+            (format!("{}/Library/pnpm/claude", home), "pnpm-library".to_string()),
+            (format!("{}/.local/share/pnpm/claude", home), "pnpm-local".to_string()),
+            // Node 版本管理器路径
+            (format!("{}/.nvm/versions/node/*/bin/claude", home), "nvm".to_string()),
+            (format!("{}/.n/bin/claude", home), "n-version".to_string()),
+            (format!("{}/.asdf/shims/claude", home), "asdf".to_string()),
+            // Volta
+            (format!("{}/.volta/bin/claude", home), "volta".to_string()),
+        ]);
+    }
 
     // Check each path
     for (path, source) in paths_to_check {
