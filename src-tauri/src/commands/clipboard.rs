@@ -3,6 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use base64::{engine::general_purpose, Engine};
 
+// ⚡ 新增：文本剪贴板支持
+use arboard::Clipboard;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SavedImageResult {
     pub success: bool,
@@ -117,4 +120,32 @@ pub async fn save_clipboard_image(
         file_path: Some(path_str),
         error: None,
     })
+}
+
+/// 写入文本到剪贴板
+#[command]
+pub async fn write_to_clipboard(text: String) -> Result<(), String> {
+    log::info!("Writing to clipboard, text length: {}", text.len());
+    
+    // 使用 arboard 库（跨平台剪贴板）
+    let mut clipboard = Clipboard::new()
+        .map_err(|e| format!("Failed to access clipboard: {}", e))?;
+    
+    clipboard.set_text(&text)
+        .map_err(|e| format!("Failed to write to clipboard: {}", e))?;
+    
+    log::info!("Successfully wrote to clipboard");
+    Ok(())
+}
+
+/// 从剪贴板读取文本
+#[command]
+pub async fn read_from_clipboard() -> Result<String, String> {
+    let mut clipboard = Clipboard::new()
+        .map_err(|e| format!("Failed to access clipboard: {}", e))?;
+    
+    let text = clipboard.get_text()
+        .map_err(|e| format!("Failed to read from clipboard: {}", e))?;
+    
+    Ok(text)
 }

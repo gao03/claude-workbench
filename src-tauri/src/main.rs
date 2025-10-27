@@ -46,6 +46,8 @@ use commands::storage::{
 };
 use commands::clipboard::{
     save_clipboard_image,
+    write_to_clipboard,
+    read_from_clipboard,
 };
 use commands::provider::{
     get_provider_presets, get_current_provider_config, switch_provider_config,
@@ -215,6 +217,8 @@ fn main() {
             commands::slash_commands::slash_command_delete,
             // Clipboard
             save_clipboard_image,
+            write_to_clipboard,
+            read_from_clipboard,
             
             // Provider Management  
             get_provider_presets,

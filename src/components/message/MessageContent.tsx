@@ -46,8 +46,44 @@ export const MessageContent: React.FC<MessageContentProps> = ({
                     {language}
                   </span>
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(String(children).replace(/\n$/, ''));
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      try {
+                        const code = String(children).replace(/\n$/, '');
+                        
+                        // ⚡ 修复：使用后端 Tauri 命令，绕过浏览器限制
+                        const { invoke } = await import('@tauri-apps/api/core');
+                        await invoke('write_to_clipboard', { text: code });
+                        
+                        console.log('[CodeBlock] Copied to clipboard via Tauri:', code.substring(0, 50) + '...');
+                        
+                        // 简短的成功提示
+                        e.currentTarget.textContent = '已复制!';
+                        setTimeout(() => {
+                          e.currentTarget.textContent = '复制';
+                        }, 2000);
+                      } catch (error) {
+                        console.error('[CodeBlock] Tauri copy failed, trying browser API:', error);
+                        
+                        // 降级到浏览器 API
+                        try {
+                          await navigator.clipboard.writeText(String(children).replace(/\n$/, ''));
+                          console.log('[CodeBlock] Copied via browser API');
+                          
+                          e.currentTarget.textContent = '已复制!';
+                          setTimeout(() => {
+                            e.currentTarget.textContent = '复制';
+                          }, 2000);
+                        } catch (fallbackError) {
+                          console.error('[CodeBlock] All copy methods failed:', fallbackError);
+                          e.currentTarget.textContent = '复制失败';
+                          setTimeout(() => {
+                            e.currentTarget.textContent = '复制';
+                          }, 2000);
+                        }
+                      }
                     }}
                     className="text-xs px-2 py-1 rounded bg-background hover:bg-accent transition-colors opacity-0 group-hover:opacity-100"
                   >
