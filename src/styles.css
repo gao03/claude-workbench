@@ -1091,6 +1091,60 @@ code::-webkit-scrollbar-thumb:hover,
   }
 }
 
+/* ========================================
+   🍎 macOS 兼容性修复
+   ======================================== */
+
+/* Ensure container is centered on all platforms */
+.container {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100%;
+  max-width: 1280px; /* 确保有最大宽度 */
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* macOS specific fixes for WebKit */
+@supports (-webkit-backdrop-filter: blur(1px)) {
+  /* Fix flexbox centering on macOS Safari/WebKit */
+  .flex {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+  }
+  
+  .items-center {
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+  }
+  
+  .justify-center {
+    -webkit-box-pack: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+  }
+  
+  .justify-between {
+    -webkit-box-pack: justify;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+  }
+  
+  /* 确保 mx-auto 在 macOS 上正常工作 */
+  .mx-auto {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  
+  /* Fix text alignment */
+  .text-center {
+    -webkit-text-align: center;
+    text-align: center;
+  }
+}
+
 /* Force minimum contrast ratios for accessibility */
 @media (prefers-contrast: high) {
   :root, .dark {
