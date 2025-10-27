@@ -190,7 +190,6 @@ fn test_claude_binary(path: &str) -> bool {
 
 /// Discovers all available Claude installations and returns them for selection
 /// This allows UI to show a version selector - System installations only
-#[allow(dead_code)]
 pub fn discover_claude_installations() -> Vec<ClaudeInstallation> {
     info!("Discovering all system Claude installations...");
 

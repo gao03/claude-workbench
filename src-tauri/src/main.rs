@@ -20,9 +20,9 @@ use commands::claude::{
     get_claude_execution_config, update_claude_execution_config, reset_claude_execution_config,
     get_claude_permission_config, update_claude_permission_config, get_permission_presets,
     get_available_tools, validate_permission_config,
-    set_custom_claude_path, get_claude_path, clear_custom_claude_path,
+    set_custom_claude_path, get_claude_path, clear_custom_claude_path, get_claude_binary_path,
     restore_project, list_hidden_projects, delete_project_permanently, enhance_prompt, enhance_prompt_with_gemini,
-    update_thinking_mode,
+    update_thinking_mode, list_claude_installations,
     ClaudeProcessState,
 };
 use commands::mcp::{
@@ -167,7 +167,9 @@ fn main() {
             validate_permission_config,
             set_custom_claude_path,
             get_claude_path,
+            get_claude_binary_path,
             clear_custom_claude_path,
+            list_claude_installations,
             enhance_prompt,
             enhance_prompt_with_gemini,
 

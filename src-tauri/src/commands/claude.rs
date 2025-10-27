@@ -3337,11 +3337,11 @@ pub async fn validate_permission_config(
         "warnings": [],
         "errors": []
     });
-    
+
     // 检查工具列表冲突
     let allowed_set: std::collections::HashSet<_> = config.allowed_tools.iter().collect();
     let disallowed_set: std::collections::HashSet<_> = config.disallowed_tools.iter().collect();
-    
+
     let conflicts: Vec<_> = allowed_set.intersection(&disallowed_set).collect();
     if !conflicts.is_empty() {
         validation_result["valid"] = serde_json::Value::Bool(false);
@@ -3349,23 +3349,46 @@ pub async fn validate_permission_config(
             serde_json::json!(format!("工具冲突: {} 同时在允许和禁止列表中", conflicts.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")))
         );
     }
-    
+
     // 检查是否启用了危险跳过模式
     if config.enable_dangerous_skip {
         validation_result["warnings"].as_array_mut().unwrap().push(
             serde_json::json!("已启用危险权限跳过模式，这会绕过所有安全检查")
         );
     }
-    
+
     // 检查读写权限组合
-    if config.permission_mode == PermissionMode::ReadOnly && 
-       (config.allowed_tools.contains(&"Write".to_string()) || 
+    if config.permission_mode == PermissionMode::ReadOnly &&
+       (config.allowed_tools.contains(&"Write".to_string()) ||
         config.allowed_tools.contains(&"Edit".to_string())) {
         validation_result["warnings"].as_array_mut().unwrap().push(
             serde_json::json!("只读模式下允许写入工具可能导致冲突")
         );
     }
-    
+
     Ok(validation_result)
+}
+
+/// 列出所有可用的 Claude 安装
+#[tauri::command]
+pub async fn list_claude_installations() -> Result<Vec<crate::claude_binary::ClaudeInstallation>, String> {
+    log::info!("Listing all Claude installations");
+
+    let installations = crate::claude_binary::discover_claude_installations();
+
+    log::info!("Found {} Claude installations", installations.len());
+    for installation in &installations {
+        log::debug!("Installation: path={}, version={:?}, source={}, type={:?}",
+            installation.path, installation.version, installation.source, installation.installation_type);
+    }
+
+    Ok(installations)
+}
+
+/// Get current Claude binary path (alias for get_claude_path for frontend compatibility)
+#[tauri::command]
+pub async fn get_claude_binary_path(app: AppHandle) -> Result<String, String> {
+    log::info!("Getting current Claude binary path (alias for get_claude_path)");
+    get_claude_path(app).await
 }
 
