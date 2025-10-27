@@ -215,56 +215,35 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
   }, [activeTab, stats, loading])
 
   // Memoize today's usage card
+  // 今日统计改为小卡片样式
   const todayCard = useMemo(() => {
     if (!todayStats) return null;
     
     return (
-      <Card className="p-6 mb-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-label font-semibold flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            今日用量
-          </h3>
-          <span className="text-caption text-muted-foreground">
-            {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </span>
+      <Card className="p-4 shimmer-hover border-primary/30">
+        <div className="flex items-center gap-2 mb-2">
+          <Calendar className="h-4 w-4 text-primary" />
+          <p className="text-caption text-muted-foreground">今日费用</p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <p className="text-caption text-muted-foreground mb-1">今日费用</p>
-            <p className="text-heading-3 font-semibold text-primary">
-              {formatCurrency(todayStats.total_cost)}
-            </p>
-          </div>
-          <div>
-            <p className="text-caption text-muted-foreground mb-1">今日会话</p>
-            <p className="text-heading-3 font-semibold">
-              {formatNumber(todayStats.total_sessions)}
-            </p>
-          </div>
-          <div>
-            <p className="text-caption text-muted-foreground mb-1">今日令牌</p>
-            <p className="text-heading-3 font-semibold">
-              {formatTokens(todayStats.total_tokens)}
-            </p>
-          </div>
-          <div>
-            <p className="text-caption text-muted-foreground mb-1">缓存读取</p>
-            <p className="text-heading-3 font-semibold text-green-600">
-              {formatTokens(todayStats.total_cache_read_tokens)}
-            </p>
-          </div>
+        <p className="text-display-2 font-semibold text-primary">
+          {formatCurrency(todayStats.total_cost)}
+        </p>
+        <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
+          {formatNumber(todayStats.total_sessions)} 会话 · {formatTokens(todayStats.total_tokens)} tokens
         </div>
       </Card>
     );
   }, [todayStats, formatCurrency, formatNumber, formatTokens]);
 
-  // Memoize expensive computations
+  // 统计卡片（包含今日统计）
   const summaryCards = useMemo(() => {
     if (!stats) return null;
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* 今日统计卡片 */}
+        {todayCard}
+        
         <Card className="p-4 shimmer-hover">
           <div>
             <p className="text-caption text-muted-foreground">总费用</p>
@@ -291,22 +270,9 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
             </p>
           </div>
         </Card>
-
-        <Card className="p-4 shimmer-hover">
-          <div>
-            <p className="text-caption text-muted-foreground">Avg Cost/Session</p>
-            <p className="text-display-2 mt-1">
-              {formatCurrency(
-                stats.total_sessions > 0 
-                  ? stats.total_cost / stats.total_sessions 
-                  : 0
-              )}
-            </p>
-          </div>
-        </Card>
       </div>
     );
-  }, [stats, formatCurrency, formatNumber, formatTokens]);
+  }, [stats, todayCard, formatCurrency, formatNumber, formatTokens]);
 
   // Memoize the most used models section
   const mostUsedModels = useMemo(() => {
@@ -428,10 +394,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
             </div>
           ) : stats ? (
             <div className="space-y-6">
-              {/* Today's Usage Card */}
-              {todayCard}
-              
-              {/* Summary Cards */}
+              {/* Summary Cards (including today) */}
               {summaryCards}
 
               {/* Tabs for different views */}
