@@ -485,8 +485,9 @@ export const FilePicker: React.FC<FilePickerProps> = ({
                     "w-full flex items-center gap-2 px-2 py-1.5 rounded-md",
                     "hover:bg-accent/80 hover:border hover:border-primary/30 transition-all",
                     "text-left text-sm",
-                    isSelected && "bg-accent/50",
-                    hoveredEntry?.path === entry.path && "ring-1 ring-primary/20"
+                    // ⚡ 增强选中状态的视觉反馈
+                    isSelected && "bg-primary/10 border-2 border-primary ring-2 ring-primary/20 font-medium",
+                    hoveredEntry?.path === entry.path && !isSelected && "ring-1 ring-primary/20"
                   )}
                   title={entry.is_directory ? "单击进入 • 双击选中" : "双击选中"}
                 >
