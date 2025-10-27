@@ -1,9 +1,9 @@
-# Claude Workbench v4.0.6 发布说明
+# Claude Workbench v4.0.7 发布说明
 
-## 🎉 v4.0.6 - 第三方API提示词优化
+## 🎉 v4.0.7 - 生产环境修复与完善
 
 **发布日期**: 2025-10-27  
-**重要性**: 重大功能更新 - 第三方API提示词优化支持
+**重要性**: 生产环境关键修复，剪贴板功能，CSP 优化
 
 ---
 
@@ -111,6 +111,25 @@
 - ✅ **Windows 10/11**: 完全支持（主要开发平台）
 - ✅ **macOS**: 完全支持（已验证适配）
 - ✅ **Linux**: 理论支持（Tauri 天然支持）
+
+---
+
+## 🔧 v4.0.7 生产环境修复
+
+### 关键修复 ⭐⭐⭐⭐⭐
+
+**代码块复制功能**：
+- ✅ 修复复制后无法粘贴的问题
+- ✅ 使用 Tauri 剪贴板命令（arboard）
+- ✅ 支持长代码（SQL、Python等）
+- ✅ 跨应用粘贴正常工作
+- ✅ 视觉反馈（已复制!）
+
+**CSP 安全策略**：
+- ✅ 允许所有 HTTPS 连接
+- ✅ 支持自定义 API 地址（代理、转发等）
+- ✅ 生产模式 API 调用正常
+- ✅ 不再 "Failed to fetch"
 
 ---
 
@@ -324,7 +343,7 @@
 
 ### 预构建版本
 
-从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.6) 下载：
+从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.7) 下载：
 
 **Windows**:
 - MSI 安装包
@@ -339,7 +358,7 @@
 ```bash
 git clone https://github.com/anyme123/claude-workbench.git
 cd claude-workbench
-git checkout v4.0.6
+git checkout v4.0.7
 
 # 安装依赖
 npm install
@@ -393,6 +412,13 @@ npm run tauri build
 ---
 
 ## 📋 完整更新日志
+
+### v4.0.7 (2025-10-27)
+
+**生产环境修复**：
+- 代码块复制功能（使用 Tauri 剪贴板）
+- CSP 允许所有 HTTPS（支持自定义API）
+- arboard 依赖添加（跨平台剪贴板）
 
 ### v4.0.6 (2025-10-27)
 
