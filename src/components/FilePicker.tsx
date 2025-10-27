@@ -187,14 +187,17 @@ export const FilePicker: React.FC<FilePickerProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       const displayEntries = searchQuery.trim() ? searchResults : entries;
       
+      // ⚡ 修复：只处理文件选择器相关的按键，使用 capture 阶段确保优先执行
       switch (e.key) {
         case 'Escape':
           e.preventDefault();
+          e.stopPropagation();
           onClose();
           break;
           
         case 'Enter':
           e.preventDefault();
+          e.stopPropagation();
           // Enter always selects the current item (file or directory)
           if (displayEntries.length > 0 && selectedIndex < displayEntries.length) {
             onSelect(displayEntries[selectedIndex]);
@@ -203,16 +206,19 @@ export const FilePicker: React.FC<FilePickerProps> = ({
           
         case 'ArrowUp':
           e.preventDefault();
+          e.stopPropagation();
           setSelectedIndex(prev => Math.max(0, prev - 1));
           break;
           
         case 'ArrowDown':
           e.preventDefault();
+          e.stopPropagation();
           setSelectedIndex(prev => Math.min(displayEntries.length - 1, prev + 1));
           break;
           
         case 'ArrowRight':
           e.preventDefault();
+          e.stopPropagation();
           // Right arrow enters directories
           if (displayEntries.length > 0 && selectedIndex < displayEntries.length) {
             const entry = displayEntries[selectedIndex];
@@ -224,6 +230,7 @@ export const FilePicker: React.FC<FilePickerProps> = ({
           
         case 'ArrowLeft':
           e.preventDefault();
+          e.stopPropagation();
           // Left arrow goes back to parent directory
           if (canGoBack) {
             navigateBack();
@@ -232,9 +239,10 @@ export const FilePicker: React.FC<FilePickerProps> = ({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [entries, searchResults, selectedIndex, searchQuery, canGoBack]);
+    // ⚡ 使用 capture 阶段，确保优先于其他组件处理
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [entries, searchResults, selectedIndex, searchQuery, canGoBack, onClose, onSelect]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -344,16 +352,38 @@ export const FilePicker: React.FC<FilePickerProps> = ({
     }
   };
 
+  // ⚡ 修复：使用 Ref 追踪点击，避免双击被单击覆盖
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const clickCountRef = useRef(0);
+
   const handleEntryClick = (entry: FileEntry) => {
-    // Single click always selects (file or directory)
-    onSelect(entry);
+    clickCountRef.current += 1;
+    
+    // 清除之前的定时器
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+    }
+    
+    // 等待判断是单击还是双击
+    clickTimerRef.current = setTimeout(() => {
+      if (clickCountRef.current === 1) {
+        // 单击：选择（文件或目录）
+        onSelect(entry);
+      } else if (clickCountRef.current >= 2) {
+        // 双击：导航到目录
+        if (entry.is_directory) {
+          navigateToDirectory(entry.path);
+        } else {
+          // 文件双击也是选择
+          onSelect(entry);
+        }
+      }
+      clickCountRef.current = 0;
+    }, 250); // 250ms 内的点击视为双击
   };
   
-  const handleEntryDoubleClick = (entry: FileEntry) => {
-    // Double click navigates into directories
-    if (entry.is_directory) {
-      navigateToDirectory(entry.path);
-    }
+  const handleEntryDoubleClick = (_entry: FileEntry) => {
+    // 已在 handleEntryClick 中处理（通过计数器）
   };
 
   return (
