@@ -1,9 +1,9 @@
-# Claude Workbench v4.0.1 发布说明
+# Claude Workbench v4.0.2 发布说明
 
-## 🎉 v4.0.1 - 扩展管理器与成本优化
+## 🎉 v4.0.2 - 性能大幅优化
 
-**发布日期**: 2025-10-26  
-**重要性**: 新增扩展管理器，成本计算优化，UI 改进
+**发布日期**: 2025-10-27  
+**重要性**: 修复严重性能问题和BUG，生产版本性能提升
 
 ---
 
@@ -114,6 +114,51 @@
 
 ---
 
+## 🚀 v4.0.2 性能优化
+
+### 🔴 修复的严重问题 ⭐⭐⭐⭐⭐
+
+**问题 1：生产版本加载会话卡顿 5-10 秒**
+- 根本原因：每次打开会话都执行 Git 初始化（git add . 扫描所有文件）
+- 解决方案：禁用自动 Git 初始化，延迟到发送消息时
+- 效果：**秒开！** ⚡
+
+**问题 2：终端窗口闪烁**
+- 原因：Git 命令没有隐藏控制台窗口
+- 解决方案：所有 Git 命令添加 CREATE_NO_WINDOW 标志
+- 效果：**完全静默** 👻
+
+**问题 3：使用统计无限循环**
+- 原因：useCallback 依赖自己设置的状态
+- 解决方案：移除循环依赖
+- 效果：**Dashboard 正常工作** ✅
+
+### ⚡ 性能提升
+
+**依赖升级**：
+- Tauri: 2.1.1 → 2.9.0（性能改进）
+- @anthropic-ai/sdk: 0.63.1 → 0.67.0
+- @tailwindcss: 4.1.8 → 4.1.16
+- 前后端依赖版本对齐
+
+**代码优化**：
+- toolRegistry 异步加载
+- 禁用后台翻译初始化
+- React.lazy 懒加载
+- Virtualizer 优化
+- 代码分割改进
+
+### 📊 性能对比
+
+| 操作 | v4.0.1 | v4.0.2 |
+|------|--------|--------|
+| 新建会话 | 5-10秒 | **秒开** ⚡ |
+| 历史会话 | 5-10秒 | **秒开** ⚡ |
+| Git 操作 | 闪烁3次 | **静默** 👻 |
+| 使用统计 | 可能卡死 | **流畅** ✅ |
+
+---
+
 ## 🆕 v4.0.1 新增功能
 
 ### Claude 扩展管理器 ⭐⭐⭐⭐⭐
@@ -169,7 +214,7 @@
 
 ### 预构建版本
 
-从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.1) 下载：
+从 [GitHub Releases](https://github.com/anyme123/claude-workbench/releases/tag/v4.0.2) 下载：
 
 **Windows**:
 - MSI 安装包
@@ -184,7 +229,7 @@
 ```bash
 git clone https://github.com/anyme123/claude-workbench.git
 cd claude-workbench
-git checkout v4.0.1
+git checkout v4.0.2
 
 # 安装依赖
 npm install
@@ -238,6 +283,27 @@ npm run tauri build
 ---
 
 ## 📋 完整更新日志
+
+### v4.0.2 (2025-10-27)
+
+**性能修复**：
+- 禁用自动 Git 初始化（会话加载卡顿根本原因）
+- 隐藏 Git 控制台窗口（7个命令）
+- 修复使用统计无限循环BUG
+- toolRegistry 异步加载
+- 禁用后台翻译初始化
+
+**依赖升级**：
+- Tauri: 2.1.1 → 2.9.0
+- @anthropic-ai/sdk: 0.63.1 → 0.67.0
+- @tailwindcss: 4.1.8 → 4.1.16
+- 前后端依赖版本对齐
+
+**代码优化**：
+- React.lazy 懒加载大组件
+- Virtualizer 优化
+- 代码分割改进
+- 移除编译警告
 
 ### v4.0.1 (2025-10-26)
 
