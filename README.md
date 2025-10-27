@@ -64,6 +64,23 @@
 - DMG 安装包 (ARM + Intel)
 - APP 应用包
 
+> **⚠️ macOS 安装注意事项**
+>
+> 如果安装后提示"应用已损坏，无法打开"，这是因为应用未经过 Apple 公证。请在终端执行以下命令解决：
+>
+> ```bash
+> # 方法 1：移除隔离属性（推荐，最简单）
+> sudo xattr -r -d com.apple.quarantine /Applications/Claude\ Workbench.app
+> 
+> # 方法 2：清除所有扩展属性
+> xattr -cr /Applications/Claude\ Workbench.app
+> 
+> # 方法 3：重新签名应用
+> sudo codesign --force --deep --sign - /Applications/Claude\ Workbench.app
+> ```
+>
+> **原因说明**：macOS Gatekeeper 默认会阻止未公证的应用运行。执行上述命令后即可正常使用。
+
 **Linux**:
 - AppImage
 - DEB 包
