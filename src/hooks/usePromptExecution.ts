@@ -159,9 +159,11 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
       const apiStartTime = Date.now();
 
       // 🆕 记录提示词发送（在发送前保存 Git 状态）
-      // 只记录真实用户输入，不记录自动发送的 Warmup 消息
+      // ⚡ 只记录真实用户输入，排除自动 Warmup 和 Skills 消息
       let recordedPromptIndex = -1;
-      const isUserInitiated = !prompt.includes('Warmup');
+      const isUserInitiated = !prompt.includes('Warmup') 
+        && !prompt.includes('<command-name>')
+        && !prompt.includes('Launching skill:');
       
       if (effectiveSession && isUserInitiated) {
         try {

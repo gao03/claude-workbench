@@ -507,10 +507,13 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
           return false;
         }
         
-        // 排除自动发送的 Warmup 消息
-        // 这个逻辑要和 usePromptExecution.ts 里的 isUserInitiated 保持一致
+        // ⚡ 排除自动发送的 Warmup 和 Skills 消息
+        // 这个逻辑要和后端 prompt_tracker.rs 保持一致
         const isWarmupMessage = text.includes('Warmup');
-        return !isWarmupMessage;
+        const isSkillMessage = text.includes('<command-name>') 
+          || text.includes('Launching skill:')
+          || text.includes('skill is running');
+        return !isWarmupMessage && !isSkillMessage;
       })
       .length - 1;
   }, [messages, displayableMessages]);

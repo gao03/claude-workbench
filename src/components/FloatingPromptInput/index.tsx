@@ -50,11 +50,11 @@ const FloatingPromptInputInner = (
     onCancel,
     getConversationContext,
     isPlanMode = false,
-  onTogglePlanMode,
-  sessionCost,
+    onTogglePlanMode,
+    sessionCost,
   sessionStats,
-  hasMessages = false,
-}: FloatingPromptInputProps,
+    hasMessages = false,
+  }: FloatingPromptInputProps,
   ref: React.Ref<FloatingPromptInputRef>,
 ) => {
   // State

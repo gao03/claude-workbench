@@ -105,7 +105,7 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
 
     try {
       // Always show loading when fetching
-      setLoading(true);
+        setLoading(true);
       setError(null);
 
       // Get today's date range

@@ -139,10 +139,13 @@ fn truncate_session_to_prompt(
                     continue;
                 }
                 
-                // 检查是否是自动发送的 Warmup 消息
+                // ⚡ 检查是否是自动发送的 Warmup 消息或 Skills 消息
                 let is_warmup = extracted_text.contains("Warmup");
+                let is_skill_message = extracted_text.contains("<command-name>") 
+                    || extracted_text.contains("Launching skill:")
+                    || extracted_text.contains("skill is running");
                 
-                if !is_warmup {
+                if !is_warmup && !is_skill_message {
                     // 只计算真实用户输入的消息（排除自动 Warmup）
                     log::debug!("Found user message at line {}, count={}, looking for={}", 
                         line_index, user_message_count, prompt_index);
@@ -154,8 +157,10 @@ fn truncate_session_to_prompt(
                         break;
                     }
                     user_message_count += 1;
-                } else {
+                } else if is_warmup {
                     log::debug!("Skipping Warmup message at line {}: {}", line_index, extracted_text.chars().take(50).collect::<String>());
+                } else if is_skill_message {
+                    log::debug!("Skipping Skills message at line {}: {}", line_index, extracted_text.chars().take(50).collect::<String>());
                 }
             }
         }

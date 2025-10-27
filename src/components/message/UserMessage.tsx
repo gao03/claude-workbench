@@ -21,6 +21,62 @@ interface UserMessageProps {
 }
 
 /**
+ * 检查是否是 Skills 消息
+ */
+const isSkillsMessage = (text: string): boolean => {
+  return text.includes('<command-name>') 
+    || text.includes('Launching skill:')
+    || text.includes('skill is running');
+};
+
+/**
+ * 格式化 Skills 消息显示
+ */
+const formatSkillsMessage = (text: string): React.ReactNode => {
+  // 提取 command-name 和 command-message
+  const commandNameMatch = text.match(/<command-name>(.+?)<\/command-name>/);
+  const commandMessageMatch = text.match(/<command-message>(.+?)<\/command-message>/);
+  
+  if (commandNameMatch || commandMessageMatch) {
+    return (
+      <div className="space-y-2">
+        {commandMessageMatch && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-green-600">✓</span>
+            <span>{commandMessageMatch[1]}</span>
+          </div>
+        )}
+        {commandNameMatch && (
+          <div className="text-xs text-muted-foreground font-mono">
+            Skill: {commandNameMatch[1]}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // 处理 "Launching skill:" 格式
+  if (text.includes('Launching skill:')) {
+    const skillNameMatch = text.match(/Launching skill: (.+)/);
+    if (skillNameMatch) {
+      return (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-green-600">✓</span>
+            <span>Skill</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Launching skill: <span className="font-mono">{skillNameMatch[1]}</span>
+          </div>
+        </div>
+      );
+    }
+  }
+  
+  return text;
+};
+
+/**
  * 提取用户消息的纯文本内容
  */
 const extractUserText = (message: ClaudeStreamMessage): string => {
@@ -28,18 +84,33 @@ const extractUserText = (message: ClaudeStreamMessage): string => {
   
   const content = message.message.content;
   
-  // 如果是字符串，直接返回
-  if (typeof content === 'string') return content;
+  let text = '';
   
+  // 如果是字符串，直接使用
+  if (typeof content === 'string') {
+    text = content;
+  } 
   // 如果是数组，提取所有text类型的内容
-  if (Array.isArray(content)) {
-    return content
+  else if (Array.isArray(content)) {
+    text = content
       .filter((item: any) => item.type === 'text')
-      .map((item: any) => item.text)
+      .map((item: any) => item.text || '')
       .join('\n');
   }
   
-  return '';
+  // ⚡ 关键修复：JSONL 保存为 \\n（双反斜杠），需要替换为真正的换行
+  // 正则 /\\\\n/ 匹配两个反斜杠+n
+  if (text.includes('\\')) {
+    text = text
+      .replace(/\\\\n/g, '\n')      // \\n（双反斜杠+n）→ 换行符
+      .replace(/\\\\r/g, '\r')      // \\r → 回车
+      .replace(/\\\\t/g, '\t')      // \\t → 制表符
+      .replace(/\\\\"/g, '"')       // \\" → 双引号
+      .replace(/\\\\'/g, "'")       // \\' → 单引号
+      .replace(/\\\\\\\\/g, '\\');  // \\\\ → 单个反斜杠（最后处理）
+  }
+  
+  return text;
 };
 
 /**
@@ -57,6 +128,10 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   
   // 如果没有文本内容，不渲染
   if (!text) return null;
+  
+  // ⚡ 检查是否是 Skills 消息
+  const isSkills = isSkillsMessage(text);
+  const displayContent = isSkills ? formatSkillsMessage(text) : text;
 
   const handleRevertClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -88,12 +163,15 @@ export const UserMessage: React.FC<UserMessageProps> = ({
         {/* 消息内容和撤回按钮 - 同一行显示 */}
         <div className="flex items-start gap-2">
         {/* 消息内容 */}
-          <div className="text-sm leading-relaxed whitespace-pre-wrap flex-1">
-          {text}
+          <div className={cn(
+            "text-sm leading-relaxed flex-1",
+            isSkills ? "" : "whitespace-pre-wrap"
+          )}>
+            {displayContent}
             </div>
 
-          {/* 撤回按钮 - 始终显示，圆形边框样式 */}
-            {showRevertButton && (
+          {/* 撤回按钮 - Skills 消息不显示撤回按钮 */}
+            {showRevertButton && !isSkills && (
             <div className="flex-shrink-0">
                 <TooltipProvider>
                   <Tooltip>
