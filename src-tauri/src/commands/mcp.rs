@@ -475,14 +475,13 @@ pub async fn mcp_add_from_claude_desktop(
         scope
     );
 
-    // Get Claude Desktop config path for Windows
+    // Get Claude Desktop config path (cross-platform)
     let config_path = if cfg!(target_os = "windows") {
-        // Check common Windows locations for Claude Desktop
+        // Windows paths
         let app_data_dir = dirs::config_dir()
             .or_else(|| dirs::data_dir())
             .ok_or_else(|| "Could not find application data directory".to_string())?;
         
-        // Try common Windows paths for Claude Desktop
         let possible_paths = vec![
             app_data_dir.join("Claude").join("claude_desktop_config.json"),
             app_data_dir.join("Anthropic").join("Claude").join("claude_desktop_config.json"),
@@ -500,17 +499,44 @@ pub async fn mcp_add_from_claude_desktop(
                 .join("claude_desktop_config.json"),
         ];
         
-        // Find the first existing path
         possible_paths
             .into_iter()
             .find(|path| path.exists())
             .ok_or_else(|| {
-                "Claude Desktop configuration not found. Please make sure Claude Desktop is installed on Windows.".to_string()
+                "Claude Desktop configuration not found. Please make sure Claude Desktop is installed.".to_string()
+            })?
+    } else if cfg!(target_os = "macos") {
+        // ⚡ 新增：macOS 支持
+        let home_dir = dirs::home_dir()
+            .ok_or_else(|| "Could not find home directory".to_string())?;
+        
+        let possible_paths = vec![
+            home_dir.join("Library").join("Application Support").join("Claude").join("claude_desktop_config.json"),
+            home_dir.join(".config").join("Claude").join("claude_desktop_config.json"),
+        ];
+        
+        possible_paths
+            .into_iter()
+            .find(|path| path.exists())
+            .ok_or_else(|| {
+                "Claude Desktop configuration not found. Please make sure Claude Desktop is installed on macOS.".to_string()
             })?
     } else {
-        return Err(
-            "This Windows-optimized version only supports importing from Claude Desktop on Windows.".to_string(),
-        );
+        // Linux
+        let home_dir = dirs::home_dir()
+            .ok_or_else(|| "Could not find home directory".to_string())?;
+        
+        let possible_paths = vec![
+            home_dir.join(".config").join("Claude").join("claude_desktop_config.json"),
+            home_dir.join(".claude").join("claude_desktop_config.json"),
+        ];
+        
+        possible_paths
+            .into_iter()
+            .find(|path| path.exists())
+            .ok_or_else(|| {
+                "Claude Desktop configuration not found. Please make sure Claude Desktop is installed.".to_string()
+            })?
     };
 
     // Read and parse the config file
