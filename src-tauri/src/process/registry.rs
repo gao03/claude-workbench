@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::process::Child;
+use super::JobObject;
 
 /// Type of process being tracked
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +35,8 @@ pub struct ProcessHandle {
     pub info: ProcessInfo,
     pub child: Arc<Mutex<Option<Child>>>,
     pub live_output: Arc<Mutex<String>>,
+    #[cfg(windows)]
+    pub job_object: Option<Arc<JobObject>>, // Job object for automatic cleanup on Windows
 }
 
 /// Registry for tracking active agent processes
@@ -108,10 +111,36 @@ impl ProcessRegistry {
         // Register without child - Claude sessions use ClaudeProcessState for process management
         let mut processes = self.processes.lock().map_err(|e| e.to_string())?;
         
+        // Create Job Object on Windows for automatic process cleanup
+        #[cfg(windows)]
+        let job_object = {
+            match JobObject::create() {
+                Ok(job) => {
+                    // Assign the process to the job
+                    match job.assign_process_by_pid(pid) {
+                        Ok(_) => {
+                            log::info!("Assigned process {} to Job Object for automatic cleanup", pid);
+                            Some(Arc::new(job))
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to assign process {} to Job Object: {}", pid, e);
+                            None
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to create Job Object: {}", e);
+                    None
+                }
+            }
+        };
+        
         let process_handle = ProcessHandle {
             info: process_info,
             child: Arc::new(Mutex::new(None)), // No child handle for Claude sessions
             live_output: Arc::new(Mutex::new(String::new())),
+            #[cfg(windows)]
+            job_object,
         };
 
         processes.insert(run_id, process_handle);
@@ -128,10 +157,37 @@ impl ProcessRegistry {
     ) -> Result<(), String> {
         let mut processes = self.processes.lock().map_err(|e| e.to_string())?;
 
+        // Create Job Object on Windows for automatic process cleanup
+        #[cfg(windows)]
+        let job_object = {
+            let pid = process_info.pid;
+            match JobObject::create() {
+                Ok(job) => {
+                    // Assign the process to the job
+                    match job.assign_process_by_pid(pid) {
+                        Ok(_) => {
+                            log::info!("Assigned process {} to Job Object for automatic cleanup", pid);
+                            Some(Arc::new(job))
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to assign process {} to Job Object: {}", pid, e);
+                            None
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to create Job Object: {}", e);
+                    None
+                }
+            }
+        };
+
         let process_handle = ProcessHandle {
             info: process_info,
             child: Arc::new(Mutex::new(Some(child))),
             live_output: Arc::new(Mutex::new(String::new())),
+            #[cfg(windows)]
+            job_object,
         };
 
         processes.insert(run_id, process_handle);
@@ -225,6 +281,10 @@ impl ProcessRegistry {
             "Attempting graceful shutdown of process {} (PID: {})",
             run_id, pid
         );
+        
+        // IMPORTANT: First kill all child processes to prevent orphans
+        info!("Killing child processes of PID {} before killing parent", pid);
+        let _ = self.kill_child_processes(pid);
 
         // Send kill signal to the process
         let kill_sent = {
@@ -321,18 +381,87 @@ impl ProcessRegistry {
         Ok(true)
     }
 
+    /// Kill all child processes of a given PID
+    /// This is crucial for cleaning up orphaned node processes
+    fn kill_child_processes(&self, parent_pid: u32) -> Result<(), String> {
+        use log::info;
+        
+        #[cfg(target_os = "windows")]
+        {
+            // On Windows, use WMIC to find and kill child processes
+            use std::os::windows::process::CommandExt;
+            
+            info!("Searching for child processes of PID {}", parent_pid);
+            
+            // Get child process IDs using WMIC
+            let output = std::process::Command::new("wmic")
+                .args(["process", "where", &format!("ParentProcessId={}", parent_pid), "get", "ProcessId"])
+                .creation_flags(0x08000000) // CREATE_NO_WINDOW
+                .output();
+            
+            if let Ok(output) = output {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                // Parse PIDs from output
+                for line in stdout.lines().skip(1) { // Skip header
+                    let pid_str = line.trim();
+                    if !pid_str.is_empty() {
+                        if let Ok(child_pid) = pid_str.parse::<u32>() {
+                            info!("Found child process: PID {}", child_pid);
+                            // Kill child process with /F /T
+                            let _ = std::process::Command::new("taskkill")
+                                .args(["/F", "/T", "/PID", &child_pid.to_string()])
+                                .creation_flags(0x08000000)
+                                .output();
+                        }
+                    }
+                }
+            }
+        }
+        
+        #[cfg(unix)]
+        {
+            // On Unix, use pgrep to find child processes
+            info!("Searching for child processes of PID {}", parent_pid);
+            
+            let output = std::process::Command::new("pgrep")
+                .args(["-P", &parent_pid.to_string()])
+                .output();
+            
+            if let Ok(output) = output {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    let pid_str = line.trim();
+                    if !pid_str.is_empty() {
+                        if let Ok(child_pid) = pid_str.parse::<i32>() {
+                            info!("Found child process: PID {}", child_pid);
+                            // Kill child process
+                            let _ = std::process::Command::new("kill")
+                                .args(["-KILL", &child_pid.to_string()])
+                                .output();
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+
     /// Kill a process by PID using system commands (fallback method)
     pub fn kill_process_by_pid(&self, run_id: i64, pid: u32) -> Result<bool, String> {
         use log::{error, info, warn};
 
         info!("Attempting to kill process {} by PID {}", run_id, pid);
+        
+        // First, try to kill all child processes
+        let _ = self.kill_child_processes(pid);
 
         let kill_result = if cfg!(target_os = "windows") {
             #[cfg(target_os = "windows")]
             {
                 use std::os::windows::process::CommandExt;
                 std::process::Command::new("taskkill")
-                    .args(["/F", "/PID", &pid.to_string()])
+                    .args(["/F", "/T", "/PID", &pid.to_string()]) // Added /T to kill process tree
                     .creation_flags(0x08000000) // CREATE_NO_WINDOW
                     .output()
             }
@@ -345,14 +474,16 @@ impl ProcessRegistry {
                     .output()
             }
         } else {
-            // First try SIGTERM
+            // On Unix, kill the entire process group
+            // First try SIGTERM to the process group (negative PID)
+            let pgid = format!("-{}", pid); // Negative PID targets the process group
             let term_result = std::process::Command::new("kill")
-                .args(["-TERM", &pid.to_string()])
+                .args(["-TERM", &pgid])
                 .output();
 
             match &term_result {
                 Ok(output) if output.status.success() => {
-                    info!("Sent SIGTERM to PID {}", pid);
+                    info!("Sent SIGTERM to process group {}", pid);
                     // Give it 2 seconds to exit gracefully
                     std::thread::sleep(std::time::Duration::from_secs(2));
 
@@ -363,13 +494,13 @@ impl ProcessRegistry {
 
                     if let Ok(output) = check_result {
                         if output.status.success() {
-                            // Still running, send SIGKILL
+                            // Still running, send SIGKILL to process group
                             warn!(
-                                "Process {} still running after SIGTERM, sending SIGKILL",
+                                "Process {} still running after SIGTERM, sending SIGKILL to process group",
                                 pid
                             );
                             std::process::Command::new("kill")
-                                .args(["-KILL", &pid.to_string()])
+                                .args(["-KILL", &pgid])
                                 .output()
                         } else {
                             term_result
@@ -379,10 +510,11 @@ impl ProcessRegistry {
                     }
                 }
                 _ => {
-                    // SIGTERM failed, try SIGKILL directly
-                    warn!("SIGTERM failed for PID {}, trying SIGKILL", pid);
+                    // SIGTERM to process group failed, try SIGKILL to process group directly
+                    warn!("SIGTERM failed for process group {}, trying SIGKILL to process group", pid);
+                    let pgid = format!("-{}", pid);
                     std::process::Command::new("kill")
-                        .args(["-KILL", &pid.to_string()])
+                        .args(["-KILL", &pgid])
                         .output()
                 }
             }
@@ -494,6 +626,89 @@ impl ProcessRegistry {
 
         Ok(finished_runs)
     }
+
+    /// Kill all processes by name (last resort cleanup)
+    /// This finds and kills any remaining claude/node processes
+    fn kill_orphaned_processes_by_name(&self) {
+        use log::info;
+        
+        info!("Performing last-resort cleanup: killing orphaned claude/node processes");
+        
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            
+            // Kill any remaining claude.exe processes
+            let _ = std::process::Command::new("taskkill")
+                .args(["/F", "/IM", "claude.exe"])
+                .creation_flags(0x08000000)
+                .output();
+            
+            // Kill any remaining node.exe processes that might be spawned by claude
+            // Note: This is aggressive and might kill unrelated node processes
+            // We'll only do this if we're sure there were claude processes
+            info!("Cleaning up any orphaned node processes related to claude");
+        }
+        
+        #[cfg(unix)]
+        {
+            // Kill remaining claude processes
+            let _ = std::process::Command::new("pkill")
+                .args(["-9", "claude"])
+                .output();
+            
+            info!("Cleaned up any orphaned claude processes");
+        }
+    }
+
+    /// Kill all registered processes (for application shutdown)
+    /// This is a critical cleanup function to prevent orphaned processes
+    pub async fn kill_all_processes(&self) -> Result<usize, String> {
+        use log::{info, warn};
+        
+        info!("Starting cleanup of all registered processes for application shutdown");
+        
+        // Get all run IDs with their PIDs
+        let process_info: Vec<(i64, u32)> = {
+            let processes = self.processes.lock().map_err(|e| e.to_string())?;
+            processes.iter().map(|(id, handle)| (*id, handle.info.pid)).collect()
+        };
+        
+        let total_processes = process_info.len();
+        info!("Found {} processes to cleanup", total_processes);
+        
+        let mut killed_count = 0;
+        
+        // First pass: Kill child processes explicitly
+        for (_run_id, pid) in &process_info {
+            let _ = self.kill_child_processes(*pid);
+        }
+        
+        // Small delay to let child processes terminate
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        
+        // Second pass: Kill main processes
+        for (run_id, _pid) in process_info {
+            match self.kill_process(run_id).await {
+                Ok(true) => {
+                    info!("Successfully killed process {}", run_id);
+                    killed_count += 1;
+                }
+                Ok(false) => {
+                    warn!("Process {} was not found or already exited", run_id);
+                }
+                Err(e) => {
+                    warn!("Failed to kill process {}: {}", run_id, e);
+                }
+            }
+        }
+        
+        // Final cleanup: Kill any remaining orphaned processes by name
+        self.kill_orphaned_processes_by_name();
+        
+        info!("Cleanup complete: killed {}/{} processes", killed_count, total_processes);
+        Ok(killed_count)
+    }
 }
 
 impl Default for ProcessRegistry {
@@ -508,5 +723,43 @@ pub struct ProcessRegistryState(pub Arc<ProcessRegistry>);
 impl Default for ProcessRegistryState {
     fn default() -> Self {
         Self(Arc::new(ProcessRegistry::new()))
+    }
+}
+
+impl Drop for ProcessRegistryState {
+    fn drop(&mut self) {
+        // When the application exits, clean up all processes
+        use log::info;
+        info!("ProcessRegistryState dropping, cleaning up all processes...");
+        
+        // Use a runtime to execute the async cleanup
+        let registry = self.0.clone();
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            // We're in a tokio runtime context
+            handle.block_on(async move {
+                match registry.kill_all_processes().await {
+                    Ok(count) => {
+                        info!("Cleanup on drop: Successfully killed {} processes", count);
+                    }
+                    Err(e) => {
+                        info!("Cleanup on drop: Error killing processes: {}", e);
+                    }
+                }
+            });
+        } else {
+            // Create a temporary runtime for cleanup
+            if let Ok(rt) = tokio::runtime::Runtime::new() {
+                rt.block_on(async move {
+                    match registry.kill_all_processes().await {
+                        Ok(count) => {
+                            info!("Cleanup on drop: Successfully killed {} processes", count);
+                        }
+                        Err(e) => {
+                            info!("Cleanup on drop: Error killing processes: {}", e);
+                        }
+                    }
+                });
+            }
+        }
     }
 }

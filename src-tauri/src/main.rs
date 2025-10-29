@@ -123,8 +123,6 @@ fn main() {
                 commands::translator::init_translation_service_with_saved_config().await;
             });
 
-
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

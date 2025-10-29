@@ -34,6 +34,51 @@ impl Default for ClaudeProcessState {
     }
 }
 
+impl Drop for ClaudeProcessState {
+    fn drop(&mut self) {
+        // When the application exits, clean up the current process
+        log::info!("ClaudeProcessState dropping, cleaning up current process...");
+        
+        // Use a runtime to execute the async cleanup
+        let process = self.current_process.clone();
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            // We're in a tokio runtime context
+            handle.block_on(async move {
+                let mut current_process = process.lock().await;
+                if let Some(mut child) = current_process.take() {
+                    log::info!("Cleanup on drop: Killing Claude process");
+                    match child.kill().await {
+                        Ok(_) => {
+                            log::info!("Cleanup on drop: Successfully killed Claude process");
+                        }
+                        Err(e) => {
+                            log::error!("Cleanup on drop: Failed to kill Claude process: {}", e);
+                        }
+                    }
+                }
+            });
+        } else {
+            // Create a temporary runtime for cleanup
+            if let Ok(rt) = tokio::runtime::Runtime::new() {
+                rt.block_on(async move {
+                    let mut current_process = process.lock().await;
+                    if let Some(mut child) = current_process.take() {
+                        log::info!("Cleanup on drop: Killing Claude process");
+                        match child.kill().await {
+                            Ok(_) => {
+                                log::info!("Cleanup on drop: Successfully killed Claude process");
+                            }
+                            Err(e) => {
+                                log::error!("Cleanup on drop: Failed to kill Claude process: {}", e);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+}
+
 /// Maps frontend model IDs to Claude CLI model aliases
 /// Converts frontend-friendly model names to official Claude Code model identifiers
 /// Updated to use Claude 4.1 Opus (released August 2025) as the latest Opus model
@@ -566,6 +611,14 @@ fn create_windows_command(
     // On Windows, ensure the command runs without creating a console window
     #[cfg(target_os = "windows")]
     cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+    // On Unix-like systems, create a new process group
+    // This allows us to kill the entire process tree with a single signal
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0); // Create new process group, process becomes group leader
+    }
 
     Ok(cmd)
 }
@@ -1926,7 +1979,7 @@ pub async fn cancel_claude_execution(
                             {
                                 use std::os::windows::process::CommandExt;
                                 std::process::Command::new("taskkill")
-                                    .args(["/F", "/PID", &pid.to_string()])
+                                    .args(["/F", "/T", "/PID", &pid.to_string()]) // Added /T to kill process tree
                                     .creation_flags(0x08000000) // CREATE_NO_WINDOW
                                     .output()
                             }
