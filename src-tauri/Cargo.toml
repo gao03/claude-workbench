@@ -1,6 +1,6 @@
 [package]
 name = "claude-workbench"
-version = "4.0.10"
+version = "4.0.11"
 description = "Claude Workbench - Professional desktop application and toolkit for Claude CLI"
 authors = ["mufeedvh", "123vviekr"]
 license = "AGPL-3.0"
@@ -17,8 +17,8 @@ tauri = { version = "2.9", features = ["protocol-asset", "tray-icon", "image-png
 tauri-plugin-shell = "2.3"
 tauri-plugin-dialog = "2.4"
 tauri-plugin-fs = "2"
-tauri-plugin-process = "2"
-tauri-plugin-updater = "2"
+tauri-plugin-process = "2.3"
+tauri-plugin-updater = "2.9"
 tauri-plugin-notification = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-global-shortcut = "2.3"

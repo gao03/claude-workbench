@@ -22,6 +22,8 @@ import { ProjectSettings } from '@/components/ProjectSettings';
 import { EnhancedHooksManager } from '@/components/EnhancedHooksManager';
 import { ClaudeExtensionsManager } from '@/components/ClaudeExtensionsManager';
 import { useTranslation } from '@/hooks/useTranslation';
+import { UpdateProvider } from '@/contexts/UpdateContext';
+import { UpdateDialog } from '@/components/UpdateDialog';
 
 type View =
   | "projects"
@@ -42,9 +44,11 @@ type View =
  */
 function App() {
   return (
-    <TabProvider>
-      <AppContent />
-    </TabProvider>
+    <UpdateProvider>
+      <TabProvider>
+        <AppContent />
+      </TabProvider>
+    </UpdateProvider>
   );
 }
 
@@ -71,6 +75,7 @@ function AppContent() {
   const [showNavigationConfirm, setShowNavigationConfirm] = useState(false);
   const [pendingView, setPendingView] = useState<View | null>(null);
   const [newSessionProjectPath, setNewSessionProjectPath] = useState<string>("");
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
   // 🔧 NEW: Navigation history stack for smart back functionality
   const [navigationHistory, setNavigationHistory] = useState<View[]>(["projects"]);
@@ -540,6 +545,7 @@ function AppContent() {
               onMCPClick={() => handleViewChange("mcp")}
               onExtensionsClick={() => handleViewChange("claude-extensions")}
               onTabsClick={() => handleViewChange("claude-tab-manager")}
+              onUpdateClick={() => setShowUpdateDialog(true)}
               tabsCount={getTabStats().total}
             />
           )}
@@ -593,6 +599,12 @@ function AppContent() {
               />
             )}
           </ToastContainer>
+
+          {/* Update Dialog */}
+          <UpdateDialog 
+            open={showUpdateDialog} 
+            onClose={() => setShowUpdateDialog(false)}
+          />
         </div>
       </OutputCacheProvider>
   );

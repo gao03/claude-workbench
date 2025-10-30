@@ -4,6 +4,7 @@ import { FileText, Settings, BarChart3, Network, Eye, Package } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ClaudeStatusIndicator } from "@/components/ClaudeStatusIndicator";
+import { UpdateBadge } from "@/components/UpdateBadge";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -34,6 +35,10 @@ interface TopbarProps {
    * Callback when Tabs is clicked
    */
   onTabsClick?: () => void;
+  /**
+   * Callback when Update badge is clicked
+   */
+  onUpdateClick?: () => void;
   /**
    * Number of open tabs
    */
@@ -70,6 +75,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   onMCPClick,
   onExtensionsClick,
   onTabsClick,
+  onUpdateClick,
   tabsCount = 0,
   messages,
   sessionId,
@@ -189,6 +195,11 @@ export const Topbar: React.FC<TopbarProps> = ({
             {/* 分隔线 */}
             <div className="h-5 w-px bg-border/50 mx-0.5" />
           </>
+        )}
+
+        {/* Update Badge */}
+        {onUpdateClick && (
+          <UpdateBadge onClick={onUpdateClick} />
         )}
 
         <Button
