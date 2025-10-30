@@ -1,14 +1,13 @@
+use log::{error, info};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 /// Auto-compact context management system for Claude Code SDK integration
 ///
 /// This module provides intelligent context window management with automatic compaction
 /// based on Claude Code SDK best practices and the official documentation.
-
 use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
-use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
-use log::{info, error};
 
 /// Configuration for auto-compact behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,7 +67,9 @@ mod systemtime_serde {
     {
         match time {
             Some(t) => {
-                let duration = t.duration_since(UNIX_EPOCH).map_err(serde::ser::Error::custom)?;
+                let duration = t
+                    .duration_since(UNIX_EPOCH)
+                    .map_err(serde::ser::Error::custom)?;
                 serializer.serialize_u64(duration.as_secs())
             }
             None => serializer.serialize_none(),
@@ -125,7 +126,12 @@ impl AutoCompactManager {
     }
 
     /// Register a new session for monitoring
-    pub fn register_session(&self, session_id: String, project_path: String, model: String) -> Result<(), String> {
+    pub fn register_session(
+        &self,
+        session_id: String,
+        project_path: String,
+        model: String,
+    ) -> Result<(), String> {
         let mut sessions = self.sessions.lock().map_err(|e| e.to_string())?;
 
         let context = SessionContext {
@@ -140,12 +146,19 @@ impl AutoCompactManager {
         };
 
         sessions.insert(session_id.clone(), context);
-        info!("Registered session {} for auto-compact monitoring", session_id);
+        info!(
+            "Registered session {} for auto-compact monitoring",
+            session_id
+        );
         Ok(())
     }
 
     /// Update session token count and trigger compaction if needed
-    pub async fn update_session_tokens(&self, session_id: &str, token_count: usize) -> Result<bool, String> {
+    pub async fn update_session_tokens(
+        &self,
+        session_id: &str,
+        token_count: usize,
+    ) -> Result<bool, String> {
         let mut sessions = self.sessions.lock().map_err(|e| e.to_string())?;
         let config = self.config.lock().map_err(|e| e.to_string())?;
 
@@ -158,7 +171,8 @@ impl AutoCompactManager {
             session.message_count += 1;
 
             // Check if compaction is needed
-            let threshold_tokens = (config.max_context_tokens as f64 * config.compaction_threshold) as usize;
+            let threshold_tokens =
+                (config.max_context_tokens as f64 * config.compaction_threshold) as usize;
             let needs_compaction = token_count >= threshold_tokens;
 
             // Check minimum interval
@@ -185,24 +199,35 @@ impl AutoCompactManager {
     }
 
     /// Execute compaction for a session
-    pub async fn execute_compaction(&self, app: tauri::AppHandle, session_id: &str) -> Result<(), String> {
+    pub async fn execute_compaction(
+        &self,
+        app: tauri::AppHandle,
+        session_id: &str,
+    ) -> Result<(), String> {
         info!("Executing auto-compaction for session {}", session_id);
 
         let (project_path, custom_instructions) = {
             let sessions = self.sessions.lock().map_err(|e| e.to_string())?;
             let config = self.config.lock().map_err(|e| e.to_string())?;
 
-            let session = sessions.get(session_id)
+            let session = sessions
+                .get(session_id)
                 .ok_or_else(|| format!("Session {} not found", session_id))?;
 
-            (session.project_path.clone(), config.custom_instructions.clone())
+            (
+                session.project_path.clone(),
+                config.custom_instructions.clone(),
+            )
         };
 
         // Build compaction command based on strategy
         let compaction_cmd = self.build_compaction_command(&custom_instructions).await?;
 
         // Execute compaction using Claude CLI
-        match self.execute_claude_compaction(&app, &project_path, &compaction_cmd).await {
+        match self
+            .execute_claude_compaction(&app, &project_path, &compaction_cmd)
+            .await
+        {
             Ok(_) => {
                 // Update session state after successful compaction
                 let mut sessions = self.sessions.lock().map_err(|e| e.to_string())?;
@@ -232,7 +257,10 @@ impl AutoCompactManager {
     }
 
     /// Build compaction command based on strategy
-    async fn build_compaction_command(&self, custom_instructions: &Option<String>) -> Result<String, String> {
+    async fn build_compaction_command(
+        &self,
+        custom_instructions: &Option<String>,
+    ) -> Result<String, String> {
         let config = self.config.lock().map_err(|e| e.to_string())?;
 
         let base_instruction = match &config.compaction_strategy {
@@ -253,7 +281,10 @@ impl AutoCompactManager {
         };
 
         let final_instruction = if let Some(custom) = custom_instructions {
-            format!("{}\n\nAdditional instructions: {}", base_instruction, custom)
+            format!(
+                "{}\n\nAdditional instructions: {}",
+                base_instruction, custom
+            )
         } else {
             base_instruction.to_string()
         };
@@ -262,7 +293,12 @@ impl AutoCompactManager {
     }
 
     /// Execute Claude CLI compaction command
-    async fn execute_claude_compaction(&self, app: &tauri::AppHandle, project_path: &str, instructions: &str) -> Result<(), String> {
+    async fn execute_claude_compaction(
+        &self,
+        app: &tauri::AppHandle,
+        project_path: &str,
+        instructions: &str,
+    ) -> Result<(), String> {
         // Find Claude CLI binary
         let claude_path = crate::claude_binary::find_claude_binary(app)?;
 
@@ -275,20 +311,28 @@ impl AutoCompactManager {
             .stderr(std::process::Stdio::piped());
 
         // Execute compaction
-        let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn compaction process: {}", e))?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("Failed to spawn compaction process: {}", e))?;
 
         // Send instructions to stdin
         if let Some(stdin) = child.stdin.take() {
             use tokio::io::AsyncWriteExt;
             let mut stdin = stdin;
-            stdin.write_all(instructions.as_bytes()).await
+            stdin
+                .write_all(instructions.as_bytes())
+                .await
                 .map_err(|e| format!("Failed to write compaction instructions: {}", e))?;
-            stdin.shutdown().await
+            stdin
+                .shutdown()
+                .await
                 .map_err(|e| format!("Failed to close stdin: {}", e))?;
         }
 
         // Wait for completion
-        let output = child.wait_with_output().await
+        let output = child
+            .wait_with_output()
+            .await
             .map_err(|e| format!("Failed to wait for compaction: {}", e))?;
 
         if !output.status.success() {
@@ -354,8 +398,14 @@ impl AutoCompactManager {
                         };
 
                         tokio::spawn(async move {
-                            if let Err(e) = manager.execute_compaction(app_clone, &session_id_clone).await {
-                                error!("Background compaction failed for session {}: {}", session_id_clone, e);
+                            if let Err(e) = manager
+                                .execute_compaction(app_clone, &session_id_clone)
+                                .await
+                            {
+                                error!(
+                                    "Background compaction failed for session {}: {}",
+                                    session_id_clone, e
+                                );
                             }
                         });
                     }
@@ -403,7 +453,10 @@ impl AutoCompactManager {
     pub fn unregister_session(&self, session_id: &str) -> Result<(), String> {
         let mut sessions = self.sessions.lock().map_err(|e| e.to_string())?;
         sessions.remove(session_id);
-        info!("Unregistered session {} from auto-compact monitoring", session_id);
+        info!(
+            "Unregistered session {} from auto-compact monitoring",
+            session_id
+        );
         Ok(())
     }
 }

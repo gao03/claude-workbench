@@ -1,9 +1,9 @@
 /// Windows Job Object Management
-/// 
+///
 /// This module provides Windows Job Object functionality to ensure that
 /// all child processes are terminated when the parent process exits or
 /// when we explicitly close the job.
-/// 
+///
 /// Job Objects are a Windows-specific mechanism for managing groups of processes.
 /// When a process is assigned to a job with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
 /// all processes in the job are automatically terminated when the job handle is closed.
@@ -36,12 +36,10 @@ pub mod windows_job {
                 info!("Created Windows Job Object with handle: {:?}", handle);
 
                 // Set job limits to kill all processes when the job is closed
-                let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION =
-                    std::mem::zeroed();
+                let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
 
                 // Set the flag to kill on job close
-                info.BasicLimitInformation.LimitFlags =
-                    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+                info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
                 let result = SetInformationJobObject(
                     handle,
@@ -62,7 +60,7 @@ pub mod windows_job {
         }
 
         /// Assign a process to this Job Object
-        /// 
+        ///
         /// # Arguments
         /// * `process_handle` - Native Windows process handle (HANDLE)
         pub fn assign_process(&self, process_handle: HANDLE) -> Result<(), String> {
@@ -70,24 +68,23 @@ pub mod windows_job {
                 AssignProcessToJobObject(self.handle, process_handle)
                     .map_err(|e| format!("Failed to assign process to job: {:?}", e))?;
 
-                info!("Assigned process {:?} to job object {:?}", process_handle, self.handle);
+                info!(
+                    "Assigned process {:?} to job object {:?}",
+                    process_handle, self.handle
+                );
                 Ok(())
             }
         }
 
         /// Assign a process to this Job Object using PID
-        /// 
+        ///
         /// # Arguments
         /// * `pid` - Process ID
         pub fn assign_process_by_pid(&self, pid: u32) -> Result<(), String> {
             unsafe {
                 // Open process handle with necessary permissions
-                let process_handle = OpenProcess(
-                    PROCESS_SET_QUOTA | PROCESS_TERMINATE,
-                    false,
-                    pid,
-                )
-                .map_err(|e| format!("Failed to open process {}: {:?}", pid, e))?;
+                let process_handle = OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, false, pid)
+                    .map_err(|e| format!("Failed to open process {}: {:?}", pid, e))?;
 
                 if process_handle.is_invalid() {
                     return Err(format!("Invalid process handle for PID {}", pid));
@@ -163,4 +160,3 @@ pub mod windows_job {
 }
 
 pub use windows_job::JobObject;
-

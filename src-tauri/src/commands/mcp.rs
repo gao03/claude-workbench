@@ -477,15 +477,14 @@ pub async fn mcp_add_from_claude_desktop(
 
     // ⚡ 正确修复：所有平台的 Claude Code CLI 配置都在同一位置
     // Windows, macOS, Linux 都使用 ~/.claude/ 目录
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not find home directory".to_string())?;
-    
+    let home_dir = dirs::home_dir().ok_or_else(|| "Could not find home directory".to_string())?;
+
     let possible_paths = vec![
         // Claude Code CLI 配置文件（所有平台统一）
-        home_dir.join(".claude").join("settings.json"),     // 主配置文件
-        home_dir.join(".claude.json"),                      // 旧版配置文件
+        home_dir.join(".claude").join("settings.json"), // 主配置文件
+        home_dir.join(".claude.json"),                  // 旧版配置文件
     ];
-    
+
     let config_path = possible_paths
         .into_iter()
         .find(|path| path.exists())
@@ -682,37 +681,36 @@ pub async fn mcp_export_config() -> Result<String, String> {
     info!("Exporting MCP server configuration from .claude.json");
 
     // Get the .claude.json path from home directory
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "无法获取用户主目录".to_string())?;
-    
+    let home_dir = dirs::home_dir().ok_or_else(|| "无法获取用户主目录".to_string())?;
+
     let claude_config_path = home_dir.join(".claude.json");
-    
+
     if !claude_config_path.exists() {
         return Err("未找到 .claude.json 配置文件".to_string());
     }
-    
+
     // Read the .claude.json file
     let config_content = fs::read_to_string(&claude_config_path)
         .map_err(|e| format!("读取 .claude.json 文件失败: {}", e))?;
-    
+
     // Parse as JSON
     let config: serde_json::Value = serde_json::from_str(&config_content)
         .map_err(|e| format!("解析 .claude.json 文件失败: {}", e))?;
-    
+
     // Extract mcpServers section
     let mcp_servers = config
         .get("mcpServers")
         .ok_or_else(|| "在 .claude.json 中未找到 mcpServers 配置".to_string())?;
-    
+
     // Create export format matching Claude Desktop format
     let export_data = serde_json::json!({
         "mcpServers": mcp_servers
     });
-    
+
     // Convert to pretty JSON string
     let export_json = serde_json::to_string_pretty(&export_data)
         .map_err(|e| format!("序列化导出数据失败: {}", e))?;
-    
+
     info!("Successfully exported MCP configuration");
     Ok(export_json)
 }

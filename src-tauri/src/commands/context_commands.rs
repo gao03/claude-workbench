@@ -2,10 +2,11 @@
 ///
 /// These commands integrate the AutoCompactManager with the frontend,
 /// providing comprehensive context window management capabilities.
-
-use crate::commands::context_manager::{AutoCompactManager, AutoCompactConfig, AutoCompactState, SessionContext};
-use tauri::{command, AppHandle, State, Manager};
-use log::{info, error};
+use crate::commands::context_manager::{
+    AutoCompactConfig, AutoCompactManager, AutoCompactState, SessionContext,
+};
+use log::{error, info};
+use tauri::{command, AppHandle, Manager, State};
 
 /// Initialize auto-compact manager with default settings
 #[command]
@@ -44,7 +45,10 @@ pub async fn update_session_context(
     session_id: String,
     token_count: usize,
 ) -> Result<bool, String> {
-    let compaction_triggered = state.0.update_session_tokens(&session_id, token_count).await?;
+    let compaction_triggered = state
+        .0
+        .update_session_tokens(&session_id, token_count)
+        .await?;
 
     if compaction_triggered {
         info!("Auto-compaction triggered for session {}", session_id);

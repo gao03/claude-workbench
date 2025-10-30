@@ -61,7 +61,7 @@ pub fn find_claude_binary(app_handle: &tauri::AppHandle) -> Result<String, Strin
                     |row| row.get::<_, String>(0),
                 ) {
                     info!("Found stored claude path in database: {}", stored_path);
-                    
+
                     // Verify the stored path still exists and is accessible
                     let path_buf = PathBuf::from(&stored_path);
                     if path_buf.exists() && path_buf.is_file() {
@@ -70,7 +70,10 @@ pub fn find_claude_binary(app_handle: &tauri::AppHandle) -> Result<String, Strin
                             info!("Using cached Claude CLI path: {}", stored_path);
                             return Ok(stored_path);
                         } else {
-                            warn!("Stored claude path exists but is not executable: {}", stored_path);
+                            warn!(
+                                "Stored claude path exists but is not executable: {}",
+                                stored_path
+                            );
                             // Remove invalid cached path
                             let _ = conn.execute(
                                 "DELETE FROM app_settings WHERE key = 'claude_binary_path'",
@@ -109,12 +112,12 @@ pub fn find_claude_binary(app_handle: &tauri::AppHandle) -> Result<String, Strin
             "Selected Claude installation: path={}, version={:?}, source={}",
             best.path, best.version, best.source
         );
-        
+
         // Store the successful path in database for future use
         if let Err(e) = store_claude_path(app_handle, &best.path) {
             warn!("Failed to store claude path in database: {}", e);
         }
-        
+
         Ok(best.path)
     } else {
         Err("No working Claude CLI installation found".to_string())
@@ -127,7 +130,7 @@ fn store_claude_path(app_handle: &tauri::AppHandle, path: &str) -> Result<(), St
         if let Err(e) = std::fs::create_dir_all(&app_data_dir) {
             return Err(format!("Failed to create app data directory: {}", e));
         }
-        
+
         let db_path = app_data_dir.join("agents.db");
         match rusqlite::Connection::open(&db_path) {
             Ok(conn) => {
@@ -141,7 +144,7 @@ fn store_claude_path(app_handle: &tauri::AppHandle, path: &str) -> Result<(), St
                 ) {
                     return Err(format!("Failed to create settings table: {}", e));
                 }
-                
+
                 // Store the path
                 if let Err(e) = conn.execute(
                     "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?1, ?2)",
@@ -149,7 +152,7 @@ fn store_claude_path(app_handle: &tauri::AppHandle, path: &str) -> Result<(), St
                 ) {
                     return Err(format!("Failed to store claude path: {}", e));
                 }
-                
+
                 info!("Stored claude path in database: {}", path);
                 Ok(())
             }
@@ -161,20 +164,20 @@ fn store_claude_path(app_handle: &tauri::AppHandle, path: &str) -> Result<(), St
 }
 
 /// Test if a Claude binary is actually functional (cross-platform)
-fn test_claude_binary(path: &str) -> bool {    
+fn test_claude_binary(path: &str) -> bool {
     debug!("Testing Claude binary at: {}", path);
-    
-    // Test with a simple --version command 
+
+    // Test with a simple --version command
     let mut cmd = Command::new(path);
     cmd.arg("--version");
-    
+
     // Add CREATE_NO_WINDOW flag on Windows to prevent terminal window popup
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
-    
+
     match cmd.output() {
         Ok(output) => {
             let success = output.status.success();
@@ -273,14 +276,16 @@ fn discover_system_installations() -> Vec<ClaudeInstallation> {
     installations.retain(|install| {
         let is_functional = test_claude_binary(&install.path);
         if !is_functional {
-            warn!("Claude installation at {} is not functional, removing from list", install.path);
+            warn!(
+                "Claude installation at {} is not functional, removing from list",
+                install.path
+            );
         }
         is_functional
     });
 
     installations
 }
-
 
 /// Try using the system path lookup command to find Claude (cross-platform)
 fn try_where_command() -> Option<ClaudeInstallation> {
@@ -539,14 +544,14 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
     for cmd in claude_commands {
         let mut command = Command::new(cmd);
         command.arg("--version");
-        
+
         // Add CREATE_NO_WINDOW flag on Windows to prevent terminal window popup
         #[cfg(target_os = "windows")]
         {
             use std::os::windows::process::CommandExt;
             command.creation_flags(0x08000000); // CREATE_NO_WINDOW
         }
-        
+
         if let Ok(output) = command.output() {
             if output.status.success() {
                 debug!("{} is available in PATH", cmd);
@@ -576,23 +581,41 @@ fn find_windows_installations() -> Vec<ClaudeInstallation> {
     // Check Program Files locations
     if let Ok(program_files) = std::env::var("ProgramFiles") {
         paths_to_check.extend(vec![
-            (format!("{}\\nodejs\\claude.cmd", program_files), "nodejs".to_string()),
-            (format!("{}\\nodejs\\claude", program_files), "nodejs".to_string()),
+            (
+                format!("{}\\nodejs\\claude.cmd", program_files),
+                "nodejs".to_string(),
+            ),
+            (
+                format!("{}\\nodejs\\claude", program_files),
+                "nodejs".to_string(),
+            ),
         ]);
     }
 
     if let Ok(program_files_x86) = std::env::var("ProgramFiles(x86)") {
         paths_to_check.extend(vec![
-            (format!("{}\\nodejs\\claude.cmd", program_files_x86), "nodejs-x86".to_string()),
-            (format!("{}\\nodejs\\claude", program_files_x86), "nodejs-x86".to_string()),
+            (
+                format!("{}\\nodejs\\claude.cmd", program_files_x86),
+                "nodejs-x86".to_string(),
+            ),
+            (
+                format!("{}\\nodejs\\claude", program_files_x86),
+                "nodejs-x86".to_string(),
+            ),
         ]);
     }
 
     // Check AppData locations
     if let Ok(appdata) = std::env::var("APPDATA") {
         paths_to_check.extend(vec![
-            (format!("{}\\npm\\claude.cmd", appdata), "npm-appdata".to_string()),
-            (format!("{}\\npm\\claude", appdata), "npm-appdata".to_string()),
+            (
+                format!("{}\\npm\\claude.cmd", appdata),
+                "npm-appdata".to_string(),
+            ),
+            (
+                format!("{}\\npm\\claude", appdata),
+                "npm-appdata".to_string(),
+            ),
         ]);
     }
 
@@ -627,8 +650,14 @@ fn find_macos_installations() -> Vec<ClaudeInstallation> {
 
     // Homebrew paths (both Intel and Apple Silicon)
     paths_to_check.extend(vec![
-        ("/usr/local/bin/claude".to_string(), "homebrew-intel".to_string()),
-        ("/opt/homebrew/bin/claude".to_string(), "homebrew-arm".to_string()),
+        (
+            "/usr/local/bin/claude".to_string(),
+            "homebrew-intel".to_string(),
+        ),
+        (
+            "/opt/homebrew/bin/claude".to_string(),
+            "homebrew-arm".to_string(),
+        ),
     ]);
 
     // MacPorts
@@ -636,9 +665,18 @@ fn find_macos_installations() -> Vec<ClaudeInstallation> {
 
     // NPM 全局安装路径（最新 macOS 常见）
     paths_to_check.extend(vec![
-        ("/usr/local/share/npm/bin/claude".to_string(), "npm-system".to_string()),
-        ("/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/bin/claude.js".to_string(), "homebrew-npm".to_string()),
-        ("/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.js".to_string(), "npm-lib".to_string()),
+        (
+            "/usr/local/share/npm/bin/claude".to_string(),
+            "npm-system".to_string(),
+        ),
+        (
+            "/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/bin/claude.js".to_string(),
+            "homebrew-npm".to_string(),
+        ),
+        (
+            "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.js".to_string(),
+            "npm-lib".to_string(),
+        ),
     ]);
 
     // System-wide installations
@@ -649,12 +687,24 @@ fn find_macos_installations() -> Vec<ClaudeInstallation> {
         paths_to_check.extend(vec![
             // npm prefix 自定义路径
             (format!("{}/npm/bin/claude", home), "npm-custom".to_string()),
-            (format!("{}/.npm/bin/claude", home), "npm-hidden".to_string()),
+            (
+                format!("{}/.npm/bin/claude", home),
+                "npm-hidden".to_string(),
+            ),
             // pnpm 全局路径
-            (format!("{}/Library/pnpm/claude", home), "pnpm-library".to_string()),
-            (format!("{}/.local/share/pnpm/claude", home), "pnpm-local".to_string()),
+            (
+                format!("{}/Library/pnpm/claude", home),
+                "pnpm-library".to_string(),
+            ),
+            (
+                format!("{}/.local/share/pnpm/claude", home),
+                "pnpm-local".to_string(),
+            ),
             // Node 版本管理器路径
-            (format!("{}/.nvm/versions/node/*/bin/claude", home), "nvm".to_string()),
+            (
+                format!("{}/.nvm/versions/node/*/bin/claude", home),
+                "nvm".to_string(),
+            ),
             (format!("{}/.n/bin/claude", home), "n-version".to_string()),
             (format!("{}/.asdf/shims/claude", home), "asdf".to_string()),
             // Volta
@@ -691,17 +741,17 @@ fn find_macos_installations() -> Vec<ClaudeInstallation> {
 /// Get Claude version by running --version command (cross-platform)
 fn get_claude_version(path: &str) -> Result<Option<String>, String> {
     debug!("Getting version for Claude at: {}", path);
-    
+
     let mut cmd = Command::new(path);
     cmd.arg("--version");
-    
+
     // Add CREATE_NO_WINDOW flag on Windows to prevent terminal window popup
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
-    
+
     match cmd.output() {
         Ok(output) => {
             if output.status.success() {
@@ -724,10 +774,10 @@ fn get_claude_version(path: &str) -> Result<Option<String>, String> {
 /// Extract version string from command output
 fn extract_version_from_output(stdout: &[u8]) -> Option<String> {
     let output_str = String::from_utf8_lossy(stdout);
-    
+
     // Debug log the raw output
     debug!("Raw version output: {:?}", output_str);
-    
+
     // Use regex to directly extract version pattern (e.g., "1.0.41")
     // This pattern matches:
     // - One or more digits, followed by
@@ -736,8 +786,9 @@ fn extract_version_from_output(stdout: &[u8]) -> Option<String> {
     // - A dot, followed by
     // - One or more digits
     // - Optionally followed by pre-release/build metadata
-    let version_regex = regex::Regex::new(r"(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?)").ok()?;
-    
+    let version_regex =
+        regex::Regex::new(r"(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?)").ok()?;
+
     if let Some(captures) = version_regex.captures(&output_str) {
         if let Some(version_match) = captures.get(1) {
             let version = version_match.as_str().to_string();
@@ -745,7 +796,7 @@ fn extract_version_from_output(stdout: &[u8]) -> Option<String> {
             return Some(version);
         }
     }
-    
+
     debug!("No version found in output");
     None
 }
@@ -871,4 +922,3 @@ pub fn create_command_with_env(program: &str) -> Command {
 
     cmd
 }
-

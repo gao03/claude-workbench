@@ -1,3 +1,4 @@
+use log::{debug, error, info, warn};
 /// 增强型Hooks自动化系统
 ///
 /// 这个模块实现了事件驱动的自动化工作流系统，包括：
@@ -5,13 +6,11 @@
 /// - Hooks链式执行和条件触发
 /// - 与现有组件深度集成（AutoCompactManager等）
 /// - 错误处理和回滚机制
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tokio::process::Command;
-use log::{info, warn, error, debug};
 use tauri::{AppHandle, Emitter};
+use tokio::process::Command;
 
 /// 扩展的Hook事件类型
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -25,12 +24,12 @@ pub enum HookEvent {
     SubagentStop,
 
     // 新增事件
-    OnContextCompact,     // 上下文压缩时触发
-    OnAgentSwitch,        // 切换子代理时触发
-    OnFileChange,         // 文件修改时触发
-    OnSessionStart,       // 会话开始时触发
-    OnSessionEnd,         // 会话结束时触发
-    OnTabSwitch,          // 切换标签页时触发
+    OnContextCompact, // 上下文压缩时触发
+    OnAgentSwitch,    // 切换子代理时触发
+    OnFileChange,     // 文件修改时触发
+    OnSessionStart,   // 会话开始时触发
+    OnSessionEnd,     // 会话结束时触发
+    OnTabSwitch,      // 切换标签页时触发
 }
 
 impl HookEvent {
@@ -84,9 +83,9 @@ pub struct HookChainResult {
 /// 条件触发配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConditionalTrigger {
-    pub condition: String,      // 条件表达式
+    pub condition: String, // 条件表达式
     pub enabled: bool,
-    pub priority: Option<i32>,  // 执行优先级
+    pub priority: Option<i32>, // 执行优先级
 }
 
 /// 增强型Hook定义
@@ -155,7 +154,9 @@ impl HookExecutor {
             let timeout_duration = tokio::time::Duration::from_secs(hook.timeout.unwrap_or(30));
 
             // 生成进程并设置超时
-            let child = cmd.spawn().map_err(|e| format!("Failed to spawn hook process: {}", e))?;
+            let child = cmd
+                .spawn()
+                .map_err(|e| format!("Failed to spawn hook process: {}", e))?;
 
             let result = tokio::time::timeout(timeout_duration, child.wait_with_output())
                 .await
@@ -186,7 +187,11 @@ impl HookExecutor {
                 let error_output = String::from_utf8_lossy(&result.stderr).to_string();
 
                 if retry_count < max_retries {
-                    warn!("Hook failed, retrying ({}/{})", retry_count + 1, max_retries);
+                    warn!(
+                        "Hook failed, retrying ({}/{})",
+                        retry_count + 1,
+                        max_retries
+                    );
                     retry_count += 1;
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     continue;
@@ -217,7 +222,11 @@ impl HookExecutor {
         context: HookContext,
         hooks: Vec<EnhancedHook>,
     ) -> Result<HookChainResult, String> {
-        info!("Executing hook chain for event: {:?}, {} hooks", event, hooks.len());
+        info!(
+            "Executing hook chain for event: {:?}, {} hooks",
+            event,
+            hooks.len()
+        );
 
         let mut results = Vec::new();
         let mut successful = 0;
@@ -225,7 +234,12 @@ impl HookExecutor {
         let mut should_continue = true;
 
         for (idx, hook) in hooks.iter().enumerate() {
-            debug!("Executing hook {}/{}: {}", idx + 1, hooks.len(), hook.command);
+            debug!(
+                "Executing hook {}/{}: {}",
+                idx + 1,
+                hooks.len(),
+                hook.command
+            );
 
             match self.execute_hook(hook, &context).await {
                 Ok(result) => {
@@ -256,7 +270,10 @@ impl HookExecutor {
         }
 
         // 发送执行结果事件
-        let _ = self.app.emit(&format!("hook-chain-complete:{}", context.session_id), &results);
+        let _ = self.app.emit(
+            &format!("hook-chain-complete:{}", context.session_id),
+            &results,
+        );
 
         Ok(HookChainResult {
             event: event.as_str().to_string(),
@@ -280,7 +297,8 @@ impl HookExecutor {
             .env("SESSION_ID", &context.session_id)
             .env("PROJECT_PATH", &context.project_path);
 
-        let _ = cmd.spawn()
+        let _ = cmd
+            .spawn()
             .map_err(|e| format!("Failed to spawn command: {}", e))?
             .wait()
             .await;
@@ -289,11 +307,7 @@ impl HookExecutor {
     }
 
     /// 评估条件表达式
-    fn evaluate_condition(
-        &self,
-        condition: &str,
-        context: &HookContext,
-    ) -> Result<bool, String> {
+    fn evaluate_condition(&self, condition: &str, context: &HookContext) -> Result<bool, String> {
         // 简单的条件评估实现
         // 支持的格式：
         // - "session_id == 'xyz'"
@@ -369,7 +383,9 @@ impl HookManager {
             });
         }
 
-        self.executor.execute_hook_chain(event, context, hooks).await
+        self.executor
+            .execute_hook_chain(event, context, hooks)
+            .await
     }
 }
 
@@ -395,8 +411,9 @@ pub async fn trigger_hook_event(
     // 从配置中加载hooks
     let hooks_config = crate::commands::claude::get_hooks_config(
         "project".to_string(),
-        Some(context.project_path.clone())
-    ).await?;
+        Some(context.project_path.clone()),
+    )
+    .await?;
 
     let hooks_array = hooks_config
         .get(&event)
@@ -409,7 +426,9 @@ pub async fn trigger_hook_event(
         .unwrap_or_default();
 
     let executor = HookExecutor::new(app);
-    executor.execute_hook_chain(event_enum, context, hooks_array).await
+    executor
+        .execute_hook_chain(event_enum, context, hooks_array)
+        .await
 }
 
 /// 测试Hook条件

@@ -130,7 +130,7 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
 
     if (isSlashCommandInput) {
       const commandPreview = trimmedPrompt.split('\n')[0];
-      console.log('[usePromptExecution] ✅ Detected slash command, bypassing translation:', {
+      console.log('[usePromptExecution] [OK] Detected slash command, bypassing translation:', {
         command: commandPreview,
         model: model,
         projectPath: projectPath
@@ -155,16 +155,17 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
       setError(null);
       hasActiveSessionRef.current = true;
 
-      // 🆕 记录 API 开始时间
+      // Record API start time
       const apiStartTime = Date.now();
 
-      // 🆕 记录提示词发送（在发送前保存 Git 状态）
-      // ⚡ 只记录真实用户输入，排除自动 Warmup 和 Skills 消息
+      // Record prompt sent (save Git state before sending)
+      // Only record real user input, exclude auto Warmup and Skills messages
       let recordedPromptIndex = -1;
       const isUserInitiated = !prompt.includes('Warmup') 
         && !prompt.includes('<command-name>')
         && !prompt.includes('Launching skill:');
       
+      // 对于已有会话，立即记录；对于新会话，在收到 session_id 后记录
       if (effectiveSession && isUserInitiated) {
         try {
           recordedPromptIndex = await api.recordPromptSent(
@@ -173,10 +174,12 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
             projectPath,
             prompt
           );
-          console.log('[Prompt Revert] Recorded user prompt #', recordedPromptIndex);
+          console.log('[Prompt Revert] [OK] Recorded user prompt #', recordedPromptIndex, '(existing session)');
         } catch (err) {
-          console.error('[Prompt Revert] Failed to record prompt:', err);
+          console.error('[Prompt Revert] [ERROR] Failed to record prompt:', err);
         }
+      } else if (isUserInitiated) {
+        console.log('[Prompt Revert] [WAIT] Will record prompt after session_id is received (new session)');
       }
 
       // Translation state
@@ -223,8 +226,54 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
         const attachSessionSpecificListeners = async (sid: string) => {
           console.log('[usePromptExecution] Attaching session-specific listeners for', sid);
 
-          const specificOutputUnlisten = await listen<string>(`claude-output:${sid}`, (evt) => {
+          const specificOutputUnlisten = await listen<string>(`claude-output:${sid}`, async (evt) => {
             handleStreamMessage(evt.payload, userInputTranslation || undefined);
+            
+            // Handle user message recording in session-specific listener
+            try {
+              const msg = JSON.parse(evt.payload) as ClaudeStreamMessage;
+              
+              // 在收到第一条 user 消息后记录
+              if (msg.type === 'user' && !hasRecordedPrompt && isUserInitiated) {
+                // 检查这是否是我们发送的那条消息（通过内容匹配）
+                let isOurMessage = false;
+                const msgContent: any = msg.message?.content;
+                
+                if (msgContent) {
+                  if (typeof msgContent === 'string') {
+                    const contentStr = msgContent as string;
+                    isOurMessage = contentStr.includes(prompt) || prompt.includes(contentStr);
+                  } else if (Array.isArray(msgContent)) {
+                    const textContent = msgContent
+                      .filter((item: any) => item.type === 'text')
+                      .map((item: any) => item.text)
+                      .join('');
+                    isOurMessage = textContent.includes(prompt) || prompt.includes(textContent);
+                  }
+                }
+                
+                if (isOurMessage) {
+                  const projectId = extractedSessionInfo?.projectId || projectPath.replace(/[^a-zA-Z0-9]/g, '-');
+                  try {
+                    // 添加延迟以确保文件写入完成
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    recordedPromptIndex = await api.recordPromptSent(
+                      sid,
+                      projectId,
+                      projectPath,
+                      prompt
+                    );
+                    hasRecordedPrompt = true;
+                    console.log('[Prompt Revert] [OK] Recorded user prompt #', recordedPromptIndex, '(session-specific listener)');
+                  } catch (err) {
+                    console.error('[Prompt Revert] [ERROR] Failed to record prompt:', err);
+                  }
+                }
+              }
+            } catch {
+              /* ignore parse errors */
+            }
           });
 
           const specificErrorUnlisten = await listen<string>(`claude-error:${sid}`, (evt) => {
@@ -267,22 +316,30 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
         // Helper: Process Completion
         // ====================================================================
         const processComplete = async () => {
-          // 🆕 计算 API 执行时长
-          const apiDuration = (Date.now() - apiStartTime) / 1000; // 秒
+          // Calculate API execution time
+          const apiDuration = (Date.now() - apiStartTime) / 1000; // seconds
           console.log('[usePromptExecution] API duration:', apiDuration.toFixed(1), 'seconds');
           
-          // 🆕 标记提示词完成（记录完成后的 Git 状态）
-          if (recordedPromptIndex >= 0 && effectiveSession) {
-            api.markPromptCompleted(
-              effectiveSession.id,
-              effectiveSession.project_id,
-              projectPath,
-              recordedPromptIndex
-            ).then(() => {
-              console.log('[Prompt Revert] Marked prompt # as completed', recordedPromptIndex);
-            }).catch(err => {
-              console.error('[Prompt Revert] Failed to mark completed:', err);
-            });
+          // Mark prompt as completed (record Git state after completion)
+          if (recordedPromptIndex >= 0) {
+            // Use currentSessionId and extractedSessionInfo for new sessions
+            const sessionId = effectiveSession?.id || currentSessionId;
+            const projectId = effectiveSession?.project_id || extractedSessionInfo?.projectId || projectPath.replace(/[^a-zA-Z0-9]/g, '-');
+            
+            if (sessionId && projectId) {
+              api.markPromptCompleted(
+                sessionId,
+                projectId,
+                projectPath,
+                recordedPromptIndex
+              ).then(() => {
+                console.log('[Prompt Revert] Marked prompt # as completed', recordedPromptIndex);
+              }).catch(err => {
+                console.error('[Prompt Revert] Failed to mark completed:', err);
+              });
+            } else {
+              console.warn('[Prompt Revert] Cannot mark completed: missing sessionId or projectId');
+            }
           }
 
           setIsLoading(false);
@@ -305,6 +362,9 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
           }
         };
 
+        // Track if we've recorded the prompt for new sessions
+        let hasRecordedPrompt = recordedPromptIndex >= 0;
+
         // ====================================================================
         // Generic Listeners (Catch-all)
         // ====================================================================
@@ -321,33 +381,74 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
                 currentSessionId = msg.session_id;
                 setClaudeSessionId(msg.session_id);
 
-                // Note: effectiveSession will be updated via useMemo in parent component
-                // when claudeSessionId or extractedSessionInfo changes
-
                 // If we haven't extracted session info before, do it now
                 if (!extractedSessionInfo) {
                   const projectId = projectPath.replace(/[^a-zA-Z0-9]/g, '-');
                   setExtractedSessionInfo({ sessionId: msg.session_id, projectId });
-                  
-                  // 🆕 记录提示词（现在有 sessionId 和 projectId 了）
-                  // 只记录真实用户输入（不记录自动 Warmup）
-                  if (recordedPromptIndex < 0 && isUserInitiated) {
-                    try {
-                      recordedPromptIndex = await api.recordPromptSent(
-                        msg.session_id,
-                        projectId,
-                        projectPath,
-                        prompt
-                      );
-                      console.log('[Prompt Revert] Recorded user prompt #', recordedPromptIndex, '(after session detected)');
-                    } catch (err) {
-                      console.error('[Prompt Revert] Failed to record prompt:', err);
-                    }
+                }
+
+                // Record prompt after system:init (user message already written to JSONL)
+                if (!hasRecordedPrompt && isUserInitiated) {
+                  const projectId = projectPath.replace(/[^a-zA-Z0-9]/g, '-');
+                  try {
+                    // Delay 200ms to ensure file is written
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                    recordedPromptIndex = await api.recordPromptSent(
+                      msg.session_id,
+                      projectId,
+                      projectPath,
+                      prompt
+                    );
+                    hasRecordedPrompt = true;
+                    console.log('[Prompt Revert] [OK] Recorded user prompt #', recordedPromptIndex, '(after system:init)');
+                  } catch (err) {
+                    console.error('[Prompt Revert] [ERROR] Failed to record prompt:', err);
                   }
                 }
 
                 // Switch to session-specific listeners
                 await attachSessionSpecificListeners(msg.session_id);
+              }
+            }
+            
+            // Record after first user message (user message already written to JSONL)
+            // This ensures backend can correctly read and calculate index
+            if (msg.type === 'user' && !hasRecordedPrompt && isUserInitiated && currentSessionId) {
+              // 检查这是否是我们发送的那条消息（通过内容匹配）
+              let isOurMessage = false;
+              const msgContent: any = msg.message?.content;
+              
+              if (msgContent) {
+                if (typeof msgContent === 'string') {
+                  const contentStr = msgContent as string;
+                  isOurMessage = contentStr.includes(prompt) || prompt.includes(contentStr);
+                } else if (Array.isArray(msgContent)) {
+                  const textContent = msgContent
+                    .filter((item: any) => item.type === 'text')
+                    .map((item: any) => item.text)
+                    .join('');
+                  isOurMessage = textContent.includes(prompt) || prompt.includes(textContent);
+                }
+              }
+              
+              if (isOurMessage) {
+                const projectId = extractedSessionInfo?.projectId || projectPath.replace(/[^a-zA-Z0-9]/g, '-');
+                try {
+                  // 添加延迟以确保文件写入完成
+                  await new Promise(resolve => setTimeout(resolve, 100));
+                  
+                  recordedPromptIndex = await api.recordPromptSent(
+                    currentSessionId,
+                    projectId,
+                    projectPath,
+                    prompt
+                  );
+                  hasRecordedPrompt = true;
+                  console.log('[Prompt Revert] [OK] Recorded user prompt #', recordedPromptIndex, '(after user message in JSONL)');
+                } catch (err) {
+                  console.error('[Prompt Revert] [ERROR] Failed to record prompt:', err);
+                }
               }
             }
           } catch {
@@ -395,7 +496,7 @@ export function usePromptExecution(config: UsePromptExecutionConfig): UsePromptE
           }
         } else {
           const commandPreview = trimmedPrompt.split('\n')[0];
-          console.log('[usePromptExecution] ✅ Slash command detected, skipping translation:', {
+          console.log('[usePromptExecution] [OK] Slash command detected, skipping translation:', {
             command: commandPreview,
             translationEnabled: await translationMiddleware.isEnabled()
           });

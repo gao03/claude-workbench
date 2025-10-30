@@ -12,7 +12,7 @@ pub async fn open_directory_in_explorer(directory_path: String) -> Result<(), St
         cmd.spawn()
             .map_err(|e| format!("Failed to open directory: {}", e))?;
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         StdCommand::new("open")
@@ -20,7 +20,7 @@ pub async fn open_directory_in_explorer(directory_path: String) -> Result<(), St
             .spawn()
             .map_err(|e| format!("Failed to open directory: {}", e))?;
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         StdCommand::new("xdg-open")
@@ -28,7 +28,7 @@ pub async fn open_directory_in_explorer(directory_path: String) -> Result<(), St
             .spawn()
             .map_err(|e| format!("Failed to open directory: {}", e))?;
     }
-    
+
     Ok(())
 }
 
@@ -45,7 +45,7 @@ pub async fn open_file_with_default_app(file_path: String) -> Result<(), String>
         cmd.spawn()
             .map_err(|e| format!("Failed to open file: {}", e))?;
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         StdCommand::new("open")
@@ -53,7 +53,7 @@ pub async fn open_file_with_default_app(file_path: String) -> Result<(), String>
             .spawn()
             .map_err(|e| format!("Failed to open file: {}", e))?;
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         StdCommand::new("xdg-open")
@@ -61,7 +61,6 @@ pub async fn open_file_with_default_app(file_path: String) -> Result<(), String>
             .spawn()
             .map_err(|e| format!("Failed to open file: {}", e))?;
     }
-    
+
     Ok(())
 }
-

@@ -466,10 +466,7 @@ pub fn get_usage_stats(days: Option<u32>) -> Result<UsageStats, String> {
 }
 
 #[command]
-pub fn get_usage_by_date_range(
-    start_date: String,
-    end_date: String,
-) -> Result<UsageStats, String> {
+pub fn get_usage_by_date_range(start_date: String, end_date: String) -> Result<UsageStats, String> {
     let claude_path = dirs::home_dir()
         .ok_or("Failed to get home directory")?
         .join(".claude");

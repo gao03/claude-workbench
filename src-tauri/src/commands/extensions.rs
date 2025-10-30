@@ -1,9 +1,9 @@
 use anyhow::Result;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
-use log::{debug, info};
 
 use super::claude::get_claude_dir;
 
@@ -74,7 +74,7 @@ pub struct AgentSkillFile {
 /// Parse YAML frontmatter if present
 fn parse_description_from_content(content: &str) -> Option<String> {
     let lines: Vec<&str> = content.lines().collect();
-    
+
     // Check for YAML frontmatter
     if lines.len() > 2 && lines[0] == "---" {
         for line in lines.iter().skip(1) {
@@ -87,9 +87,10 @@ fn parse_description_from_content(content: &str) -> Option<String> {
             }
         }
     }
-    
+
     // Fallback: use first non-empty line as description
-    lines.iter()
+    lines
+        .iter()
         .find(|line| !line.trim().is_empty() && !line.starts_with('#'))
         .map(|line| line.trim().to_string())
 }
@@ -99,7 +100,7 @@ fn parse_description_from_content(content: &str) -> Option<String> {
 pub async fn list_subagents(project_path: Option<String>) -> Result<Vec<SubagentFile>, String> {
     info!("Listing subagents");
     let mut agents = Vec::new();
-    
+
     // User-level agents (~/.claude/agents/)
     if let Ok(claude_dir) = get_claude_dir() {
         let user_agents_dir = claude_dir.join("agents");
@@ -107,7 +108,7 @@ pub async fn list_subagents(project_path: Option<String>) -> Result<Vec<Subagent
             agents.extend(scan_agents_directory(&user_agents_dir, "user")?);
         }
     }
-    
+
     // Project-level agents (.claude/agents/)
     if let Some(proj_path) = project_path {
         let project_agents_dir = Path::new(&proj_path).join(".claude").join("agents");
@@ -115,36 +116,37 @@ pub async fn list_subagents(project_path: Option<String>) -> Result<Vec<Subagent
             agents.extend(scan_agents_directory(&project_agents_dir, "project")?);
         }
     }
-    
+
     Ok(agents)
 }
 
 /// Scan agents directory for .md files
 fn scan_agents_directory(dir: &Path, scope: &str) -> Result<Vec<SubagentFile>, String> {
     let mut agents = Vec::new();
-    
+
     for entry in WalkDir::new(dir)
-        .max_depth(2)  // Limit depth
+        .max_depth(2) // Limit depth
         .into_iter()
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        
+
         // Only process .md files
         if !path.is_file() || path.extension().and_then(|s| s.to_str()) != Some("md") {
             continue;
         }
-        
-        let name = path.file_stem()
+
+        let name = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
             .to_string();
-        
+
         // Read file content
         match fs::read_to_string(path) {
             Ok(content) => {
                 let description = parse_description_from_content(&content);
-                
+
                 agents.push(SubagentFile {
                     name,
                     path: path.to_string_lossy().to_string(),
@@ -158,16 +160,18 @@ fn scan_agents_directory(dir: &Path, scope: &str) -> Result<Vec<SubagentFile>, S
             }
         }
     }
-    
+
     Ok(agents)
 }
 
 /// List all Agent Skills in project and user directories
 #[tauri::command]
-pub async fn list_agent_skills(project_path: Option<String>) -> Result<Vec<AgentSkillFile>, String> {
+pub async fn list_agent_skills(
+    project_path: Option<String>,
+) -> Result<Vec<AgentSkillFile>, String> {
     info!("Listing agent skills");
     let mut skills = Vec::new();
-    
+
     // User-level skills (~/.claude/skills/)
     if let Ok(claude_dir) = get_claude_dir() {
         let user_skills_dir = claude_dir.join("skills");
@@ -175,7 +179,7 @@ pub async fn list_agent_skills(project_path: Option<String>) -> Result<Vec<Agent
             skills.extend(scan_skills_directory(&user_skills_dir, "user")?);
         }
     }
-    
+
     // Project-level skills (.claude/skills/)
     if let Some(proj_path) = project_path {
         let project_skills_dir = Path::new(&proj_path).join(".claude").join("skills");
@@ -183,34 +187,32 @@ pub async fn list_agent_skills(project_path: Option<String>) -> Result<Vec<Agent
             skills.extend(scan_skills_directory(&project_skills_dir, "project")?);
         }
     }
-    
+
     Ok(skills)
 }
 
 /// Scan skills directory for SKILL.md files
 fn scan_skills_directory(dir: &Path, scope: &str) -> Result<Vec<AgentSkillFile>, String> {
     let mut skills = Vec::new();
-    
+
     for entry in WalkDir::new(dir)
         .max_depth(2)
         .into_iter()
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        
+
         // Only process files ending with SKILL.md
         if !path.is_file() {
             continue;
         }
-        
-        let file_name = path.file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
-        
+
+        let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+
         if !file_name.ends_with("SKILL.md") {
             continue;
         }
-        
+
         // Extract skill name from parent directory or file name
         // Skills can be:
         // 1. {name}/SKILL.md -> use directory name
@@ -226,12 +228,12 @@ fn scan_skills_directory(dir: &Path, scope: &str) -> Result<Vec<AgentSkillFile>,
             // Case 2: skill-name.SKILL.md -> remove .SKILL.md suffix
             file_name.trim_end_matches(".SKILL.md").to_string()
         };
-        
+
         // Read file content
         match fs::read_to_string(path) {
             Ok(content) => {
                 let description = parse_description_from_content(&content);
-                
+
                 skills.push(AgentSkillFile {
                     name,
                     path: path.to_string_lossy().to_string(),
@@ -245,22 +247,20 @@ fn scan_skills_directory(dir: &Path, scope: &str) -> Result<Vec<AgentSkillFile>,
             }
         }
     }
-    
+
     Ok(skills)
 }
 
 /// Read a specific subagent file
 #[tauri::command]
 pub async fn read_subagent(file_path: String) -> Result<String, String> {
-    fs::read_to_string(&file_path)
-        .map_err(|e| format!("Failed to read subagent file: {}", e))
+    fs::read_to_string(&file_path).map_err(|e| format!("Failed to read subagent file: {}", e))
 }
 
 /// Read a specific skill file
 #[tauri::command]
 pub async fn read_skill(file_path: String) -> Result<String, String> {
-    fs::read_to_string(&file_path)
-        .map_err(|e| format!("Failed to read skill file: {}", e))
+    fs::read_to_string(&file_path).map_err(|e| format!("Failed to read skill file: {}", e))
 }
 
 /// Open agents directory in file explorer
@@ -269,15 +269,13 @@ pub async fn open_agents_directory(project_path: Option<String>) -> Result<Strin
     let agents_dir = if let Some(proj_path) = project_path {
         Path::new(&proj_path).join(".claude").join("agents")
     } else {
-        get_claude_dir()
-            .map_err(|e| e.to_string())?
-            .join("agents")
+        get_claude_dir().map_err(|e| e.to_string())?.join("agents")
     };
-    
+
     // Create directory if it doesn't exist
     fs::create_dir_all(&agents_dir)
         .map_err(|e| format!("Failed to create agents directory: {}", e))?;
-    
+
     Ok(agents_dir.to_string_lossy().to_string())
 }
 
@@ -287,15 +285,13 @@ pub async fn open_skills_directory(project_path: Option<String>) -> Result<Strin
     let skills_dir = if let Some(proj_path) = project_path {
         Path::new(&proj_path).join(".claude").join("skills")
     } else {
-        get_claude_dir()
-            .map_err(|e| e.to_string())?
-            .join("skills")
+        get_claude_dir().map_err(|e| e.to_string())?.join("skills")
     };
-    
+
     // Create directory if it doesn't exist
     fs::create_dir_all(&skills_dir)
         .map_err(|e| format!("Failed to create skills directory: {}", e))?;
-    
+
     Ok(skills_dir.to_string_lossy().to_string())
 }
 
@@ -304,7 +300,7 @@ pub async fn open_skills_directory(project_path: Option<String>) -> Result<Strin
 pub async fn list_plugins(project_path: Option<String>) -> Result<Vec<PluginInfo>, String> {
     info!("Listing installed plugins");
     let mut plugins = Vec::new();
-    
+
     // User-level plugins (~/.claude/plugins/)
     if let Ok(claude_dir) = get_claude_dir() {
         let user_plugins_dir = claude_dir.join("plugins");
@@ -312,7 +308,7 @@ pub async fn list_plugins(project_path: Option<String>) -> Result<Vec<PluginInfo
             plugins.extend(scan_plugins_directory(&user_plugins_dir)?);
         }
     }
-    
+
     // Project-level plugins (.claude/plugins/)
     if let Some(proj_path) = project_path {
         let project_plugins_dir = Path::new(&proj_path).join(".claude").join("plugins");
@@ -320,52 +316,56 @@ pub async fn list_plugins(project_path: Option<String>) -> Result<Vec<PluginInfo
             plugins.extend(scan_plugins_directory(&project_plugins_dir)?);
         }
     }
-    
+
     Ok(plugins)
 }
 
 /// Scan plugins directory
 fn scan_plugins_directory(dir: &Path) -> Result<Vec<PluginInfo>, String> {
     let mut plugins = Vec::new();
-    
-    let entries = fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read plugins directory: {}", e))?;
-    
+
+    let entries =
+        fs::read_dir(dir).map_err(|e| format!("Failed to read plugins directory: {}", e))?;
+
     for entry in entries.flatten() {
         let path = entry.path();
-        
+
         if !path.is_dir() {
             continue;
         }
-        
+
         // Look for .claude-plugin/plugin.json
         let plugin_json_path = path.join(".claude-plugin").join("plugin.json");
-        
+
         if plugin_json_path.exists() {
             if let Ok(content) = fs::read_to_string(&plugin_json_path) {
                 if let Ok(manifest) = serde_json::from_str::<serde_json::Value>(&content) {
-                    let name = manifest.get("name")
+                    let name = manifest
+                        .get("name")
                         .and_then(|v| v.as_str())
                         .unwrap_or("unknown")
                         .to_string();
-                    
-                    let description = manifest.get("description")
+
+                    let description = manifest
+                        .get("description")
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
-                    
-                    let version = manifest.get("version")
+
+                    let version = manifest
+                        .get("version")
                         .and_then(|v| v.as_str())
                         .unwrap_or("0.0.0")
                         .to_string();
-                    
-                    let author = manifest.get("author")
+
+                    let author = manifest
+                        .get("author")
                         .and_then(|v| v.get("name"))
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
-                    
+
                     // Count components
                     let components = count_plugin_components(&path);
-                    
+
                     plugins.push(PluginInfo {
                         name,
                         description,
@@ -373,14 +373,14 @@ fn scan_plugins_directory(dir: &Path) -> Result<Vec<PluginInfo>, String> {
                         author,
                         marketplace: None,
                         path: path.to_string_lossy().to_string(),
-                        enabled: true,  // TODO: 从配置读取实际状态
+                        enabled: true, // TODO: 从配置读取实际状态
                         components,
                     });
                 }
             }
         }
     }
-    
+
     Ok(plugins)
 }
 
@@ -393,7 +393,7 @@ fn count_plugin_components(plugin_dir: &Path) -> PluginComponents {
         hooks: 0,
         mcp_servers: 0,
     };
-    
+
     // Count commands
     let commands_dir = plugin_dir.join("commands");
     if commands_dir.exists() {
@@ -404,7 +404,7 @@ fn count_plugin_components(plugin_dir: &Path) -> PluginComponents {
             .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("md"))
             .count();
     }
-    
+
     // Count agents
     let agents_dir = plugin_dir.join("agents");
     if agents_dir.exists() {
@@ -415,7 +415,7 @@ fn count_plugin_components(plugin_dir: &Path) -> PluginComponents {
             .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("md"))
             .count();
     }
-    
+
     // Count skills
     let skills_dir = plugin_dir.join("skills");
     if skills_dir.exists() {
@@ -424,26 +424,27 @@ fn count_plugin_components(plugin_dir: &Path) -> PluginComponents {
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| {
-                e.path().file_name()
+                e.path()
+                    .file_name()
                     .and_then(|s| s.to_str())
                     .map(|s| s.ends_with("SKILL.md"))
                     .unwrap_or(false)
             })
             .count();
     }
-    
+
     // Check for hooks
     let hooks_file = plugin_dir.join("hooks").join("hooks.json");
     if hooks_file.exists() {
         components.hooks = 1;
     }
-    
+
     // Check for MCP servers
     let mcp_file = plugin_dir.join(".mcp.json");
     if mcp_file.exists() {
         components.mcp_servers = 1;
     }
-    
+
     components
 }
 
@@ -453,15 +454,12 @@ pub async fn open_plugins_directory(project_path: Option<String>) -> Result<Stri
     let plugins_dir = if let Some(proj_path) = project_path {
         Path::new(&proj_path).join(".claude").join("plugins")
     } else {
-        get_claude_dir()
-            .map_err(|e| e.to_string())?
-            .join("plugins")
+        get_claude_dir().map_err(|e| e.to_string())?.join("plugins")
     };
-    
+
     // Create directory if it doesn't exist
     fs::create_dir_all(&plugins_dir)
         .map_err(|e| format!("Failed to create plugins directory: {}", e))?;
-    
+
     Ok(plugins_dir.to_string_lossy().to_string())
 }
-

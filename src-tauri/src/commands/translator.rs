@@ -1,13 +1,13 @@
 use anyhow::{Context, Result};
+use log::{debug, error, info, warn};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use reqwest::Client;
-use log::{debug, error, info, warn};
-use std::time::{Duration, Instant};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex;
 
 /// 翻译配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ pub struct TranslationConfig {
 impl Default for TranslationConfig {
     fn default() -> Self {
         Self {
-            enabled: false,  // 🔧 修复：默认禁用翻译功能，需用户配置API密钥后启用
+            enabled: false, // 🔧 修复：默认禁用翻译功能，需用户配置API密钥后启用
             api_base_url: "https://api.siliconflow.cn/v1".to_string(),
             api_key: String::new(), // 🔧 修复：要求用户自定义输入API密钥
             model: "tencent/Hunyuan-MT-7B".to_string(),
@@ -90,7 +90,8 @@ impl TranslationService {
         }
 
         // 扩展的中文字符检测范围
-        let chinese_chars: Vec<char> = text.chars()
+        let chinese_chars: Vec<char> = text
+            .chars()
             .filter(|c| {
                 let ch = *c as u32;
                 // 更全面的中文字符范围
@@ -98,7 +99,7 @@ impl TranslationService {
                 (ch >= 0x3400 && ch <= 0x4DBF) ||  // CJK扩展A
                 (ch >= 0xF900 && ch <= 0xFAFF) ||  // CJK兼容表意文字
                 (ch >= 0x3000 && ch <= 0x303F) ||  // CJK符号和标点
-                (ch >= 0xFF00 && ch <= 0xFFEF)     // 全角ASCII、全角中英文标点、半宽片假名、半宽平假名、半宽韩文字母
+                (ch >= 0xFF00 && ch <= 0xFFEF) // 全角ASCII、全角中英文标点、半宽片假名、半宽平假名、半宽韩文字母
             })
             .collect();
 
@@ -123,20 +124,23 @@ impl TranslationService {
             .replace_all(&processed_text, " ")
             .to_string();
 
-        let processed_chinese_chars = processed_text.chars()
+        let processed_chinese_chars = processed_text
+            .chars()
             .filter(|c| {
                 let ch = *c as u32;
-                (ch >= 0x4E00 && ch <= 0x9FFF) ||
-                (ch >= 0x3400 && ch <= 0x4DBF) ||
-                (ch >= 0xF900 && ch <= 0xFAFF)
+                (ch >= 0x4E00 && ch <= 0x9FFF)
+                    || (ch >= 0x3400 && ch <= 0x4DBF)
+                    || (ch >= 0xF900 && ch <= 0xFAFF)
             })
             .count();
 
         let total_processed_chars = processed_text.chars().count();
         let original_chinese_count = chinese_chars.len();
 
-        debug!("Language detection: chinese_chars={}, total_processed={}, original_chinese={}",
-               processed_chinese_chars, total_processed_chars, original_chinese_count);
+        debug!(
+            "Language detection: chinese_chars={}, total_processed={}, original_chinese={}",
+            processed_chinese_chars, total_processed_chars, original_chinese_count
+        );
 
         // 🔧 修复：更宽松的中文检测条件，与前端保持一致
         // 1. 短文本（≤20字符）：有1个或以上中文字符就认为是中文
@@ -173,7 +177,7 @@ impl TranslationService {
     /// 从缓存获取翻译结果
     async fn get_cached_translation(&self, cache_key: &str) -> Option<String> {
         let mut cache = self.cache.lock().await;
-        
+
         if let Some(entry) = cache.get(cache_key) {
             if !entry.is_expired() {
                 debug!("Cache hit for key: {}", cache_key);
@@ -183,7 +187,7 @@ impl TranslationService {
                 cache.remove(cache_key);
             }
         }
-        
+
         None
     }
 
@@ -211,7 +215,9 @@ impl TranslationService {
     ) -> Result<String> {
         // 检查API密钥是否已配置
         if self.config.api_key.is_empty() {
-            return Err(anyhow::anyhow!("API密钥未配置，请在设置中填写您的Silicon Flow API密钥"));
+            return Err(anyhow::anyhow!(
+                "API密钥未配置，请在设置中填写您的Silicon Flow API密钥"
+            ));
         }
         let system_prompt = match (from_lang, to_lang) {
             ("zh", "en") => "You are a professional Chinese to English translator. Translate the following Chinese text to natural, fluent English while preserving the original meaning and tone. Only return the translated text, nothing else.",
@@ -250,7 +256,10 @@ impl TranslationService {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(anyhow::anyhow!(
                 "Translation API error: {} - {}",
                 status,
@@ -275,7 +284,7 @@ impl TranslationService {
             .to_string();
 
         debug!("Translation successful: {} -> {}", text, translated_text);
-        
+
         Ok(translated_text)
     }
 
@@ -292,7 +301,7 @@ impl TranslationService {
 
         // 检测源语言
         let from_lang = self.detect_language(text);
-        
+
         // 确定目标语言
         let to_lang = target_lang.unwrap_or_else(|| {
             match from_lang.as_str() {
@@ -320,7 +329,8 @@ impl TranslationService {
         match self.call_translation_api(text, &from_lang, to_lang).await {
             Ok(translated_text) => {
                 // 缓存结果
-                self.cache_translation(cache_key, translated_text.clone()).await;
+                self.cache_translation(cache_key, translated_text.clone())
+                    .await;
                 info!("Translation completed: {} -> {}", from_lang, to_lang);
                 Ok(translated_text)
             }
@@ -334,9 +344,13 @@ impl TranslationService {
     }
 
     /// 批量翻译
-    pub async fn translate_batch(&self, texts: &[String], target_lang: Option<&str>) -> Result<Vec<String>> {
+    pub async fn translate_batch(
+        &self,
+        texts: &[String],
+        target_lang: Option<&str>,
+    ) -> Result<Vec<String>> {
         let mut results = Vec::new();
-        
+
         for text in texts {
             match self.translate(text, target_lang).await {
                 Ok(translated) => results.push(translated),
@@ -346,7 +360,7 @@ impl TranslationService {
                 }
             }
         }
-        
+
         Ok(results)
     }
 
@@ -368,7 +382,7 @@ impl TranslationService {
         let cache = self.cache.lock().await;
         let total_entries = cache.len();
         let expired_entries = cache.values().filter(|entry| entry.is_expired()).count();
-        
+
         CacheStats {
             total_entries,
             expired_entries,
@@ -388,7 +402,9 @@ pub struct CacheStats {
 /// 全局翻译服务实例
 static TRANSLATION_SERVICE: once_cell::sync::Lazy<Arc<Mutex<TranslationService>>> =
     once_cell::sync::Lazy::new(|| {
-        Arc::new(Mutex::new(TranslationService::new(TranslationConfig::default())))
+        Arc::new(Mutex::new(TranslationService::new(
+            TranslationConfig::default(),
+        )))
     });
 
 /// 初始化翻译服务
@@ -406,7 +422,10 @@ pub async fn init_translation_service_with_saved_config() {
             init_translation_service(config).await;
         }
         Err(e) => {
-            warn!("Failed to load saved translation config: {}, using default", e);
+            warn!(
+                "Failed to load saved translation config: {}, using default",
+                e
+            );
             init_translation_service(TranslationConfig::default()).await;
         }
     }
@@ -428,7 +447,7 @@ pub async fn translate_text(text: &str, target_lang: Option<&str>) -> Result<Str
 #[tauri::command]
 pub async fn translate(text: String, target_lang: Option<String>) -> Result<String, String> {
     let target = target_lang.as_deref();
-    
+
     translate_text(&text, target)
         .await
         .map_err(|e| e.to_string())
@@ -436,12 +455,16 @@ pub async fn translate(text: String, target_lang: Option<String>) -> Result<Stri
 
 /// Tauri命令：批量翻译
 #[tauri::command]
-pub async fn translate_batch(texts: Vec<String>, target_lang: Option<String>) -> Result<Vec<String>, String> {
+pub async fn translate_batch(
+    texts: Vec<String>,
+    target_lang: Option<String>,
+) -> Result<Vec<String>, String> {
     let service_arc = get_translation_service();
     let service = service_arc.lock().await;
     let target = target_lang.as_deref();
-    
-    service.translate_batch(&texts, target)
+
+    service
+        .translate_batch(&texts, target)
         .await
         .map_err(|e| e.to_string())
 }
@@ -472,10 +495,10 @@ pub async fn update_translation_config(config: TranslationConfig) -> Result<Stri
     // 保存配置到文件
     save_translation_config_to_file(&config)
         .map_err(|e| format!("Failed to save translation config: {}", e))?;
-    
+
     // 重新初始化翻译服务
     init_translation_service(config).await;
-    
+
     info!("Translation configuration updated and saved successfully");
     Ok("Translation configuration updated successfully".to_string())
 }
@@ -513,34 +536,33 @@ fn get_translation_config_path() -> Result<PathBuf, String> {
 
 /// 获取Claude目录路径
 fn get_claude_dir() -> Result<PathBuf, String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not find home directory".to_string())?;
+    let home_dir = dirs::home_dir().ok_or_else(|| "Could not find home directory".to_string())?;
     let claude_dir = home_dir.join(".claude");
-    
+
     // 确保目录存在
     if !claude_dir.exists() {
         fs::create_dir_all(&claude_dir)
             .map_err(|e| format!("Failed to create .claude directory: {}", e))?;
     }
-    
+
     Ok(claude_dir)
 }
 
 /// 从文件加载翻译配置
 fn load_translation_config_from_file() -> Result<TranslationConfig, String> {
     let config_path = get_translation_config_path()?;
-    
+
     if !config_path.exists() {
         info!("Translation config file not found, using default config");
         return Ok(TranslationConfig::default());
     }
-    
+
     let content = fs::read_to_string(&config_path)
         .map_err(|e| format!("Failed to read translation config: {}", e))?;
-    
+
     let config: TranslationConfig = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse translation config: {}", e))?;
-    
+
     info!("Loaded translation config from file");
     Ok(config)
 }
@@ -548,27 +570,29 @@ fn load_translation_config_from_file() -> Result<TranslationConfig, String> {
 /// 保存翻译配置到文件
 fn save_translation_config_to_file(config: &TranslationConfig) -> Result<(), String> {
     let config_path = get_translation_config_path()?;
-    
+
     let json_string = serde_json::to_string_pretty(config)
         .map_err(|e| format!("Failed to serialize translation config: {}", e))?;
-    
+
     fs::write(&config_path, json_string)
         .map_err(|e| format!("Failed to write translation config: {}", e))?;
-    
+
     info!("Saved translation config to file: {:?}", config_path);
     Ok(())
 }
 
 /// Tauri命令：初始化翻译服务
 #[tauri::command]
-pub async fn init_translation_service_command(config: Option<TranslationConfig>) -> Result<String, String> {
+pub async fn init_translation_service_command(
+    config: Option<TranslationConfig>,
+) -> Result<String, String> {
     let final_config = if let Some(provided_config) = config {
         provided_config
     } else {
         // 尝试从文件加载配置，失败则使用默认配置
         load_translation_config_from_file().unwrap_or_default()
     };
-    
+
     init_translation_service(final_config).await;
     Ok("Translation service initialized successfully".to_string())
 }
