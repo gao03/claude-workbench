@@ -171,8 +171,10 @@ pub fn build_execution_args(
     }
 
     // 添加thinking token限制（Extended Thinking 功能）
+    // 🔥 修复：使用官方标准的参数名称: --max-thinking-tokens (短横线分隔,不是驼峰)
+    // 参考: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking
     if let Some(max_thinking_tokens) = config.max_thinking_tokens {
-        args.push("--maxThinkingTokens".to_string());
+        args.push("--max-thinking-tokens".to_string());
         args.push(max_thinking_tokens.to_string());
     }
 
