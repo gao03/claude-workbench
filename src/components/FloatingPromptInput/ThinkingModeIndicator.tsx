@@ -17,7 +17,7 @@ export const ThinkingModeIndicator: React.FC<ThinkingModeIndicatorProps> = ({ le
           key={i}
           className={cn(
             "w-1 h-3 rounded-full transition-colors",
-            i <= level ? "bg-blue-500" : "bg-muted"
+            i <= level ? "bg-blue-500 dark:bg-blue-400" : "bg-muted"
           )}
         />
       ))}

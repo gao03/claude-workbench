@@ -45,14 +45,14 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   
   const getErrorIcon = () => {
     if (!claudeError) return <AlertCircle className="h-4 w-4 text-destructive" />;
-    
+
     switch (claudeError.code) {
       case 'CLAUDE_NOT_FOUND':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+        return <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />;
       case 'CLAUDE_NETWORK_ERROR':
-        return <RefreshCw className="h-4 w-4 text-blue-500" />;
+        return <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
       case 'CLAUDE_PERMISSION_DENIED':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />;
       default:
         return <AlertCircle className="h-4 w-4 text-destructive" />;
     }

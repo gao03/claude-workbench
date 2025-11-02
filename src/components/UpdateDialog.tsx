@@ -66,27 +66,27 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+        className="bg-card rounded-lg shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-border"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <Download className="w-5 h-5 text-blue-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <Download className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">
               发现新版本
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-1 rounded-lg hover:bg-muted transition-colors"
             aria-label="关闭"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -94,18 +94,18 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
         <div className="p-4">
           <div className="mb-4">
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-muted-foreground">
                 当前版本:
               </span>
-              <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-mono text-foreground">
                 v{updateInfo.currentVersion}
               </span>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-muted-foreground">
                 最新版本:
               </span>
-              <span className="text-base font-mono font-semibold text-blue-600 dark:text-blue-400">
+              <span className="text-base font-mono font-semibold text-primary">
                 v{updateInfo.availableVersion}
               </span>
             </div>
@@ -114,11 +114,11 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
           {/* Release Notes */}
           {updateInfo.notes && (
             <div className="mb-4">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <h3 className="text-sm font-medium text-foreground mb-2">
                 更新内容：
               </h3>
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 max-h-48 overflow-y-auto">
-                <pre className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-sans">
+              <div className="bg-muted rounded-lg p-3 max-h-48 overflow-y-auto">
+                <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans">
                   {updateInfo.notes}
                 </pre>
               </div>
@@ -129,16 +129,16 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
           {isDownloading && (
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-sm text-muted-foreground">
                   下载中...
                 </span>
-                <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                <span className="text-sm font-medium text-primary">
                   {downloadProgress}%
                 </span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div className="w-full bg-muted rounded-full h-2">
                 <div
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
                   style={{ width: `${downloadProgress}%` }}
                 />
               </div>
@@ -147,15 +147,15 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
 
           {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
             </div>
           )}
 
           {/* Success */}
           {isInstalled && (
-            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <div className="mb-4 p-3 bg-green-500/10 dark:bg-green-500/20 border border-green-500/20 dark:border-green-500/30 rounded-lg">
               <p className="text-sm text-green-700 dark:text-green-400">
                 ✓ 更新已安装，请重启应用以使用新版本
               </p>
@@ -164,10 +164,10 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-end gap-2 p-4 bg-muted/50 border-t border-border">
           <button
             onClick={handleDismissAndClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition-colors"
             disabled={isDownloading}
           >
             稍后提醒
@@ -175,7 +175,7 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
           {isInstalled ? (
             <button
               onClick={handleRestart}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               立即重启
@@ -184,7 +184,7 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
             <button
               onClick={handleDownloadAndInstall}
               disabled={isDownloading}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
             >
               {isDownloading ? (
                 <>

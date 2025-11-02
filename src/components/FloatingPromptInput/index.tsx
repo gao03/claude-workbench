@@ -597,7 +597,7 @@ const FloatingPromptInputInner = (
                   onOpenChange={setShowCostPopover}
                   trigger={
                     <Badge variant="outline" className="flex items-center gap-1 px-2 py-1 h-8 cursor-default hover:bg-accent transition-colors">
-                      <DollarSign className="h-3 w-3 text-green-600" />
+                      <DollarSign className="h-3 w-3 text-green-600 dark:text-green-400" />
                       <span className="font-mono text-xs">{sessionCost}</span>
                       <Info className="h-3 w-3 text-muted-foreground ml-1" />
                     </Badge>

@@ -18,12 +18,11 @@ export function UpdateBadge({ className = "", onClick }: UpdateBadgeProps) {
     <div
       className={`
         flex items-center gap-1.5 px-2.5 py-1
-        bg-white dark:bg-gray-800
-        border border-blue-200 dark:border-blue-700
+        bg-card border border-primary/30
         rounded-lg text-xs
         shadow-sm
         transition-all duration-200
-        ${onClick ? "cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-750" : ""}
+        ${onClick ? "cursor-pointer hover:bg-accent" : ""}
         ${className}
       `}
       role={onClick ? "button" : undefined}
@@ -38,8 +37,8 @@ export function UpdateBadge({ className = "", onClick }: UpdateBadgeProps) {
       }}
       title="有新版本可用"
     >
-      <Download className="w-3 h-3 text-blue-500 dark:text-blue-400" />
-      <span className="text-gray-700 dark:text-gray-300 font-medium">
+      <Download className="w-3 h-3 text-primary" />
+      <span className="text-foreground font-medium">
         v{updateInfo.availableVersion}
       </span>
       <button
@@ -49,14 +48,14 @@ export function UpdateBadge({ className = "", onClick }: UpdateBadgeProps) {
         }}
         className="
           ml-1 -mr-0.5 p-0.5 rounded
-          hover:bg-gray-100 dark:hover:bg-gray-700
+          hover:bg-muted
           transition-colors
-          focus:outline-none focus:ring-2 focus:ring-blue-500/20
+          focus:outline-none focus:ring-2 focus:ring-primary/20
         "
         aria-label="关闭更新提醒"
         title="关闭更新提醒"
       >
-        <X className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+        <X className="w-3 h-3 text-muted-foreground" />
       </button>
     </div>
   );

@@ -251,13 +251,13 @@ export const ClaudeStatusIndicator: React.FC<ClaudeStatusIndicatorProps> = ({
       case 'checking':
         return <Loader2 className="h-4 w-4 animate-spin" />;
       case 'connected':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />;
       case 'disconnected':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+        return <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />;
+        return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     }
   };
 

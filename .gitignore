@@ -51,6 +51,11 @@ nul
 .env.local
 .env.*.local
 
+# Tauri signing keys (sensitive!)
+.tauri-signing-key
+*.key
+*.key.pub
+
 # Bundle outputs
 *.msi
 *.exe
