@@ -145,13 +145,20 @@ export function extractMessageTokens(message: ClaudeStreamMessage | ExtendedClau
   const output_tokens = rawUsage.output_tokens ?? 0;
 
   // 智能映射缓存创建token（处理所有发现的命名变体）
-  let cache_creation_tokens =
-    rawUsage.cache_creation_tokens ??
-    rawUsage.cache_write_tokens ??
-    rawUsage.cache_creation_input_tokens ?? 0;
+  // ⚠️ 修复：cache_creation_input_tokens 已经包含了所有缓存写入的总和，
+  // 不应该再累加 cache_creation 对象中的子项，否则会导致重复计算
+  let cache_creation_tokens = 0;
 
-  // 处理cache_creation对象格式（JSONL中的特殊格式）
-  if ((rawUsage as any).cache_creation) {
+  // 优先级1：使用API标准字段（这些字段已经是总和）
+  if (rawUsage.cache_creation_input_tokens !== undefined) {
+    cache_creation_tokens = rawUsage.cache_creation_input_tokens;
+  } else if (rawUsage.cache_creation_tokens !== undefined) {
+    cache_creation_tokens = rawUsage.cache_creation_tokens;
+  } else if (rawUsage.cache_write_tokens !== undefined) {
+    cache_creation_tokens = rawUsage.cache_write_tokens;
+  }
+  // 优先级2：如果没有总和字段，才从cache_creation对象计算
+  else if ((rawUsage as any).cache_creation) {
     const cacheCreation = (rawUsage as any).cache_creation;
     if (cacheCreation.ephemeral_5m_input_tokens) {
       cache_creation_tokens += cacheCreation.ephemeral_5m_input_tokens;

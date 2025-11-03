@@ -22,9 +22,9 @@ import {
 } from "@/components/ui/popover";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { tokenExtractor } from "@/lib/tokenExtractor";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSessionActivityStatus } from "@/hooks/useSessionActivityStatus";
+import { useSessionCostCalculation } from "@/hooks/useSessionCostCalculation";
 
 import type { ClaudeStreamMessage } from '@/types/claude';
 
@@ -114,54 +114,43 @@ export const ClaudeStatusIndicator: React.FC<ClaudeStatusIndicatorProps> = ({
     activityTimeoutMinutes: 30
   });
 
-  // Calculate cost from messages with activity-aware logic
-  const sessionCost = useMemo(() => {
-    if (messages.length === 0) return 0;
+  // ✅ Use unified cost calculation hook (aligned with Claude Code statusline format)
+  const { stats: costStats, formatCost } = useSessionCostCalculation(messages);
 
-    // Only show costs for active sessions to prevent accumulation on inactive sessions
-    if (!sessionActivity.shouldTrackCost && !sessionActivity.isCurrentSession) {
-      console.log('[ClaudeStatusIndicator] Session not active, skipping cost display', {
-        sessionId,
-        activityState: sessionActivity.activityState,
-        isCurrentSession: sessionActivity.isCurrentSession,
-        shouldTrackCost: sessionActivity.shouldTrackCost
-      });
+  // Calculate session cost with activity-aware logic
+  const sessionCost = useMemo(() => {
+    if (messages.length === 0) {
+      console.log('[ClaudeStatusIndicator] 📊 No messages, cost = $0.00');
       return 0;
     }
 
-    let totalCost = 0;
-    const relevantMessages = messages.filter(m => m.type === 'assistant' || m.type === 'user');
+    const isActive = sessionActivity.shouldTrackCost || sessionActivity.isCurrentSession;
 
-    relevantMessages.forEach(message => {
-      const tokens = tokenExtractor.extract(message);
-
-      // Simple cost calculation (per 1M tokens)
-      const pricing = {
-        input: 3.00,
-        output: 15.00,
-        cache_write: 3.75,
-        cache_read: 0.30
-      };
-
-      const inputCost = (tokens.input_tokens / 1_000_000) * pricing.input;
-      const outputCost = (tokens.output_tokens / 1_000_000) * pricing.output;
-      const cacheWriteCost = (tokens.cache_creation_tokens / 1_000_000) * pricing.cache_write;
-      const cacheReadCost = (tokens.cache_read_tokens / 1_000_000) * pricing.cache_read;
-
-      totalCost += inputCost + outputCost + cacheWriteCost + cacheReadCost;
+    console.log('[ClaudeStatusIndicator] 💰 Session cost calculation:', {
+      sessionId: sessionId || 'unknown',
+      messagesCount: messages.length,
+      rawCost: `$${costStats.totalCost.toFixed(6)}`,
+      isActive,
+      shouldTrackCost: sessionActivity.shouldTrackCost,
+      isCurrentSession: sessionActivity.isCurrentSession,
+      activityState: sessionActivity.activityState,
+      finalCost: isActive ? `$${costStats.totalCost.toFixed(6)}` : '$0.00 (inactive)'
     });
 
-    return totalCost;
-  }, [messages.length, sessionActivity.shouldTrackCost, sessionActivity.isCurrentSession]);
-
-  // Format cost display
-  const formatCost = (amount: number): string => {
-    if (amount === 0) return '';
-    if (amount < 0.01) {
-      return `$${(amount * 100).toFixed(3)}¢`;
+    // Only show costs for active sessions to prevent accumulation on inactive sessions
+    if (!isActive) {
+      return 0;
     }
-    return `$${amount.toFixed(4)}`;
-  };
+
+    return costStats.totalCost;
+  }, [
+    costStats.totalCost,
+    sessionActivity.shouldTrackCost,
+    sessionActivity.isCurrentSession,
+    sessionActivity.activityState,
+    sessionId,
+    messages.length
+  ]);
 
   useEffect(() => {
     // Try to use cached status first - this is the primary mechanism
@@ -412,6 +401,53 @@ export const ClaudeStatusIndicator: React.FC<ClaudeStatusIndicatorProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Session Cost Details (aligned with Claude Code statusline format) */}
+              {sessionCost > 0 && sessionActivity.shouldTrackCost && (
+                <div className="pt-2 border-t border-border space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {t('claude.status.totalCost', 'Total Cost')}:
+                    </span>
+                    <Badge variant="outline" className="text-xs font-mono">
+                      {formatCost(costStats.totalCost)}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {t('claude.status.totalTokens', 'Total Tokens')}:
+                    </span>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {costStats.totalTokens.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {costStats.durationSeconds > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        {t('claude.status.duration', 'Duration')}:
+                      </span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {Math.floor(costStats.durationSeconds / 60)}m {costStats.durationSeconds % 60}s
+                      </span>
+                    </div>
+                  )}
+
+                  {(costStats.cacheReadTokens > 0 || costStats.cacheWriteTokens > 0) && (
+                    <div className="text-xs text-muted-foreground pt-1">
+                      <div className="flex items-center justify-between">
+                        <span>Cache Read:</span>
+                        <span className="font-mono">{costStats.cacheReadTokens.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Cache Write:</span>
+                        <span className="font-mono">{costStats.cacheWriteTokens.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Simple Error Information */}
               <AnimatePresence>
