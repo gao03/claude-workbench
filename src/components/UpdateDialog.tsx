@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Download, X, RefreshCw, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Download, X, RefreshCw, AlertCircle, ExternalLink } from "lucide-react";
 import { useUpdate } from "../contexts/UpdateContext";
 import { relaunchApp } from "../lib/updater";
+import { open as openUrl } from "@tauri-apps/plugin-shell";
 
 interface UpdateDialogProps {
   open: boolean;
@@ -14,12 +15,47 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isPortable, setIsPortable] = useState(false);
 
-  if (!open || !updateInfo || !updateHandle) {
+  // 检测是否为免安装版本
+  useEffect(() => {
+    const checkPortable = async () => {
+      try {
+        // 尝试下载更新，如果失败可能是免安装版本
+        // 免安装版本通常无法使用自动更新功能
+        const portable = !updateHandle;
+        setIsPortable(portable);
+      } catch {
+        setIsPortable(true);
+      }
+    };
+
+    if (open) {
+      checkPortable();
+    }
+  }, [open, updateHandle]);
+
+  if (!open || !updateInfo) {
     return null;
   }
 
+  const handleOpenDownloadPage = async () => {
+    try {
+      const releaseUrl = `https://github.com/anyme123/claude-workbench/releases/tag/v${updateInfo.availableVersion}`;
+      await openUrl(releaseUrl);
+      handleDismissAndClose();
+    } catch (err) {
+      console.error("打开下载页面失败:", err);
+      setError("无法打开下载页面，请手动访问 GitHub Releases");
+    }
+  };
+
   const handleDownloadAndInstall = async () => {
+    if (!updateHandle) {
+      setError("自动更新不可用，请使用手动下载");
+      return;
+    }
+
     setIsDownloading(true);
     setError(null);
     setDownloadProgress(0);
@@ -44,7 +80,8 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
       });
     } catch (err) {
       console.error("下载安装失败:", err);
-      setError(err instanceof Error ? err.message : "下载安装失败");
+      setError(err instanceof Error ? err.message : "下载安装失败，请尝试手动下载");
+      setIsPortable(true); // 如果自动更新失败，可能是免安装版本
     } finally {
       setIsDownloading(false);
     }
@@ -111,6 +148,15 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
             </div>
           </div>
 
+          {/* Portable Version Notice */}
+          {isPortable && (
+            <div className="mb-4 p-3 bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 dark:border-blue-500/30 rounded-lg">
+              <p className="text-sm text-blue-700 dark:text-blue-400">
+                ℹ️ 检测到您使用的是免安装版本，不支持自动更新。请点击下方按钮前往下载页面手动下载最新版本。
+              </p>
+            </div>
+          )}
+
           {/* Release Notes */}
           {updateInfo.notes && (
             <div className="mb-4">
@@ -172,7 +218,15 @@ export function UpdateDialog({ open, onClose }: UpdateDialogProps) {
           >
             稍后提醒
           </button>
-          {isInstalled ? (
+          {isPortable ? (
+            <button
+              onClick={handleOpenDownloadPage}
+              className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <ExternalLink className="w-4 h-4" />
+              前往下载
+            </button>
+          ) : isInstalled ? (
             <button
               onClick={handleRestart}
               className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center gap-2"

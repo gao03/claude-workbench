@@ -199,11 +199,13 @@ jobs:
 
             - **macOS (Apple Silicon)**: `*-aarch64.dmg` or `*-aarch64.app.tar.gz`
             - **macOS (Intel)**: `*-x64.dmg` or `*-x64.app.tar.gz`
-            - **Windows**: `*-setup.exe` or `*.msi`
+            - **Windows (安装版)**: `*-setup.exe` (NSIS) or `*.msi` - **支持自动更新**
+            - **Windows (免安装版)**: `*.exe` (Portable) - 需手动更新
             - **Linux**: `*.AppImage` or `*.deb`
 
             ### Auto-Update Support
-            This release includes auto-update support. The app will automatically check for updates and notify you when a new version is available.
+            **安装版本**（NSIS/MSI）支持自动更新，应用会自动检查并提示更新。
+            **免安装版本**（Portable）不支持自动更新，需要手动下载新版本。
 
             ### What's Changed
             See the full changelog at https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}
@@ -215,6 +217,7 @@ jobs:
             artifacts/**/*.msi.sig
             artifacts/**/*-setup.exe
             artifacts/**/*-setup.exe.sig
+            artifacts/**/*.exe
             artifacts/**/*.AppImage
             artifacts/**/*.AppImage.sig
             artifacts/**/*.deb
