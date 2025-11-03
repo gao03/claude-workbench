@@ -71,8 +71,8 @@ export function useSessionCostCalculation(messages: ClaudeStreamMessage[]): Sess
     let totalTokens = 0;
     let inputTokens = 0;
     let outputTokens = 0;
-    let cacheReadTokens = 0;
-    let cacheWriteTokens = 0;
+    let cacheReadTokens = 0;  // 缓存读取：显示当前缓存大小（最大值）
+    let cacheWriteTokens = 0; // 缓存创建：累加（每次创建都付费）
 
     // 🔍 诊断：记录所有消息类型
     const messageTypes = new Set(messages.map(m => m.type));
@@ -118,13 +118,19 @@ export function useSessionCostCalculation(messages: ClaudeStreamMessage[]): Sess
         cost: `$${cost.toFixed(6)}`
       });
 
+      // 成本累加（每次API调用都要计费）
       totalCost += cost;
       inputTokens += tokens.input_tokens;
       outputTokens += tokens.output_tokens;
-      cacheReadTokens += tokens.cache_read_tokens;
+
+      // ⚠️ 缓存读取显示：取最大值（当前缓存大小），不累加！
+      cacheReadTokens = Math.max(cacheReadTokens, tokens.cache_read_tokens);
+
+      // ✅ 缓存创建：累加（每次创建都付费）
       cacheWriteTokens += tokens.cache_creation_tokens;
-      totalTokens += tokens.input_tokens + tokens.output_tokens +
-                    tokens.cache_creation_tokens + tokens.cache_read_tokens;
+
+      // 总tokens：输入+输出+缓存写入+当前缓存大小
+      totalTokens = inputTokens + outputTokens + cacheWriteTokens + cacheReadTokens;
     });
 
     // 计算会话时长（wall time - 从第一条到最后一条消息）
