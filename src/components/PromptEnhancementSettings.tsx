@@ -26,6 +26,8 @@ import {
   type PromptEnhancementProvider,
 } from "@/lib/promptEnhancementService";
 import { cn } from "@/lib/utils";
+import { PromptContextConfigSettings } from "@/components/PromptContextConfigSettings";
+import { Separator } from "@/components/ui/separator";
 
 interface PromptEnhancementSettingsProps {
   className?: string;
@@ -134,19 +136,26 @@ export const PromptEnhancementSettings: React.FC<PromptEnhancementSettingsProps>
   };
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">提示词优化API配置</h3>
-          <p className="text-sm text-muted-foreground">
-            配置第三方AI服务用于优化提示词（OpenAI、Deepseek、通义千问等）
-          </p>
+    <div className={cn("space-y-6", className)}>
+      {/* 上下文配置 */}
+      <PromptContextConfigSettings />
+      
+      <Separator />
+      
+      {/* API 提供商配置 */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">提示词优化API配置</h3>
+            <p className="text-sm text-muted-foreground">
+              配置第三方AI服务用于优化提示词（OpenAI、Deepseek、通义千问等）
+            </p>
+          </div>
+          <Button onClick={handleAdd} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            添加提供商
+          </Button>
         </div>
-        <Button onClick={handleAdd} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          添加提供商
-        </Button>
-      </div>
 
       {/* 预设模板快速添加 */}
       <Card className="p-4 bg-muted/30">
@@ -266,6 +275,7 @@ export const PromptEnhancementSettings: React.FC<PromptEnhancementSettingsProps>
           ))}
         </div>
       )}
+      </div>
 
       {/* 编辑对话框 */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

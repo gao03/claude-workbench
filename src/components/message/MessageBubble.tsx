@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +19,7 @@ interface MessageBubbleProps {
  * 用户消息：右对齐气泡样式
  * AI消息：左对齐卡片样式
  */
-export const MessageBubble: React.FC<MessageBubbleProps> = ({
+const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   variant,
   children,
   className,
@@ -71,3 +71,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     </motion.div>
   );
 };
+
+MessageBubbleComponent.displayName = "MessageBubble";
+
+export const MessageBubble = memo(MessageBubbleComponent);

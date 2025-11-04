@@ -12,6 +12,8 @@
 
 import { open } from "@tauri-apps/plugin-dialog";
 import type { ClaudeStreamMessage } from '@/types/claude';
+import { copyTextToClipboard } from '@/lib/clipboard';
+import { loadContextConfig, type PromptContextConfig } from './promptContextConfig';
 
 // ============================================================================
 // Type Definitions
@@ -58,7 +60,7 @@ export async function selectProjectPath(): Promise<string | null> {
  */
 export async function copyAsJsonl(rawJsonlOutput: string[]): Promise<void> {
   const jsonl = rawJsonlOutput.join('\n');
-  await navigator.clipboard.writeText(jsonl);
+  await copyTextToClipboard(jsonl);
 }
 
 /**
@@ -145,7 +147,7 @@ export async function copyAsMarkdown(
     }
   }
 
-  await navigator.clipboard.writeText(markdown);
+  await copyTextToClipboard(markdown);
 }
 
 // ============================================================================
@@ -155,13 +157,19 @@ export async function copyAsMarkdown(
 /**
  * Extracts conversation context from recent messages for prompt enhancement
  * @param messages Array of Claude stream messages
- * @param maxMessages Maximum number of recent messages to include (default: 5)
+ * @param customConfig Optional custom configuration (if not provided, loads from localStorage)
  * @returns Array of context strings
  */
 export function getConversationContext(
   messages: ClaudeStreamMessage[],
-  maxMessages: number = 5
+  customConfig?: Partial<PromptContextConfig>
 ): string[] {
+  // Load config from localStorage and merge with custom config
+  const config = {
+    ...loadContextConfig(),
+    ...customConfig,
+  };
+
   const contextMessages: string[] = [];
 
   // Filter out system init messages and get meaningful content
@@ -173,8 +181,8 @@ export function getConversationContext(
     return true;
   });
 
-  // Get the last N messages
-  const recentMessages = meaningfulMessages.slice(-maxMessages);
+  // Get the last N messages based on config
+  const recentMessages = meaningfulMessages.slice(-config.maxMessages);
 
   for (const msg of recentMessages) {
     let contextLine = "";
@@ -186,7 +194,11 @@ export function getConversationContext(
         .map((c: any) => c.text)
         .join("\n");
       if (userText) {
-        contextLine = `用户: ${userText}`;
+        // Truncate based on config
+        const truncated = userText.length > config.maxUserMessageLength
+          ? userText.substring(0, config.maxUserMessageLength) + "..."
+          : userText;
+        contextLine = `用户: ${truncated}`;
       }
     } else if (msg.type === "assistant" && msg.message) {
       // Extract assistant message text
@@ -198,15 +210,19 @@ export function getConversationContext(
         })
         .join("\n");
       if (assistantText) {
-        // Truncate very long assistant responses
-        const truncated = assistantText.length > 500
-          ? assistantText.substring(0, 500) + "..."
+        // Truncate based on config
+        const truncated = assistantText.length > config.maxAssistantMessageLength
+          ? assistantText.substring(0, config.maxAssistantMessageLength) + "..."
           : assistantText;
         contextLine = `助手: ${truncated}`;
       }
-    } else if (msg.type === "result" && msg.result) {
-      // Include execution results
-      contextLine = `执行结果: ${msg.result}`;
+    } else if (msg.type === "result" && msg.result && config.includeExecutionResults) {
+      // Include execution results if enabled in config
+      const resultText = msg.result;
+      const truncated = resultText.length > config.maxExecutionResultLength
+        ? resultText.substring(0, config.maxExecutionResultLength) + "..."
+        : resultText;
+      contextLine = `执行结果: ${truncated}`;
     }
 
     if (contextLine) {
