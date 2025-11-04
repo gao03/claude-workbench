@@ -96,6 +96,17 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: Create Windows Portable version
+        if: matrix.platform.name == 'Windows' && startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $exePath = "src-tauri/target/release/claude-workbench.exe"
+          $portablePath = "src-tauri/target/release/bundle/Claude Workbench_${version}_x64-portable.exe"
+          New-Item -ItemType Directory -Force -Path (Split-Path $portablePath)
+          Copy-Item $exePath $portablePath
+          Write-Host "Created portable version at: $portablePath"
+
       - name: Upload build artifacts
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
@@ -217,7 +228,7 @@ jobs:
             artifacts/**/*.msi.sig
             artifacts/**/*-setup.exe
             artifacts/**/*-setup.exe.sig
-            artifacts/**/*.exe
+            artifacts/**/*-portable.exe
             artifacts/**/*.AppImage
             artifacts/**/*.AppImage.sig
             artifacts/**/*.deb

@@ -87,6 +87,14 @@
     "copyright": "",
     "category": "DeveloperTool",
     "shortDescription": "Professional GUI Toolkit for Claude CLI",
-    "longDescription": "Claude Workbench is a professional desktop application and comprehensive toolkit for Claude CLI. Provides an intuitive interface for AI-powered development workflows, project management, and advanced Claude interactions. Supports Windows and macOS."
+    "longDescription": "Claude Workbench is a professional desktop application and comprehensive toolkit for Claude CLI. Provides an intuitive interface for AI-powered development workflows, project management, and advanced Claude interactions. Supports Windows and macOS.",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "perMachine",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true
+      }
+    }
   }
 }
