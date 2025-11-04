@@ -102,10 +102,11 @@ jobs:
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
           $exePath = "src-tauri/target/release/claude-workbench.exe"
-          $portablePath = "src-tauri/target/release/bundle/Claude Workbench_${version}_x64-portable.exe"
-          New-Item -ItemType Directory -Force -Path (Split-Path $portablePath)
+          $portableName = "Claude_Workbench_${version}_x64-portable.exe"
+          $portablePath = "src-tauri/target/release/bundle/$portableName"
+          New-Item -ItemType Directory -Force -Path "src-tauri/target/release/bundle"
           Copy-Item $exePath $portablePath
-          Write-Host "Created portable version at: $portablePath"
+          Write-Host "Created portable version: $portableName"
 
       - name: Upload build artifacts
         if: startsWith(github.ref, 'refs/tags/v')
@@ -201,6 +202,7 @@ jobs:
         with:
           draft: true
           prerelease: false
+          fail_on_unmatched_files: false
           name: Claude Workbench ${{ github.ref_name }}
           body: |
             ## Claude Workbench ${{ github.ref_name }}
@@ -228,7 +230,6 @@ jobs:
             artifacts/**/*.msi.sig
             artifacts/**/*-setup.exe
             artifacts/**/*-setup.exe.sig
-            artifacts/**/*-portable.exe
             artifacts/**/*.AppImage
             artifacts/**/*.AppImage.sig
             artifacts/**/*.deb
