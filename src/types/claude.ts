@@ -1,7 +1,7 @@
 // Claude stream message types
 
 export interface ClaudeStreamMessage {
-  type: "system" | "assistant" | "user" | "result";
+  type: "system" | "assistant" | "user" | "result" | "summary";
   subtype?: string;
   message?: {
     content?: any[];

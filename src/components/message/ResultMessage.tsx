@@ -106,19 +106,19 @@ export const ResultMessage: React.FC<ResultMessageProps> = ({ message, className
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  code({ inline, className: codeClassName, children, ...props }) {
+                  code(props: any) {
+                    const { inline, className: codeClassName, children, ...rest } = props;
                     const match = /language-(\w+)/.exec(codeClassName || "");
                     return !inline && match ? (
                       <SyntaxHighlighter
                         style={syntaxTheme as any}
                         language={match[1]}
                         PreTag="div"
-                        {...props}
                       >
                         {String(children).replace(/\n$/, "")}
                       </SyntaxHighlighter>
                     ) : (
-                      <code className={codeClassName} {...props}>
+                      <code className={codeClassName} {...rest}>
                         {children}
                       </code>
                     );

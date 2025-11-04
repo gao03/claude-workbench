@@ -157,7 +157,6 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
       {isCollapsed ? (
         <CollapsedSummary
           toolCalls={toolCalls}
-          getResultById={getResultById}
           getStatusById={getStatusById}
         />
       ) : (
@@ -184,11 +183,10 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
  */
 interface CollapsedSummaryProps {
   toolCalls: ToolCall[];
-  getResultById: (toolUseId?: string | null) => ToolResultEntry | undefined;
   getStatusById: (toolUseId?: string | null) => 'pending' | 'success' | 'error';
 }
 
-const CollapsedSummary: React.FC<CollapsedSummaryProps> = ({ toolCalls, getResultById, getStatusById }) => {
+const CollapsedSummary: React.FC<CollapsedSummaryProps> = ({ toolCalls, getStatusById }) => {
   return (
     <div className="px-4 py-3 bg-background/50 border-t border-border space-y-2">
       {/* 显示前3个工具 */}
