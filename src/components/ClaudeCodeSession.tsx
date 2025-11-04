@@ -29,6 +29,7 @@ import { useSmartAutoScroll } from '@/hooks/useSmartAutoScroll';
 import { useMessageTranslation } from '@/hooks/useMessageTranslation';
 import { useSessionLifecycle } from '@/hooks/useSessionLifecycle';
 import { usePromptExecution } from '@/hooks/usePromptExecution';
+import { MessagesProvider, useMessagesContext } from '@/contexts/MessagesContext';
 
 import * as SessionHelpers from '@/lib/sessionHelpers';
 
@@ -63,7 +64,7 @@ interface ClaudeCodeSessionProps {
  * @example
  * <ClaudeCodeSession onBack={() => setView('projects')} />
  */
-export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
+const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
   session,
   initialProjectPath = "",
   className,
@@ -72,8 +73,16 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 }) => {
   const [projectPath, setProjectPath] = useState(initialProjectPath || session?.project_path || "");
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
-  const [messages, setMessages] = useState<ClaudeStreamMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    messages,
+    setMessages,
+    isStreaming,
+    setIsStreaming,
+    filterConfig,
+    setFilterConfig
+  } = useMessagesContext();
+  const isLoading = isStreaming;
+  const setIsLoading = setIsStreaming;
   const [error, setError] = useState<string | null>(null);
   const [_rawJsonlOutput, setRawJsonlOutput] = useState<string[]>([]); // Kept for hooks, not directly used
   const [isFirstPrompt, setIsFirstPrompt] = useState(!session); // Key state for session continuation
@@ -97,8 +106,21 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const { stats: costStats, formatCost } = useSessionCostCalculation(messages);
 
   // ✅ Refactored: Use custom Hook for message filtering
+  useEffect(() => {
+    setFilterConfig(prev => {
+      const hideWarmup = claudeSettings?.hideWarmupMessages !== false;
+      if (prev.hideWarmupMessages === hideWarmup) {
+        return prev;
+      }
+      return {
+        ...prev,
+        hideWarmupMessages: hideWarmup
+      };
+    });
+  }, [claudeSettings?.hideWarmupMessages, setFilterConfig]);
+
   const displayableMessages = useDisplayableMessages(messages, {
-    hideWarmupMessages: claudeSettings?.hideWarmupMessages
+    hideWarmupMessages: filterConfig.hideWarmupMessages
   });
 
   // Stable callback for toggling plan mode (prevents unnecessary event listener re-registration)
@@ -670,7 +692,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
               >
                 <StreamMessageV2
                   message={message}
-                  streamMessages={messages}
                   onLinkDetected={handleLinkDetected}
                   claudeSettings={claudeSettings}
                   isStreaming={virtualItem.index === displayableMessages.length - 1 && isLoading}
@@ -1061,5 +1082,13 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       )}
 
     </div>
+  );
+};
+
+export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = (props) => {
+  return (
+    <MessagesProvider initialFilterConfig={{ hideWarmupMessages: true }}>
+      <ClaudeCodeSessionInner {...props} />
+    </MessagesProvider>
   );
 };

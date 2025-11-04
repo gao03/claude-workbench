@@ -10,8 +10,6 @@ import type { ClaudeStreamMessage } from '@/types/claude';
 interface AIMessageProps {
   /** 消息数据 */
   message: ClaudeStreamMessage;
-  /** 所有消息（用于工具结果查找） */
-  streamMessages?: ClaudeStreamMessage[];
   /** 是否正在流式输出 */
   isStreaming?: boolean;
   /** 自定义类名 */
@@ -87,7 +85,6 @@ const extractThinkingContent = (message: ClaudeStreamMessage): string => {
  */
 export const AIMessage: React.FC<AIMessageProps> = ({
   message,
-  streamMessages = [],
   isStreaming = false,
   className,
   onLinkDetected
@@ -199,7 +196,6 @@ export const AIMessage: React.FC<AIMessageProps> = ({
         {hasTools && (
           <ToolCallsGroup
             message={message}
-            streamMessages={streamMessages}
             onLinkDetected={onLinkDetected}
           />
         )}

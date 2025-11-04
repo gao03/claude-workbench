@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api, type MCPServer } from "@/lib/api";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 interface MCPServerListProps {
   /**
@@ -82,7 +83,7 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
    */
   const copyCommand = async (command: string, serverName: string) => {
     try {
-      await navigator.clipboard.writeText(command);
+      await copyTextToClipboard(command);
       setCopiedServer(serverName);
       setTimeout(() => setCopiedServer(null), 2000);
     } catch (error) {

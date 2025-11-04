@@ -6,11 +6,13 @@
  * 当工具数量 >= 3 时默认折叠，显示摘要信息
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { memo, useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Wrench, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toolRegistry } from '@/lib/toolRegistry';
+import { useToolResults } from '@/hooks/useToolResults';
 import type { ClaudeStreamMessage } from '@/types/claude';
+import type { ToolResultEntry } from '@/contexts/MessagesContext';
 
 interface ToolCall {
   id: string;
@@ -19,17 +21,9 @@ interface ToolCall {
   input?: Record<string, any>;
 }
 
-interface ToolResult {
-  content?: any;
-  is_error?: boolean;
-}
-
 export interface ToolCallsGroupProps {
   /** 消息数据 */
   message: ClaudeStreamMessage;
-
-  /** 所有消息（用于查找对应的结果） */
-  streamMessages: ClaudeStreamMessage[];
 
   /** 默认折叠状态 */
   defaultCollapsed?: boolean;
@@ -49,7 +43,6 @@ export interface ToolCallsGroupProps {
 
 export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
   message,
-  streamMessages,
   defaultCollapsed,
   collapseThreshold = 3,
   onToggle,
@@ -64,42 +57,7 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
     return message.message.content.filter((item: any) => item.type === 'tool_use') as ToolCall[];
   }, [message]);
 
-  // 提取工具结果
-  const toolResults = useMemo(() => {
-    const results = new Map<string, ToolResult>();
-
-    // 在当前消息中查找结果
-    if (message.message?.content && Array.isArray(message.message.content)) {
-      message.message.content
-        .filter((item: any) => item.type === 'tool_result')
-        .forEach((result: any) => {
-          if (result.tool_use_id) {
-            results.set(result.tool_use_id, result);
-          }
-        });
-    }
-
-    // 在后续消息中查找结果
-    const messageIndex = streamMessages.findIndex(m => m === message);
-    if (messageIndex !== -1) {
-      for (let i = messageIndex + 1; i < streamMessages.length; i++) {
-        const nextMsg = streamMessages[i];
-        if (nextMsg.type === 'user' && nextMsg.message?.content) {
-          const content = Array.isArray(nextMsg.message.content) ? nextMsg.message.content : [];
-
-          content
-            .filter((item: any) => item.type === 'tool_result')
-            .forEach((result: any) => {
-              if (result.tool_use_id) {
-                results.set(result.tool_use_id, result);
-              }
-            });
-        }
-      }
-    }
-
-    return results;
-  }, [message, streamMessages]);
+  const { getResultById, getStatusById } = useToolResults();
 
   // 自动判断是否应该折叠
   const shouldCollapse = defaultCollapsed ?? toolCalls.length >= collapseThreshold;
@@ -112,10 +70,10 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
     let pendingCount = 0;
 
     toolCalls.forEach(tool => {
-      const result = toolResults.get(tool.id);
-      if (!result) {
+      const status = getStatusById(tool.id);
+      if (status === 'pending') {
         pendingCount++;
-      } else if (result.is_error) {
+      } else if (status === 'error') {
         errorCount++;
       } else {
         successCount++;
@@ -123,7 +81,7 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
     });
 
     return { successCount, errorCount, pendingCount, total: toolCalls.length };
-  }, [toolCalls, toolResults]);
+  }, [toolCalls, getStatusById]);
 
   // 切换折叠状态
   const toggleCollapse = () => {
@@ -149,7 +107,12 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
     const tool = toolCalls[0];
     return (
       <div className={cn('tool-single-call my-2', className)}>
-        <SingleToolCall tool={tool} result={toolResults.get(tool.id)} onLinkDetected={onLinkDetected} />
+        <SingleToolCall
+          tool={tool}
+          result={getResultById(tool.id)}
+          status={getStatusById(tool.id)}
+          onLinkDetected={onLinkDetected}
+        />
       </div>
     );
   }
@@ -192,14 +155,19 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
 
       {/* 折叠摘要或完整内容 */}
       {isCollapsed ? (
-        <CollapsedSummary toolCalls={toolCalls} toolResults={toolResults} />
+        <CollapsedSummary
+          toolCalls={toolCalls}
+          getResultById={getResultById}
+          getStatusById={getStatusById}
+        />
       ) : (
         <div className="space-y-2 p-4 bg-background">
           {toolCalls.map((tool, index) => (
             <SingleToolCall
               key={tool.id}
               tool={tool}
-              result={toolResults.get(tool.id)}
+              result={getResultById(tool.id)}
+              status={getStatusById(tool.id)}
               onLinkDetected={onLinkDetected}
               index={index + 1}
               total={toolCalls.length}
@@ -216,17 +184,18 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
  */
 interface CollapsedSummaryProps {
   toolCalls: ToolCall[];
-  toolResults: Map<string, ToolResult>;
+  getResultById: (toolUseId?: string | null) => ToolResultEntry | undefined;
+  getStatusById: (toolUseId?: string | null) => 'pending' | 'success' | 'error';
 }
 
-const CollapsedSummary: React.FC<CollapsedSummaryProps> = ({ toolCalls, toolResults }) => {
+const CollapsedSummary: React.FC<CollapsedSummaryProps> = ({ toolCalls, getResultById, getStatusById }) => {
   return (
     <div className="px-4 py-3 bg-background/50 border-t border-border space-y-2">
       {/* 显示前3个工具 */}
       {toolCalls.slice(0, 3).map((tool, idx) => {
-        const result = toolResults.get(tool.id);
-        const hasResult = !!result;
-        const isError = result?.is_error;
+        const status = getStatusById(tool.id);
+        const hasResult = status !== 'pending';
+        const isError = status === 'error';
 
         let StatusIcon = Loader2;
         let statusColor = 'text-blue-600';
@@ -264,27 +233,35 @@ const CollapsedSummary: React.FC<CollapsedSummaryProps> = ({ toolCalls, toolResu
  */
 interface SingleToolCallProps {
   tool: ToolCall;
-  result?: ToolResult;
+  result?: ToolResultEntry;
+  status: 'pending' | 'success' | 'error';
   onLinkDetected?: (url: string) => void;
   index?: number;
   total?: number;
 }
 
-const SingleToolCall: React.FC<SingleToolCallProps> = ({ tool, result, onLinkDetected, index, total }) => {
+const SingleToolCallComponent: React.FC<SingleToolCallProps> = ({ tool, result, status, onLinkDetected, index, total }) => {
   const renderer = toolRegistry.getRenderer(tool.name);
+
+  const normalizedResult = result
+    ? {
+        content: result.content,
+        is_error: result.isError,
+      }
+    : undefined;
 
   // 构建渲染 props
   const renderProps = {
     toolName: tool.name,
     input: tool.input,
-    result,
+    result: normalizedResult,
     toolId: tool.id,
     onLinkDetected,
   };
 
   // 判断状态
-  const hasResult = !!result;
-  const isError = result?.is_error;
+  const hasResult = status !== 'pending';
+  const isError = status === 'error';
 
   let StatusIcon = Loader2;
   let statusColor = 'text-blue-600';
@@ -329,18 +306,25 @@ const SingleToolCall: React.FC<SingleToolCallProps> = ({ tool, result, onLinkDet
           <renderer.render {...renderProps} />
         </div>
       ) : (
-        <FallbackToolRender tool={tool} result={result} />
+        <FallbackToolRender tool={tool} result={normalizedResult} />
       )}
     </div>
   );
 };
+
+SingleToolCallComponent.displayName = "SingleToolCall";
+
+const SingleToolCall = memo(SingleToolCallComponent);
 
 /**
  * 未注册工具的降级渲染
  */
 interface FallbackToolRenderProps {
   tool: ToolCall;
-  result?: ToolResult;
+  result?: {
+    content?: any;
+    is_error?: boolean;
+  };
 }
 
 const FallbackToolRender: React.FC<FallbackToolRenderProps> = ({ tool, result }) => {

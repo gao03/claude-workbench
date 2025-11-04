@@ -1,4 +1,4 @@
-export * from "./StreamMessage";
+export * from "./message";
 export * from "./ToolWidgets";
 
 export * from "./UsageDashboard";
@@ -33,3 +33,5 @@ export * from "./TabManager";
 export * from "./TabSessionWrapper";
 export * from "./TabIndicator";
 export * from "./AutoCompactSettings";
+export * from "./PromptEnhancementSettings";
+export * from "./PromptContextConfigSettings";

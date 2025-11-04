@@ -2820,16 +2820,28 @@ pub async fn enhance_prompt(
 
     // 创建提示词增强的请求
     let enhancement_request = format!(
-        "You are helping to enhance a prompt based on the current conversation context. {}\
+        "You are a professional prompt optimization assistant, specializing in optimizing user prompts for Claude Code programming assistant.\n\
         \n\
-        Please improve and optimize this prompt to make it more effective, clear, and specific. Focus on:\n\
-        1. Making it relevant to the current conversation context\n\
-        2. Adding clarity and structure\n\
-        3. Making it more actionable and specific\n\
-        4. Including relevant technical details from the context\n\
-        5. Following prompt engineering best practices\n\n\
-        Original prompt:\n{}\n\n\
-        Please provide only the improved prompt as your response in Chinese, without explanations or commentary.",
+        【Optimization Goals】\n\
+        1. Maintain the user's original intent and core requirements\n\
+        2. Make the prompt clearer, more specific, and more structured\n\
+        3. Add necessary technical details based on conversation context\n\
+        4. Use accurate technical terminology and avoid ambiguity\n\
+        \n\
+        【Optimization Principles】\n\
+        - ✅ Keep it technical and practical\n\
+        - ✅ Only optimize expression, don't change core requirements\n\
+        - ✅ If the user's intent is already clear, minimal adjustment is needed\n\
+        - ❌ Don't add role-playing (like \"act as...\")\n\
+        - ❌ Don't add excessive politeness or formalities\n\
+        - ❌ Don't change the question type (e.g., turn technical questions into analysis reports)\n\
+        - ❌ Don't add extra tasks that users didn't request\n\
+        {}\
+        \n\
+        【Output Requirements】\n\
+        Return only the optimized prompt in Chinese, without any explanations, comments, or meta-information.\n\
+        \n\
+        Original prompt:\n{}\n",
         context_section,
         prompt.trim()
     );
@@ -2945,16 +2957,28 @@ pub async fn enhance_prompt_with_gemini(
 
     // 创建与Claude Code版本保持一致的提示词增强请求
     let enhancement_request = format!(
-        "You are helping to enhance a prompt based on the current conversation context. {}\
+        "You are a professional prompt optimization assistant, specializing in optimizing user prompts for Claude Code programming assistant.\n\
         \n\
-        Please improve and optimize this prompt to make it more effective, clear, and specific. Focus on:\n\
-        1. Making it relevant to the current conversation context\n\
-        2. Adding clarity and structure\n\
-        3. Making it more actionable and specific\n\
-        4. Including relevant technical details from the context\n\
-        5. Following prompt engineering best practices\n\n\
-        Original prompt:\n{}\n\n\
-        Please provide only the improved prompt as your response in Chinese, without explanations, commentary, or phrases like '这是优化后的提示词'.",
+        【Optimization Goals】\n\
+        1. Maintain the user's original intent and core requirements\n\
+        2. Make the prompt clearer, more specific, and more structured\n\
+        3. Add necessary technical details based on conversation context\n\
+        4. Use accurate technical terminology and avoid ambiguity\n\
+        \n\
+        【Optimization Principles】\n\
+        - ✅ Keep it technical and practical\n\
+        - ✅ Only optimize expression, don't change core requirements\n\
+        - ✅ If the user's intent is already clear, minimal adjustment is needed\n\
+        - ❌ Don't add role-playing (like \"act as...\")\n\
+        - ❌ Don't add excessive politeness or formalities\n\
+        - ❌ Don't change the question type (e.g., turn technical questions into analysis reports)\n\
+        - ❌ Don't add extra tasks that users didn't request\n\
+        {}\
+        \n\
+        【Output Requirements】\n\
+        Return only the optimized prompt in Chinese, without any explanations, comments, or meta-information.\n\
+        \n\
+        Original prompt:\n{}\n",
         context_section,
         prompt.trim()
     );

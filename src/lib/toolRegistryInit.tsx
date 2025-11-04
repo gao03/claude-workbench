@@ -20,6 +20,13 @@ import {
   WebFetchWidget,
   BashOutputWidget,
   MCPWidget,
+  TaskWidget,
+  CommandWidget,
+  CommandOutputWidget,
+  SummaryWidget,
+  SystemReminderWidget,
+  SystemInitializedWidget,
+  ThinkingWidget,
 } from '@/components/ToolWidgets';
 
 /**
@@ -40,6 +47,54 @@ function createToolAdapter<T extends Record<string, any>>(
  * 注册所有内置工具
  */
 export function initializeToolRegistry(): void {
+  const extractStringContent = (value: unknown): string => {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value == null) {
+      return '';
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(extractStringContent).filter(Boolean).join('\n');
+    }
+
+    if (typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+
+      if (typeof record.text === 'string') {
+        return record.text;
+      }
+
+      if (typeof record.message === 'string') {
+        return record.message;
+      }
+
+      if (typeof record.content === 'string') {
+        return record.content;
+      }
+
+      try {
+        return JSON.stringify(record, null, 2);
+      } catch {
+        return String(record);
+      }
+    }
+
+    return String(value);
+  };
+
+  const extractTaggedValue = (content: string, tag: string): string | undefined => {
+    if (!content) {
+      return undefined;
+    }
+
+    const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i');
+    const match = content.match(regex);
+    return match?.[1]?.trim() || undefined;
+  };
+
   const tools: ToolRenderer[] = [
     // TodoWrite / TodoRead
     {
@@ -195,34 +250,100 @@ export function initializeToolRegistry(): void {
     // Task - 子代理工具（Claude Code 特有）
     {
       name: 'task',
-      render: createToolAdapter(
-        ({ input, result }: any) => (
-          <div className="task-widget p-3 bg-purple-500/10 border border-purple-500/20 rounded">
-            <div className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
-              🤖 子代理任务
-            </div>
-            {input?.description && (
-              <div className="text-xs text-muted-foreground mb-2">{input.description}</div>
-            )}
-            {input?.subagent_type && (
-              <div className="text-xs">
-                <span className="text-muted-foreground">类型: </span>
-                <span className="font-mono">{input.subagent_type}</span>
-              </div>
-            )}
-            {result && (
-              <div className="mt-2 text-xs bg-background/50 p-2 rounded">
-                <div className="text-muted-foreground mb-1">任务结果:</div>
-                <div className="whitespace-pre-wrap">
-                  {typeof result.content === 'string' ? result.content : JSON.stringify(result.content, null, 2)}
-                </div>
-              </div>
-            )}
-          </div>
-        ),
-        (props) => props
-      ),
+      render: createToolAdapter(TaskWidget, (props) => ({
+        description: props.input?.description ?? props.result?.content?.description,
+        prompt: props.input?.prompt ?? props.result?.content?.prompt,
+        result: props.result,
+      })),
       description: 'Claude Code 子代理工具',
+    },
+
+    // System Reminder - 系统提醒信息
+    {
+      name: 'system_reminder',
+      pattern: /^system[-_]reminder$/,
+      render: createToolAdapter(SystemReminderWidget, (props) => {
+        const raw = extractStringContent(props.input?.message ?? props.result?.content ?? '');
+        const message = extractTaggedValue(raw, 'system-reminder') ?? raw.trim();
+
+        return {
+          message: message || '系统提醒',
+        };
+      }),
+      description: '系统提醒信息显示',
+    },
+
+    // Command - 命令信息展示
+    {
+      name: 'command',
+      render: createToolAdapter(CommandWidget, (props) => {
+        const raw = extractStringContent(props.input?.raw ?? props.result?.content ?? '');
+        const commandName = props.input?.commandName
+          ?? props.input?.command_name
+          ?? extractTaggedValue(raw, 'command-name')
+          ?? props.toolName;
+        const commandMessage = props.input?.commandMessage
+          ?? props.input?.command_message
+          ?? extractTaggedValue(raw, 'command-message')
+          ?? raw;
+        const commandArgs = props.input?.commandArgs
+          ?? props.input?.command_args
+          ?? extractTaggedValue(raw, 'command-args');
+
+        return {
+          commandName: commandName || props.toolName,
+          commandMessage,
+          commandArgs,
+        };
+      }),
+      description: 'Slash 命令展示',
+    },
+
+    // Command Output - 命令输出展示
+    {
+      name: 'command_output',
+      pattern: /^command[-_]?(output|result)$/,
+      render: createToolAdapter(CommandOutputWidget, (props) => ({
+        output: extractStringContent(props.result?.content ?? props.input?.output ?? ''),
+        onLinkDetected: props.onLinkDetected,
+      })),
+      description: '命令执行输出',
+    },
+
+    // Summary - 会话总结展示
+    {
+      name: 'summary',
+      render: createToolAdapter(SummaryWidget, (props) => ({
+        summary: extractStringContent(props.input?.summary ?? props.result?.content ?? ''),
+        leafUuid: props.input?.leafUuid ?? props.input?.leaf_uuid ?? props.result?.content?.leafUuid,
+        usage: props.input?.usage ?? (props.result as any)?.usage,
+      })),
+      description: '会话摘要展示',
+    },
+
+    // System Initialized - 系统初始化信息
+    {
+      name: 'system_initialized',
+      pattern: /^system[_-]?init(?:ialized)?$/,
+      render: createToolAdapter(SystemInitializedWidget, (props) => ({
+        sessionId: props.input?.sessionId ?? props.input?.session_id ?? props.result?.content?.sessionId,
+        model: props.input?.model ?? props.result?.content?.model,
+        cwd: props.input?.cwd ?? props.result?.content?.cwd,
+        tools: props.input?.tools ?? props.result?.content?.tools,
+        timestamp: props.input?.timestamp ?? props.result?.content?.timestamp,
+      })),
+      description: '系统初始化信息展示',
+    },
+
+    // Thinking - 思考过程展示
+    {
+      name: 'thinking',
+      render: createToolAdapter(ThinkingWidget, (props) => ({
+        thinking: extractStringContent(props.input?.thinking ?? props.result?.content ?? ''),
+        signature: props.input?.signature ?? props.result?.content?.signature,
+        usage: props.input?.usage ?? (props.result as any)?.usage,
+      })),
+      description: 'AI 思考过程展示',
     },
   ];
 
