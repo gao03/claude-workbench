@@ -230,6 +230,7 @@ jobs:
             artifacts/**/*.msi.sig
             artifacts/**/*-setup.exe
             artifacts/**/*-setup.exe.sig
+            artifacts/**/*-portable.exe
             artifacts/**/*.AppImage
             artifacts/**/*.AppImage.sig
             artifacts/**/*.deb
