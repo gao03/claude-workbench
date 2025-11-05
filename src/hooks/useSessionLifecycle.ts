@@ -66,10 +66,21 @@ export function useSessionLifecycle(config: UseSessionLifecycleConfig): UseSessi
       const history = await api.loadSessionHistory(session.id, session.project_id);
 
       // Convert history to messages format
-      const loadedMessages: ClaudeStreamMessage[] = history.map(entry => ({
-        ...entry,
-        type: entry.type || "assistant"
-      }));
+      const loadedMessages: ClaudeStreamMessage[] = history
+        .filter(entry => {
+          // Filter out invalid message types like 'queue-operation'
+          const type = entry.type;
+          const validTypes = ['user', 'assistant', 'system', 'result', 'summary'];
+          if (type && !validTypes.includes(type)) {
+            console.warn('[useSessionLifecycle] Filtering out invalid message type:', type);
+            return false;
+          }
+          return true;
+        })
+        .map(entry => ({
+          ...entry,
+          type: entry.type || "assistant"
+        }));
 
       // ✨ NEW: Normalize usage data for historical messages
       const processedMessages = loadedMessages.map(msg => {

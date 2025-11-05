@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   CheckCircle2,
   Circle,
@@ -57,7 +57,6 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { getClaudeSyntaxTheme } from "@/lib/claudeSyntaxTheme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { createPortal } from "react-dom";
 import * as Diff from 'diff';
 import { Card, CardContent } from "@/components/ui/card";
 import { detectLinks, makeLinksClickable } from "@/lib/linkDetector";
@@ -67,6 +66,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { translationMiddleware } from '@/lib/translationMiddleware';
+import { api } from '@/lib/api';
+import { createPortal } from "react-dom";
+import remarkGfm from "remark-gfm";
 
 /**
  * Helper function to translate tool widget content if translation is enabled
@@ -838,58 +840,13 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
   const isLargeContent = content.length > truncateLimit;
   const displayContent = isLargeContent ? content.substring(0, truncateLimit) + "\n..." : content;
 
-  // Maximized view as a modal
-  const MaximizedView = () => {
-    if (!isMaximized) return null;
-    
-    return createPortal(
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        {/* Backdrop with blur */}
-        <div 
-          className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-          onClick={() => setIsMaximized(false)}
-        />
-        
-        {/* Modal content */}
-        <div className="relative w-[90vw] h-[90vh] max-w-7xl bg-zinc-950 rounded-lg border shadow-2xl overflow-hidden flex flex-col">
-          {/* Header */}
-          <div className="px-6 py-4 border-b bg-zinc-950 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-mono text-muted-foreground">{filePath}</span>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => setIsMaximized(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          {/* Code content */}
-          <div className="flex-1 overflow-auto">
-            <SyntaxHighlighter
-              language={language}
-              style={getClaudeSyntaxTheme(theme === 'dark')}
-              customStyle={{
-                margin: 0,
-                padding: '1.5rem',
-                background: 'transparent',
-                fontSize: '0.75rem',
-                lineHeight: '1.5',
-                height: '100%'
-              }}
-              showLineNumbers
-            >
-              {content}
-            </SyntaxHighlighter>
-          </div>
-        </div>
-      </div>,
-      document.body
-    );
+  // 在系统中打开文件
+  const handleOpenInSystem = async () => {
+    try {
+      await api.openFileWithDefaultApp(filePath);
+    } catch (error) {
+      console.error('Failed to open file in system:', error);
+    }
   };
 
   const CodePreview = ({ codeContent, truncated }: { codeContent: string; truncated: boolean }) => (
@@ -941,63 +898,141 @@ export const WriteWidget: React.FC<{ filePath: string; content: string; result?:
     </div>
   );
 
-  // 在系统中打开文件
-  const handleOpenInSystem = async () => {
-    try {
-      const { open } = await import('@tauri-apps/plugin-shell');
-      await open(filePath);
-    } catch (error) {
-      console.error('Failed to open file in system:', error);
-    }
-  };
+  React.useEffect(() => {
+    if (!isMaximized) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMaximized(false);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMaximized]);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
-        {/* 展开/收起按钮 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-5 w-5 p-0"
-          onClick={() => setIsExpanded(!isExpanded)}
-          title={isExpanded ? "收起预览" : "展开预览"}
-        >
-          <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-        </Button>
+    <>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+          {/* 展开/收起按钮 */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 w-5 p-0"
+            onClick={() => setIsExpanded(!isExpanded)}
+            title={isExpanded ? "收起预览" : "展开预览"}
+          >
+            <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+          </Button>
+          
+          <FileEdit className="h-4 w-4 text-primary" />
+          <span className="text-sm">写入文件：</span>
+          <code 
+            className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate cursor-pointer hover:bg-accent transition-colors"
+            onClick={() => setIsMaximized(true)}
+            title="点击查看完整内容"
+          >
+            {filePath}
+          </code>
+          
+          {/* 文件大小提示 */}
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {(content.length / 1024).toFixed(1)} KB
+          </span>
+          
+          {/* 在系统中打开按钮 */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={handleOpenInSystem}
+            title="用系统默认应用打开"
+          >
+            <ExternalLink className="h-3 w-3 mr-1" />
+            打开
+          </Button>
+        </div>
         
-        <FileEdit className="h-4 w-4 text-primary" />
-        <span className="text-sm">写入文件：</span>
-        <code 
-          className="text-sm font-mono bg-background px-2 py-0.5 rounded flex-1 truncate cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setIsMaximized(true)}
-          title="点击查看完整内容"
-        >
-          {filePath}
-        </code>
-        
-        {/* 文件大小提示 */}
-        <span className="text-xs text-muted-foreground whitespace-nowrap">
-          {(content.length / 1024).toFixed(1)} KB
-        </span>
-        
-        {/* 在系统中打开按钮 */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={handleOpenInSystem}
-          title="用系统默认应用打开"
-        >
-          <ExternalLink className="h-3 w-3 mr-1" />
-          打开
-        </Button>
+        {/* 预览内容 - 默认收起 */}
+        {isExpanded && <CodePreview codeContent={displayContent} truncated={true} />}
       </div>
-      
-      {/* 预览内容 - 默认收起 */}
-      {isExpanded && <CodePreview codeContent={displayContent} truncated={true} />}
-      
-      <MaximizedView />
-    </div>
+
+      {/* 全屏预览弹层 - 独立portal */}
+      {isMaximized && createPortal(
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+          style={{ zIndex: 9999 }}
+          onMouseDown={() => setIsMaximized(false)}
+        >
+          <div
+            className="w-full max-w-6xl h-[90vh] bg-zinc-950 border border-border rounded-lg shadow-2xl flex flex-col"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-mono text-muted-foreground truncate">{filePath}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  className="h-8 px-3 text-xs border border-border bg-background hover:bg-muted/50 rounded-md flex items-center gap-1"
+                  onClick={handleOpenInSystem}
+                  type="button"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  打开
+                </button>
+                <button
+                  className="h-8 w-8 hover:bg-muted/50 rounded-md flex items-center justify-center"
+                  onClick={() => setIsMaximized(false)}
+                  type="button"
+                  title="关闭"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              <div className="p-6">
+                {isMarkdown ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <SyntaxHighlighter
+                    language={language}
+                    style={getClaudeSyntaxTheme(theme === 'dark')}
+                    customStyle={{
+                      margin: 0,
+                      background: 'transparent',
+                      fontSize: '0.75rem',
+                      lineHeight: '1.5',
+                    }}
+                    showLineNumbers
+                    wrapLongLines={true}
+                  >
+                    {content}
+                  </SyntaxHighlighter>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 };
 
@@ -1035,8 +1070,11 @@ export const GrepWidget: React.FC<{
   }
   
   // Parse grep results to extract file paths and matches
-  const parseGrepResults = (content: string) => {
-    const lines = content.split('\n').filter(line => line.trim());
+  // Using useMemo to prevent re-parsing on every render and avoid infinite console warnings
+  const grepResults = useMemo(() => {
+    if (!result || isError) return [];
+    
+    const lines = resultContent.split('\n').filter(line => line.trim());
     const results: Array<{
       file: string;
       lineNumber: number;
@@ -1093,8 +1131,8 @@ export const GrepWidget: React.FC<{
       });
     }
 
-    // Debug logging
-    if (results.length === 0 && lines.length > 0) {
+    // Debug logging - only log once when result changes
+    if (process.env.NODE_ENV !== 'production' && results.length === 0 && lines.length > 0) {
       console.warn('[GrepWidget] No results parsed from grep output:', {
         linesCount: lines.length,
         firstLines: lines.slice(0, 3),
@@ -1103,9 +1141,7 @@ export const GrepWidget: React.FC<{
     }
 
     return results;
-  };
-  
-  const grepResults = result && !isError ? parseGrepResults(resultContent) : [];
+  }, [result, isError, resultContent]);
   
   return (
     <div className="space-y-2">

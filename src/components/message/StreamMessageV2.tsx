@@ -87,6 +87,10 @@ export const StreamMessageV2: React.FC<StreamMessageV2Props> = ({
         />
       );
 
+    // Silently ignore queue-operation messages (internal operations)
+    case 'queue-operation':
+      return null;
+
     default:
       if (process.env.NODE_ENV !== 'production') {
         console.warn('[StreamMessageV2] Unhandled message type:', (message as any).type, message);
