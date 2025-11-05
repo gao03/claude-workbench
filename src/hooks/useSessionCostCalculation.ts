@@ -6,8 +6,8 @@
  */
 
 import { useMemo } from 'react';
-import { tokenExtractor } from '@/lib/tokenExtractor';
-import { calculateMessageCost, formatCost as formatCostUtil, formatDuration } from '@/lib/pricing';
+import { aggregateSessionCost } from '@/lib/sessionCost';
+import { formatCost as formatCostUtil, formatDuration } from '@/lib/pricing';
 import type { ClaudeStreamMessage } from '@/types/claude';
 
 export interface SessionCostStats {
@@ -64,64 +64,84 @@ export function useSessionCostCalculation(messages: ClaudeStreamMessage[]): Sess
       };
     }
 
-    let totalCost = 0;
-    let totalTokens = 0;
-    let inputTokens = 0;
-    let outputTokens = 0;
-    let cacheReadTokens = 0;
-    let cacheWriteTokens = 0;
+    const {
+      totals,
+      events,
+      firstEventTimestampMs,
+      lastEventTimestampMs,
+    } = aggregateSessionCost(messages);
 
-    const relevantMessages = messages.filter(m => m.type === 'assistant' || m.type === 'user');
-
-    relevantMessages.forEach(message => {
-      const tokens = tokenExtractor.extract(message);
-      
-      // ✅ 使用消息的实际模型定价（支持多模型）
-      const model = (message as any).model || 'claude-sonnet-4.5';
-      const cost = calculateMessageCost(tokens, model);
-      
-      totalCost += cost;
-      inputTokens += tokens.input_tokens;
-      outputTokens += tokens.output_tokens;
-      cacheReadTokens += tokens.cache_read_tokens;
-      cacheWriteTokens += tokens.cache_creation_tokens;
-      totalTokens += tokens.input_tokens + tokens.output_tokens + 
-                    tokens.cache_creation_tokens + tokens.cache_read_tokens;
-    });
-
-    // 计算会话时长（wall time - 从第一条到最后一条消息）
-    let durationSeconds = 0;
-    if (messages.length >= 2) {
-      const firstTime = messages[0].timestamp || messages[0].receivedAt;
-      const lastTime = messages[messages.length - 1].timestamp || messages[messages.length - 1].receivedAt;
-      
-      if (firstTime && lastTime) {
-        const start = new Date(firstTime).getTime();
-        const end = new Date(lastTime).getTime();
-        durationSeconds = (end - start) / 1000;
-      }
-    }
+    const durationSeconds = calculateSessionDuration(messages, firstEventTimestampMs, lastEventTimestampMs);
 
     // 计算 API 执行时长（TODO: 需要从消息中提取实际 API 响应时间）
-    // 目前使用简化估算：每条 assistant 消息平均 2-10 秒
-    const assistantMessages = relevantMessages.filter(m => m.type === 'assistant');
-    const apiDurationSeconds = assistantMessages.length * 5; // 粗略估算
+    // 目前使用简化估算：每条唯一 assistant 消息平均 2-10 秒
+    const apiDurationSeconds = events.length * 5; // 粗略估算
 
     return {
-      totalCost,
-      totalTokens,
-      inputTokens,
-      outputTokens,
-      cacheReadTokens,
-      cacheWriteTokens,
+      totalCost: totals.totalCost,
+      totalTokens: totals.totalTokens,
+      inputTokens: totals.inputTokens,
+      outputTokens: totals.outputTokens,
+      cacheReadTokens: totals.cacheReadTokens,
+      cacheWriteTokens: totals.cacheWriteTokens,
       durationSeconds,
       apiDurationSeconds
     };
-  }, [messages.length]); // 优化：仅在消息数量变化时重新计算
+  }, [messages]);
 
   return { 
     stats, 
     formatCost: formatCostUtil,
     formatDuration
   };
+}
+
+function calculateSessionDuration(
+  messages: ClaudeStreamMessage[],
+  fallbackFirstEventMs?: number,
+  fallbackLastEventMs?: number
+): number {
+  const timestamps = messages
+    .map(extractTimestampMs)
+    .filter((value): value is number => typeof value === 'number');
+
+  if (timestamps.length >= 2) {
+    const first = Math.min(...timestamps);
+    const last = Math.max(...timestamps);
+    if (last >= first) {
+      return (last - first) / 1000;
+    }
+  }
+
+  if (
+    typeof fallbackFirstEventMs === 'number' &&
+    typeof fallbackLastEventMs === 'number' &&
+    fallbackLastEventMs >= fallbackFirstEventMs
+  ) {
+    return (fallbackLastEventMs - fallbackFirstEventMs) / 1000;
+  }
+
+  return 0;
+}
+
+function extractTimestampMs(message: ClaudeStreamMessage): number | undefined {
+  const candidates = [
+    (message as any).timestamp,
+    (message as any).receivedAt,
+    (message as any).sentAt,
+    (message as any)?.message?.timestamp,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string' || candidate.trim() === '') {
+      continue;
+    }
+
+    const parsed = Date.parse(candidate);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return undefined;
 }

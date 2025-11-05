@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { tokenExtractor } from "@/lib/tokenExtractor";
+import { aggregateSessionCost, type BillingEvent } from "@/lib/sessionCost";
+import type { ClaudeStreamMessage } from "@/types/claude";
 
 /**
  * Interface for conversation metrics data
@@ -405,7 +406,7 @@ export const ConversationMetrics: React.FC<ConversationMetricsProps> = ({
  * Hook to calculate and track conversation metrics
  */
 export const useConversationMetrics = (
-  messages: any[],
+  messages: ClaudeStreamMessage[],
   sessionStartTime?: string
 ): ConversationMetricsData => {
   const [metrics, setMetrics] = useState<ConversationMetricsData>({
@@ -425,73 +426,55 @@ export const useConversationMetrics = (
   });
 
   useEffect(() => {
-    // Calculate metrics from messages using tokenExtractor
-    let totalTokens = 0;
-    let inputTokens = 0;
-    let outputTokens = 0;
-    let cacheTokens = 0;
+    const { totals, events } = aggregateSessionCost(messages);
+
+    const uniqueAssistantCount = events.length;
+    const userMessageCount = messages.filter(message => message.type === 'user').length;
+    const otherMessageCount = messages.filter(message => message.type !== 'user' && message.type !== 'assistant').length;
+    const messageCount = userMessageCount + uniqueAssistantCount + otherMessageCount;
+
+    const cacheTokens = totals.cacheReadTokens + totals.cacheWriteTokens;
+
     let toolCallsCount = 0;
-    const filesReferenced = new Set<string>();
-    const modelUsage: { [key: string]: number } = {};
-
-    messages.forEach(message => {
-      // Count tool calls
-      if (message.type === 'assistant' && message.message?.content) {
-        const toolUses = Array.isArray(message.message.content) 
-          ? message.message.content.filter((c: any) => c.type === 'tool_use').length
-          : 0;
-        toolCallsCount += toolUses;
-      }
-
-      // Extract file references (simplified)
-      if (message.message?.content) {
-        const content = JSON.stringify(message.message.content);
-        const fileMatches = content.match(/['"](\/[^'"]+\.[a-zA-Z]+)['"]/g);
-        if (fileMatches) {
-          fileMatches.forEach(match => {
-            const file = match.slice(1, -1);
-            filesReferenced.add(file);
-          });
-        }
-      }
-
-      // Use tokenExtractor for standardized token extraction
-      const extractedTokens = tokenExtractor.extract(message);
-      inputTokens += extractedTokens.input_tokens;
-      outputTokens += extractedTokens.output_tokens;
-      cacheTokens += extractedTokens.cache_creation_tokens + extractedTokens.cache_read_tokens;
-      totalTokens += extractedTokens.input_tokens + extractedTokens.output_tokens + 
-                    extractedTokens.cache_creation_tokens + extractedTokens.cache_read_tokens;
-
-      // Track model usage
-      const model = message.model || 'unknown';
-      modelUsage[model] = (modelUsage[model] || 0) + 1;
+    events.forEach(event => {
+      toolCallsCount += countToolUses(event.message);
     });
 
-    // Calculate duration
-    const startTime = sessionStartTime ? new Date(sessionStartTime) : new Date();
-    const durationMinutes = (Date.now() - startTime.getTime()) / 60000;
+    const filesReferenced = new Set<string>();
+    messages.forEach(message => {
+      if (message.message?.content) {
+        const content = JSON.stringify(message.message.content);
+        const fileMatches = content.match(/['"](\/[^"]+\.[a-zA-Z]+)['"]/g);
+        if (fileMatches) {
+          fileMatches.forEach(match => filesReferenced.add(match.slice(1, -1)));
+        }
+      }
+    });
 
-    // Calculate efficiency score (simplified)
-    const avgTokensPerMessage = messages.length > 0 ? totalTokens / messages.length : 0;
+    const modelUsage: { [key: string]: number } = {};
+    events.forEach(event => {
+      const modelKey = event.model || 'unknown';
+      modelUsage[modelKey] = (modelUsage[modelKey] || 0) + 1;
+    });
+
+    const durationMinutes = calculateDurationMinutes(messages, sessionStartTime, events);
+
+    const avgTokensPerMessage = messageCount > 0 ? totals.totalTokens / messageCount : 0;
     let efficiencyScore = 100;
-    
+
     if (avgTokensPerMessage > 1000) efficiencyScore -= 20;
-    if (messages.length > 50) efficiencyScore -= 15;
-    if (toolCallsCount > messages.length * 2) efficiencyScore -= 15;
-    
+    if (messageCount > 50) efficiencyScore -= 15;
+    if (toolCallsCount > messageCount * 2) efficiencyScore -= 15;
+
     efficiencyScore = Math.max(0, efficiencyScore);
 
-    // Estimate cost (rough calculation)
-    const estimatedCost = (inputTokens * 0.003 + outputTokens * 0.015 + cacheTokens * 0.001) / 1000;
-
     setMetrics({
-      messageCount: messages.length,
-      totalTokens,
-      inputTokens,
-      outputTokens,
+      messageCount,
+      totalTokens: totals.totalTokens,
+      inputTokens: totals.inputTokens,
+      outputTokens: totals.outputTokens,
       cacheTokens,
-      estimatedCost,
+      estimatedCost: totals.totalCost,
       efficiencyScore,
       avgTokensPerMessage,
       durationMinutes,
@@ -504,3 +487,73 @@ export const useConversationMetrics = (
 
   return metrics;
 };
+
+function countToolUses(message: ClaudeStreamMessage): number {
+  const content = (message as any)?.message?.content;
+  if (!Array.isArray(content)) {
+    return 0;
+  }
+
+  return content.filter((item: any) => item?.type === 'tool_use').length;
+}
+
+function calculateDurationMinutes(
+  messages: ClaudeStreamMessage[],
+  sessionStartTime: string | undefined,
+  events: BillingEvent[]
+): number {
+  const messageTimestamps = messages
+    .map(extractTimestampMs)
+    .filter((value): value is number => typeof value === 'number');
+
+  if (messageTimestamps.length >= 2) {
+    const earliest = Math.min(...messageTimestamps);
+    const latest = Math.max(...messageTimestamps);
+    if (latest >= earliest) {
+      return (latest - earliest) / 60000;
+    }
+  }
+
+  if (sessionStartTime) {
+    const parsedStart = Date.parse(sessionStartTime);
+    if (!Number.isNaN(parsedStart)) {
+      return (Date.now() - parsedStart) / 60000;
+    }
+  }
+
+  const eventTimestamps = events
+    .map(event => event.timestampMs)
+    .filter((value): value is number => typeof value === 'number');
+
+  if (eventTimestamps.length >= 2) {
+    const earliest = Math.min(...eventTimestamps);
+    const latest = Math.max(...eventTimestamps);
+    if (latest >= earliest) {
+      return (latest - earliest) / 60000;
+    }
+  }
+
+  return 0;
+}
+
+function extractTimestampMs(message: ClaudeStreamMessage): number | undefined {
+  const candidates = [
+    (message as any).timestamp,
+    (message as any).receivedAt,
+    (message as any).sentAt,
+    (message as any)?.message?.timestamp,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string' || candidate.trim() === '') {
+      continue;
+    }
+
+    const parsed = Date.parse(candidate);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+}

@@ -12,6 +12,9 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 use tokio::process::Command;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 /// 扩展的Hook事件类型
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "PascalCase")]
@@ -139,16 +142,21 @@ impl HookExecutor {
         let max_retries = hook.retry.unwrap_or(0);
 
         loop {
-            let mut cmd = Command::new("bash");
-            cmd.arg("-c")
-                .arg(&hook.command)
-                .stdin(std::process::Stdio::piped())
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::piped())
-                .env("HOOK_CONTEXT", &context_json)
-                .env("HOOK_EVENT", &context.event)
-                .env("SESSION_ID", &context.session_id)
-                .env("PROJECT_PATH", &context.project_path);
+        let mut cmd = Command::new("bash");
+        cmd.arg("-c")
+            .arg(&hook.command)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .env("HOOK_CONTEXT", &context_json)
+            .env("HOOK_EVENT", &context.event)
+            .env("SESSION_ID", &context.session_id)
+            .env("PROJECT_PATH", &context.project_path);
+
+        #[cfg(target_os = "windows")]
+        {
+            cmd.creation_flags(0x08000000);
+        }
 
             // 设置超时
             let timeout_duration = tokio::time::Duration::from_secs(hook.timeout.unwrap_or(30));
@@ -296,6 +304,11 @@ impl HookExecutor {
             .arg(command)
             .env("SESSION_ID", &context.session_id)
             .env("PROJECT_PATH", &context.project_path);
+
+        #[cfg(target_os = "windows")]
+        {
+            cmd.creation_flags(0x08000000);
+        }
 
         let _ = cmd
             .spawn()
