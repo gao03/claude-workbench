@@ -635,7 +635,7 @@ pub async fn check_rewind_capabilities(
 
 /// Extract prompts from JSONL session file
 /// This function reads the .jsonl file and extracts all user prompts
-/// This is needed to support reverting CLI prompts which aren't tracked in .prompts.json
+/// This is the single source of truth for all prompts (both CLI and project interface)
 fn extract_prompts_from_jsonl(
     session_id: &str,
     project_id: &str,

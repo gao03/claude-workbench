@@ -2030,7 +2030,8 @@ export const api = {
   },
 
   /**
-   * Get list of all prompts for a session (legacy method, uses .prompts.json)
+   * Get list of all prompts for a session
+   * Extracts all prompts from .jsonl (single source of truth)
    */
   async getPromptList(
     sessionId: string,
@@ -2048,7 +2049,8 @@ export const api = {
   },
 
   /**
-   * Get unified prompt list from both .prompts.json and .jsonl
+   * Get unified prompt list with git records enriched from .git-records.json
+   * Combines .jsonl prompts (all messages) with git records (hash-based mapping)
    * This includes both project interface prompts (with git records) and CLI prompts (without git records)
    */
   async getUnifiedPromptList(
