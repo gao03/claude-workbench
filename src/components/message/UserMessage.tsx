@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { RotateCcw, AlertTriangle } from "lucide-react";
 import { MessageBubble } from "./MessageBubble";
 import { MessageHeader } from "./MessageHeader";
@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import type { ClaudeStreamMessage } from '@/types/claude';
+import type { RewindCapabilities, RewindMode } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface UserMessageProps {
   /** 消息数据 */
@@ -16,8 +18,12 @@ interface UserMessageProps {
   className?: string;
   /** 提示词索引（只计算用户提示词） */
   promptIndex?: number;
+  /** Session ID */
+  sessionId?: string;
+  /** Project ID */
+  projectId?: string;
   /** 撤回回调 */
-  onRevert?: (promptIndex: number) => void;
+  onRevert?: (promptIndex: number, mode: RewindMode) => void;
 }
 
 /**
@@ -121,17 +127,42 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   message,
   className,
   promptIndex,
+  sessionId,
+  projectId,
   onRevert
 }) => {
   const text = extractUserText(message);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  
+  const [capabilities, setCapabilities] = useState<RewindCapabilities | null>(null);
+  const [isLoadingCapabilities, setIsLoadingCapabilities] = useState(false);
+
   // 如果没有文本内容，不渲染
   if (!text) return null;
-  
+
   // ⚡ 检查是否是 Skills 消息
   const isSkills = isSkillsMessage(text);
   const displayContent = isSkills ? formatSkillsMessage(text) : text;
+
+  // 检测撤回能力
+  useEffect(() => {
+    const loadCapabilities = async () => {
+      if (promptIndex === undefined || !sessionId || !projectId) return;
+
+      setIsLoadingCapabilities(true);
+      try {
+        const caps = await api.checkRewindCapabilities(sessionId, projectId, promptIndex);
+        setCapabilities(caps);
+      } catch (error) {
+        console.error('Failed to check rewind capabilities:', error);
+      } finally {
+        setIsLoadingCapabilities(false);
+      }
+    };
+
+    if (showConfirmDialog) {
+      loadCapabilities();
+    }
+  }, [showConfirmDialog, promptIndex, sessionId, projectId]);
 
   const handleRevertClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -139,14 +170,15 @@ export const UserMessage: React.FC<UserMessageProps> = ({
     setShowConfirmDialog(true);
   };
 
-  const handleConfirmRevert = () => {
+  const handleConfirmRevert = (mode: RewindMode) => {
     if (promptIndex !== undefined && onRevert) {
       setShowConfirmDialog(false);
-      onRevert(promptIndex);
+      onRevert(promptIndex, mode);
     }
   };
 
   const showRevertButton = promptIndex !== undefined && promptIndex >= 0 && onRevert;
+  const hasWarning = capabilities && !capabilities.code;
 
   return (
     <>
@@ -154,12 +186,12 @@ export const UserMessage: React.FC<UserMessageProps> = ({
       <MessageBubble variant="user">
           <div className="relative">
         {/* 消息头部 */}
-        <MessageHeader 
-          variant="user" 
+        <MessageHeader
+          variant="user"
           timestamp={message.timestamp}
           showAvatar={false}
         />
-        
+
         {/* 消息内容和撤回按钮 - 同一行显示 */}
         <div className="flex items-start gap-2">
         {/* 消息内容 */}
@@ -170,9 +202,28 @@ export const UserMessage: React.FC<UserMessageProps> = ({
             {displayContent}
             </div>
 
-          {/* 撤回按钮 - Skills 消息不显示撤回按钮 */}
+          {/* 撤回按钮和警告图标 - Skills 消息不显示撤回按钮 */}
             {showRevertButton && !isSkills && (
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 flex items-center gap-1">
+              {/* CLI 提示词警告图标 */}
+              {hasWarning && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center justify-center h-7 w-7">
+                        <AlertTriangle className="h-4 w-4 text-orange-500" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-sm">
+                        {capabilities?.warning || "此提示词无法回滚代码"}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
+              {/* 撤回按钮 */}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -197,38 +248,119 @@ export const UserMessage: React.FC<UserMessageProps> = ({
       </MessageBubble>
     </div>
 
-      {/* 撤回确认对话框 */}
+      {/* 撤回确认对话框 - 三模式选择 */}
       {showConfirmDialog && (
         <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-600" />
-                确认撤回操作
+                选择撤回模式
               </DialogTitle>
               <DialogDescription>
-                撤回到此消息，删除后续所有对话并恢复代码
+                将撤回到提示词 #{(promptIndex ?? 0) + 1}，请选择撤回方式
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <div className="text-sm font-medium">将会执行：</div>
-                <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 mt-0.5">✓</span>
-                    <span>删除提示词 #{(promptIndex ?? 0) + 1} 及之后的所有对话</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 mt-0.5">✓</span>
-                    <span>代码回滚到发送此消息前的状态</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 mt-0.5">✓</span>
-                    <span>提示词恢复到输入框，可修改重发</span>
-                  </li>
-                </ul>
-              </div>
+              {/* CLI 提示词警告 */}
+              {capabilities?.warning && (
+                <Alert className="border-orange-500/50 bg-orange-50 dark:bg-orange-950/20">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-800 dark:text-orange-200">
+                    {capabilities.warning}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* 加载中状态 */}
+              {isLoadingCapabilities && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="text-sm text-muted-foreground">检测撤回能力中...</div>
+                </div>
+              )}
+
+              {/* 三种模式选择 */}
+              {!isLoadingCapabilities && capabilities && (
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">选择撤回内容：</div>
+
+                  {/* 模式1: 仅对话 */}
+                  <div className={cn(
+                    "p-4 rounded-lg border-2 cursor-pointer transition-all duration-200",
+                    "hover:border-primary hover:bg-accent/50 hover:shadow-md hover:scale-[1.02]",
+                    "active:scale-[0.98]"
+                  )}
+                    onClick={() => handleConfirmRevert("conversation_only")}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="font-medium">仅删除对话</div>
+                        <div className="text-sm text-muted-foreground">
+                          删除此消息及之后的所有对话，代码保持不变
+                        </div>
+                      </div>
+                      <div className="text-xs text-green-600 font-medium bg-green-50 dark:bg-green-950 px-2 py-1 rounded">
+                        总是可用
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 模式2: 仅代码 */}
+                  <div className={cn(
+                    "p-4 rounded-lg border-2 transition-all duration-200",
+                    capabilities.code
+                      ? "cursor-pointer hover:border-primary hover:bg-accent/50 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                      : "opacity-50 cursor-not-allowed bg-muted"
+                  )}
+                    onClick={() => capabilities.code && handleConfirmRevert("code_only")}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="font-medium">仅回滚代码</div>
+                        <div className="text-sm text-muted-foreground">
+                          代码回滚到此消息前的状态，保留对话记录
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "text-xs font-medium px-2 py-1 rounded",
+                        capabilities.code
+                          ? "text-green-600 bg-green-50 dark:bg-green-950"
+                          : "text-muted-foreground bg-muted"
+                      )}>
+                        {capabilities.code ? "可用" : "不可用"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 模式3: 两者都撤回 */}
+                  <div className={cn(
+                    "p-4 rounded-lg border-2 transition-all duration-200",
+                    capabilities.both
+                      ? "cursor-pointer hover:border-primary hover:bg-accent/50 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                      : "opacity-50 cursor-not-allowed bg-muted"
+                  )}
+                    onClick={() => capabilities.both && handleConfirmRevert("both")}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="font-medium">完整撤回</div>
+                        <div className="text-sm text-muted-foreground">
+                          删除对话并回滚代码，恢复到此消息前的完整状态
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "text-xs font-medium px-2 py-1 rounded",
+                        capabilities.both
+                          ? "text-green-600 bg-green-50 dark:bg-green-950"
+                          : "text-muted-foreground bg-muted"
+                      )}>
+                        {capabilities.both ? "可用" : "不可用"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -238,18 +370,12 @@ export const UserMessage: React.FC<UserMessageProps> = ({
               </Alert>
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setShowConfirmDialog(false)}
               >
                 取消
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleConfirmRevert}
-              >
-                确认撤回
               </Button>
             </DialogFooter>
           </DialogContent>

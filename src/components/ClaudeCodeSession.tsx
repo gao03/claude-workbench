@@ -561,56 +561,30 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
   }, [messages, displayableMessages]);
 
 
-  // 🆕 撤回处理函数
-  const handleRevert = useCallback(async (promptIndex: number) => {
+  // 🆕 撤回处理函数 - 支持三种撤回模式
+  const handleRevert = useCallback(async (promptIndex: number, mode: import('@/lib/api').RewindMode = 'both') => {
     if (!effectiveSession) return;
-    
+
     try {
-      console.log('[Prompt Revert] Reverting to prompt #', promptIndex);
-      
-      // 🔍 索引对齐验证（可选，帮助调试）
-      try {
-        const promptList = await api.getPromptList(
-          effectiveSession.id,
-          effectiveSession.project_id
-        );
-        
-        if (promptIndex >= promptList.length) {
-          console.warn('[Prompt Revert] Index mismatch warning:', {
-            requestedIndex: promptIndex,
-            availablePrompts: promptList.length,
-            maxValidIndex: promptList.length - 1
-          });
-          
-          // 友好提示用户
-          setError(`索引不匹配：尝试撤回到 #${promptIndex}，但只有 ${promptList.length} 条提示词记录（#0-#${promptList.length - 1}）`);
-          return;
-        }
-        
-        console.log('[Prompt Revert] Index validation passed:', {
-          requestedIndex: promptIndex,
-          totalPrompts: promptList.length
-        });
-      } catch (validationError) {
-        console.warn('[Prompt Revert] Index validation failed (continuing anyway):', validationError);
-      }
-      
+      console.log('[Prompt Revert] Reverting to prompt #', promptIndex, 'with mode:', mode);
+
       // 调用后端撤回（返回提示词文本）
       const promptText = await api.revertToPrompt(
         effectiveSession.id,
         effectiveSession.project_id,
         projectPath,
-        promptIndex
+        promptIndex,
+        mode
       );
-      
+
       console.log('[Prompt Revert] Revert successful, reloading messages...');
-      
+
       // 重新加载消息历史
       const history = await api.loadSessionHistory(
         effectiveSession.id,
         effectiveSession.project_id
       );
-      
+
       if (Array.isArray(history)) {
         setMessages(history);
         console.log('[Prompt Revert] Loaded messages:', {
@@ -624,18 +598,29 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
           hideWarmupSetting: claudeSettings?.hideWarmupMessages
         });
       }
-      
-      // 恢复提示词到输入框
-      if (floatingPromptRef.current && promptText) {
+
+      // 恢复提示词到输入框（仅在对话撤回模式下）
+      if ((mode === 'conversation_only' || mode === 'both') && floatingPromptRef.current && promptText) {
         console.log('[Prompt Revert] Restoring prompt to input:', promptText);
         floatingPromptRef.current.setPrompt(promptText);
       }
-      
+
+      // 显示成功提示
+      const modeText = {
+        'conversation_only': '对话已删除',
+        'code_only': '代码已回滚',
+        'both': '对话已删除，代码已回滚'
+      }[mode];
+
+      // 使用简单的成功提示（避免依赖外部 toast 库）
+      setError(''); // 清除错误
+      console.log(`[Prompt Revert] Success: ${modeText}`);
+
     } catch (error) {
       console.error('[Prompt Revert] Failed to revert:', error);
       setError('撤回失败：' + error);
     }
-  }, [effectiveSession, projectPath]);
+  }, [effectiveSession, projectPath, claudeSettings?.hideWarmupMessages]);
 
   // Cleanup event listeners and track mount state
   useEffect(() => {
@@ -698,6 +683,8 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
                   claudeSettings={claudeSettings}
                   isStreaming={virtualItem.index === displayableMessages.length - 1 && isLoading}
                   promptIndex={promptIndex}
+                  sessionId={effectiveSession?.id}
+                  projectId={effectiveSession?.project_id}
                   onRevert={handleRevert}
                 />
               </motion.div>

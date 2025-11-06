@@ -5,6 +5,7 @@ import { SystemMessage } from "./SystemMessage";
 import { ResultMessage } from "./ResultMessage";
 import { SummaryMessage } from "./SummaryMessage";
 import type { ClaudeStreamMessage } from '@/types/claude';
+import type { RewindMode } from '@/lib/api';
 
 interface StreamMessageV2Props {
   message: ClaudeStreamMessage;
@@ -13,7 +14,9 @@ interface StreamMessageV2Props {
   claudeSettings?: { showSystemInitialization?: boolean };
   isStreaming?: boolean;
   promptIndex?: number;
-  onRevert?: (promptIndex: number) => void;
+  sessionId?: string;
+  projectId?: string;
+  onRevert?: (promptIndex: number, mode: RewindMode) => void;
 }
 
 /**
@@ -37,6 +40,8 @@ export const StreamMessageV2: React.FC<StreamMessageV2Props> = ({
   claudeSettings,
   isStreaming = false,
   promptIndex,
+  sessionId,
+  projectId,
   onRevert
 }) => {
   const messageType = (message as ClaudeStreamMessage & { type?: string }).type ?? (message as any).type;
@@ -48,6 +53,8 @@ export const StreamMessageV2: React.FC<StreamMessageV2Props> = ({
           message={message}
           className={className}
           promptIndex={promptIndex}
+          sessionId={sessionId}
+          projectId={projectId}
           onRevert={onRevert}
         />
       );

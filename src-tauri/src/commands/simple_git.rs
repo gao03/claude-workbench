@@ -63,13 +63,32 @@ pub fn ensure_git_repo(project_path: &str) -> Result<(), String> {
     config_email.creation_flags(0x08000000);
     let _ = config_email.output();
 
-    // Always use --allow-empty to ensure commit is created
+    // CRITICAL: Add all existing files first to preserve user code!
+    log::info!("Adding all existing files to git staging area...");
+    let mut add_cmd = Command::new("git");
+    add_cmd.args(["add", "-A"]);
+    add_cmd.current_dir(project_path);
+    #[cfg(target_os = "windows")]
+    add_cmd.creation_flags(0x08000000);
+
+    let add_output = add_cmd
+        .output()
+        .map_err(|e| format!("Failed to add files: {}", e))?;
+
+    if !add_output.status.success() {
+        let stderr = String::from_utf8_lossy(&add_output.stderr);
+        log::warn!("Git add warning: {}", stderr);
+        // Continue anyway, might just be no files to add
+    }
+
+    // Create initial commit with all current files
+    // Use --allow-empty as fallback in case there are no files
     let mut commit_cmd = Command::new("git");
     commit_cmd.args([
         "commit",
         "--allow-empty",
         "-m",
-        "[Claude Workbench] Initial commit",
+        "[Claude Workbench] Initial commit - preserving existing code",
     ]);
     commit_cmd.current_dir(project_path);
 
@@ -86,7 +105,7 @@ pub fn ensure_git_repo(project_path: &str) -> Result<(), String> {
         return Err(format!("Failed to create initial commit: {}", stderr));
     }
 
-    log::info!("Git repository initialized successfully with initial commit");
+    log::info!("Git repository initialized successfully with initial commit (all existing files preserved)");
     Ok(())
 }
 

@@ -98,6 +98,43 @@ export interface FileEntry {
 }
 
 /**
+ * Rewind mode for reverting prompts
+ */
+export type RewindMode = "conversation_only" | "code_only" | "both";
+
+/**
+ * Capabilities for rewinding a specific prompt
+ */
+export interface RewindCapabilities {
+  /** Can revert conversation (always true) */
+  conversation: boolean;
+  /** Can revert code (true if has git_commit_before) */
+  code: boolean;
+  /** Can revert both (true if has git_commit_before) */
+  both: boolean;
+  /** Warning message if code revert is not available */
+  warning?: string;
+  /** Prompt source indicator */
+  source: "project" | "cli";
+}
+
+/**
+ * A record of a user prompt
+ */
+export interface PromptRecord {
+  /** Index of this prompt (0, 1, 2...) */
+  index: number;
+  /** The prompt text user entered */
+  text: string;
+  /** Git commit before sending this prompt */
+  gitCommitBefore: string;
+  /** Git commit after AI completed (optional) */
+  gitCommitAfter?: string;
+  /** Timestamp when prompt was sent */
+  timestamp: number;
+}
+
+/**
  * Represents a Claude installation found on the system
  */
 export interface ClaudeInstallation {
@@ -1969,20 +2006,22 @@ export const api = {
   },
 
   /**
-   * Revert to a specific prompt
+   * Revert to a specific prompt with support for different rewind modes
    */
   async revertToPrompt(
     sessionId: string,
     projectId: string,
     projectPath: string,
-    promptIndex: number
+    promptIndex: number,
+    mode: RewindMode = "both"
   ): Promise<string> {
     try {
       return await invoke<string>("revert_to_prompt", {
         sessionId,
         projectId,
         projectPath,
-        promptIndex
+        promptIndex,
+        mode
       });
     } catch (error) {
       console.error("Failed to revert to prompt:", error);
@@ -1991,20 +2030,60 @@ export const api = {
   },
 
   /**
-   * Get list of all prompts for a session
+   * Get list of all prompts for a session (legacy method, uses .prompts.json)
    */
   async getPromptList(
     sessionId: string,
     projectId: string
-  ): Promise<any[]> {
+  ): Promise<PromptRecord[]> {
     try {
-      return await invoke<any[]>("get_prompt_list", {
+      return await invoke<PromptRecord[]>("get_prompt_list", {
         sessionId,
         projectId
       });
     } catch (error) {
       console.error("Failed to get prompt list:", error);
       return [];
+    }
+  },
+
+  /**
+   * Get unified prompt list from both .prompts.json and .jsonl
+   * This includes both project interface prompts (with git records) and CLI prompts (without git records)
+   */
+  async getUnifiedPromptList(
+    sessionId: string,
+    projectId: string
+  ): Promise<PromptRecord[]> {
+    try {
+      return await invoke<PromptRecord[]>("get_unified_prompt_list", {
+        sessionId,
+        projectId
+      });
+    } catch (error) {
+      console.error("Failed to get unified prompt list:", error);
+      return [];
+    }
+  },
+
+  /**
+   * Check rewind capabilities for a specific prompt
+   * Determines whether a prompt can be reverted fully (conversation + code) or partially (conversation only)
+   */
+  async checkRewindCapabilities(
+    sessionId: string,
+    projectId: string,
+    promptIndex: number
+  ): Promise<RewindCapabilities> {
+    try {
+      return await invoke<RewindCapabilities>("check_rewind_capabilities", {
+        sessionId,
+        projectId,
+        promptIndex
+      });
+    } catch (error) {
+      console.error("Failed to check rewind capabilities:", error);
+      throw error;
     }
   },
 

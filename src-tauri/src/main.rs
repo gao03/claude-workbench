@@ -29,7 +29,8 @@ use commands::storage::{init_database, AgentDb};
 
 use commands::clipboard::{read_from_clipboard, save_clipboard_image, write_to_clipboard};
 use commands::prompt_tracker::{
-    get_prompt_list, mark_prompt_completed, record_prompt_sent, revert_to_prompt,
+    check_rewind_capabilities, get_prompt_list, get_unified_prompt_list, mark_prompt_completed,
+    record_prompt_sent, revert_to_prompt,
 };
 use commands::provider::{
     add_provider_config, clear_provider_config, delete_provider_config,
@@ -238,6 +239,8 @@ fn main() {
             mark_prompt_completed,
             revert_to_prompt,
             get_prompt_list,
+            get_unified_prompt_list,
+            check_rewind_capabilities,
             // Claude Extensions (Plugins, Subagents & Skills)
             list_plugins,
             list_subagents,
