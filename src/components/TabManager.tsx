@@ -320,25 +320,27 @@ export const TabManager: React.FC<TabManagerProps> = ({
 
         {/* 标签页内容区域 */}
         <div className="flex-1 relative overflow-hidden">
-          {/* 🔧 PERFORMANCE FIX: 只渲染活跃标签页，而非所有标签页 */}
-          {/* 这大幅减少内存使用和CPU开销 */}
+          {/* 🔧 STATE PRESERVATION: 渲染所有标签页但隐藏非活跃标签页 */}
+          {/* 这样可以保持组件状态（包括输入框内容），避免切换标签页时状态丢失 */}
           {tabs.map((tab) => {
-            // 只渲染活跃标签页
-            if (!tab.isActive) {
-              return null;
-            }
-
             return (
-              <TabSessionWrapper
+              <div
                 key={tab.id}
-                tabId={tab.id}
-                session={tab.session}
-                initialProjectPath={tab.projectPath}
-                isActive={tab.isActive}
-                onStreamingChange={(isStreaming, sessionId) =>
-                  updateTabStreamingStatus(tab.id, isStreaming, sessionId)
-                }
-              />
+                className={cn(
+                  "absolute inset-0",
+                  !tab.isActive && "hidden"
+                )}
+              >
+                <TabSessionWrapper
+                  tabId={tab.id}
+                  session={tab.session}
+                  initialProjectPath={tab.projectPath}
+                  isActive={tab.isActive}
+                  onStreamingChange={(isStreaming, sessionId) =>
+                    updateTabStreamingStatus(tab.id, isStreaming, sessionId)
+                  }
+                />
+              </div>
             );
           })}
 
