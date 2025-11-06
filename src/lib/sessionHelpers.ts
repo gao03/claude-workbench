@@ -27,6 +27,20 @@ export interface PreviewState {
   splitPosition: number;
 }
 
+/**
+ * Message content part - can be text, tool_use, tool_result, etc.
+ */
+export interface MessageContentPart {
+  type: string;
+  text?: string | { text: string };
+  [key: string]: any;
+}
+
+/**
+ * Message content - can be a string or an array of content parts
+ */
+export type MessageContent = string | MessageContentPart[] | null | undefined;
+
 // ============================================================================
 // Project Path Selection
 // ============================================================================
@@ -155,6 +169,59 @@ export async function copyAsMarkdown(
 // ============================================================================
 
 /**
+ * Extracts text content from message content (string or array format)
+ *
+ * @param content - Message content (can be string, array of parts, null, or undefined)
+ * @returns Extracted text as a string (empty string if no text found)
+ *
+ * @example
+ * // String content
+ * extractTextFromContent("Hello world") // => "Hello world"
+ *
+ * // Array content
+ * extractTextFromContent([
+ *   { type: "text", text: "Hello" },
+ *   { type: "text", text: "World" }
+ * ]) // => "Hello\nWorld"
+ *
+ * // Edge cases
+ * extractTextFromContent(null) // => ""
+ * extractTextFromContent(undefined) // => ""
+ */
+export function extractTextFromContent(content: MessageContent): string {
+  // Handle null or undefined
+  if (content == null) {
+    return "";
+  }
+
+  // Handle string content
+  if (typeof content === 'string') {
+    return content;
+  }
+
+  // Handle array content
+  if (Array.isArray(content)) {
+    return content
+      .filter((part: MessageContentPart) => part.type === "text")
+      .map((part: MessageContentPart) => {
+        // Handle nested text structure
+        if (typeof part.text === 'string') {
+          return part.text;
+        }
+        if (part.text && typeof part.text === 'object' && 'text' in part.text) {
+          return part.text.text;
+        }
+        return '';
+      })
+      .filter(Boolean) // Remove empty strings
+      .join("\n");
+  }
+
+  // Fallback for unexpected types
+  return "";
+}
+
+/**
  * Extracts conversation context from recent messages for prompt enhancement
  * @param messages Array of Claude stream messages
  * @param customConfig Optional custom configuration (if not provided, loads from localStorage)
@@ -188,20 +255,8 @@ export function getConversationContext(
     let contextLine = "";
 
     if (msg.type === "user" && msg.message) {
-      // Extract user message text
-      let userText = "";
-      const content = msg.message.content;
-
-      if (typeof content === 'string') {
-        // Content is a simple string
-        userText = content;
-      } else if (Array.isArray(content)) {
-        // Content is an array of blocks
-        userText = content
-          .filter((c: any) => c.type === "text")
-          .map((c: any) => c.text)
-          .join("\n");
-      }
+      // Extract user message text using helper function
+      const userText = extractTextFromContent(msg.message.content);
 
       if (userText) {
         // Truncate based on config
@@ -211,23 +266,8 @@ export function getConversationContext(
         contextLine = `用户: ${truncated}`;
       }
     } else if (msg.type === "assistant" && msg.message) {
-      // Extract assistant message text
-      let assistantText = "";
-      const content = msg.message.content;
-
-      if (typeof content === 'string') {
-        // Content is a simple string
-        assistantText = content;
-      } else if (Array.isArray(content)) {
-        // Content is an array of blocks
-        assistantText = content
-          .filter((c: any) => c.type === "text")
-          .map((c: any) => {
-            if (typeof c.text === 'string') return c.text;
-            return c.text?.text || '';
-          })
-          .join("\n");
-      }
+      // Extract assistant message text using helper function
+      const assistantText = extractTextFromContent(msg.message.content);
 
       if (assistantText) {
         // Truncate based on config

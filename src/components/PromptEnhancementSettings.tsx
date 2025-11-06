@@ -40,7 +40,7 @@ export const PromptEnhancementSettings: React.FC<PromptEnhancementSettingsProps>
   const [editingProvider, setEditingProvider] = useState<PromptEnhancementProvider | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ providerId: string; success: boolean; message: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; provider: PromptEnhancementProvider | null }>({ show: false, provider: null });
 
   useEffect(() => {
@@ -109,7 +109,7 @@ export const PromptEnhancementSettings: React.FC<PromptEnhancementSettingsProps>
     setTestResult(null);
 
     const result = await testAPIConnection(provider);
-    setTestResult(result);
+    setTestResult({ providerId: provider.id, ...result });
     setTestingId(null);
 
     setTimeout(() => setTestResult(null), 5000);
@@ -258,7 +258,7 @@ export const PromptEnhancementSettings: React.FC<PromptEnhancementSettingsProps>
               </div>
               
               {/* 测试结果 */}
-              {testResult && testingId === null && (
+              {testResult && testResult.providerId === provider.id && testingId === null && (
                 <div className={cn(
                   "mt-3 p-2 rounded-md text-sm flex items-center gap-2",
                   testResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
