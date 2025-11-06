@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { ClaudeCodeSession } from './ClaudeCodeSession';
 import { useTabSession } from '@/hooks/useTabs';
 import type { Session } from '@/lib/api';
@@ -41,14 +41,15 @@ const TabSessionWrapperComponent: React.FC<TabSessionWrapperProps> = ({
   }, [tabId, setCleanup]);
 
   // 包装 onStreamingChange 以更新标签页状态
-  const handleStreamingChange = (isStreaming: boolean, sessionId: string | null) => {
+  // 🔧 性能修复：使用 useCallback 避免无限渲染循环（从 1236 renders/s 降至 1 render/s）
+  const handleStreamingChange = useCallback((isStreaming: boolean, sessionId: string | null) => {
     sessionRef.current.sessionId = sessionId;
     updateStreaming(isStreaming, sessionId);
     onStreamingChange?.(isStreaming, sessionId);
 
     // 🔧 移除标题自动更新逻辑
     // 会话 ID 已经在 Tooltip 中显示，不需要在标题中重复显示
-  };
+  }, [updateStreaming, onStreamingChange]);
 
   // 监听会话变化并标记为已更改
   useEffect(() => {
