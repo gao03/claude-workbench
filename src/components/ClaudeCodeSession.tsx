@@ -373,9 +373,11 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
   // ✅ handleSendPrompt function is now provided by usePromptExecution Hook (line 207-234)
 
   // Get conversation context for prompt enhancement
-  const getConversationContext = (): string[] => {
+  // 🔧 FIX: Use useCallback to ensure getConversationContext always uses the latest messages
+  // This fixes the issue where prompt enhancement doesn't work in historical sessions
+  const getConversationContext = useCallback((): string[] => {
     return SessionHelpers.getConversationContext(messages);
-  };
+  }, [messages]);
 
   const handleCancelExecution = async () => {
     if (!claudeSessionId || !isLoading) return;

@@ -273,16 +273,57 @@ fn discover_system_installations() -> Vec<ClaudeInstallation> {
     installations.retain(|install| unique_paths.insert(install.path.clone()));
 
     // Test each installation for actual functionality with timeout
-    installations.retain(|install| {
-        let is_functional = test_claude_binary(&install.path);
-        if !is_functional {
-            warn!(
-                "Claude installation at {} is not functional, removing from list",
-                install.path
-            );
-        }
-        is_functional
-    });
+    // 🔧 FIX: In debug/development mode, be more lenient with testing
+    // Development builds may have stricter security restrictions that prevent spawning processes
+    #[cfg(debug_assertions)]
+    {
+        // In dev mode, if binary exists on disk and is a file, consider it valid
+        // This avoids issues with process spawning restrictions in Tauri dev mode
+        installations.retain(|install| {
+            // For PATH-based lookups (e.g., "claude" without full path), try to test
+            if !install.path.contains('/') && !install.path.contains('\\') {
+                let is_functional = test_claude_binary(&install.path);
+                if !is_functional {
+                    warn!(
+                        "Claude installation at {} is not functional in dev mode, removing from list",
+                        install.path
+                    );
+                }
+                return is_functional;
+            }
+
+            // For full paths, just check if file exists (more lenient in dev mode)
+            let path_buf = PathBuf::from(&install.path);
+            let exists = path_buf.exists() && path_buf.is_file();
+            if exists {
+                info!(
+                    "Dev mode: Found Claude at {} (skipping functionality test)",
+                    install.path
+                );
+            } else {
+                warn!(
+                    "Dev mode: Claude path does not exist: {}",
+                    install.path
+                );
+            }
+            exists
+        });
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        // In production builds, perform full functionality tests
+        installations.retain(|install| {
+            let is_functional = test_claude_binary(&install.path);
+            if !is_functional {
+                warn!(
+                    "Claude installation at {} is not functional, removing from list",
+                    install.path
+                );
+            }
+            is_functional
+        });
+    }
 
     installations
 }

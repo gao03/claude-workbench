@@ -1,7 +1,11 @@
 /**
  * 提示词优化服务
  * 支持多个第三方API提供商（OpenAI、Deepseek、通义千问等）
+ *
+ * ⚡ 使用 Tauri HTTP 客户端绕过 CORS 限制
  */
+
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 
 export interface PromptEnhancementProvider {
   id: string;
@@ -159,8 +163,9 @@ async function callOpenAIFormat(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ],
+    stream: false  // 🔧 明确禁用流式响应
   };
-  
+
   // 只在用户设置时才添加可选参数
   if (provider.temperature !== undefined && provider.temperature !== null) {
     requestBody.temperature = provider.temperature;
@@ -171,8 +176,9 @@ async function callOpenAIFormat(
 
   // ⚡ 修复：处理 apiUrl 末尾可能有的斜杠
   const baseUrl = provider.apiUrl.endsWith('/') ? provider.apiUrl.slice(0, -1) : provider.apiUrl;
-  
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+
+  // ⚡ 使用 Tauri HTTP 客户端绕过 CORS 限制
+  const response = await tauriFetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -186,10 +192,33 @@ async function callOpenAIFormat(
     throw new Error(`API request failed: ${response.status} ${response.statusText}\n${errorText}`);
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('API returned empty response');
+  const responseText = await response.text();
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch (parseError) {
+    throw new Error(`Failed to parse API response: ${parseError}`);
+  }
+
+  // 检查响应数据完整性
+  if (!data.choices || data.choices.length === 0) {
+    if (data.error) {
+      throw new Error(`API error: ${JSON.stringify(data.error)}`);
+    }
+    throw new Error(`API returned no choices`);
+  }
+
+  const choice = data.choices[0];
+  if (!choice.message) {
+    throw new Error(`Choice has no message`);
+  }
+
+  const content = choice.message.content;
+  if (!content || content.trim() === '') {
+    if (choice.finish_reason) {
+      throw new Error(`Content is empty. Finish reason: ${choice.finish_reason}`);
+    }
+    throw new Error('API returned empty content');
   }
 
   return content.trim();
@@ -229,11 +258,12 @@ async function callGeminiFormat(
 
   // ⚡ 修复：处理 apiUrl 末尾可能有的斜杠，避免双斜杠
   const baseUrl = provider.apiUrl.endsWith('/') ? provider.apiUrl.slice(0, -1) : provider.apiUrl;
-  
+
   // Gemini API 格式：/v1beta/models/{model}:generateContent
   const endpoint = `${baseUrl}/v1beta/models/${provider.model}:generateContent?key=${provider.apiKey}`;
 
-  const response = await fetch(endpoint, {
+  // ⚡ 使用 Tauri HTTP 客户端绕过 CORS 限制
+  const response = await tauriFetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

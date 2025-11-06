@@ -189,10 +189,20 @@ export function getConversationContext(
 
     if (msg.type === "user" && msg.message) {
       // Extract user message text
-      const userText = msg.message.content
-        ?.filter((c: any) => c.type === "text")
-        .map((c: any) => c.text)
-        .join("\n");
+      let userText = "";
+      const content = msg.message.content;
+
+      if (typeof content === 'string') {
+        // Content is a simple string
+        userText = content;
+      } else if (Array.isArray(content)) {
+        // Content is an array of blocks
+        userText = content
+          .filter((c: any) => c.type === "text")
+          .map((c: any) => c.text)
+          .join("\n");
+      }
+
       if (userText) {
         // Truncate based on config
         const truncated = userText.length > config.maxUserMessageLength
@@ -202,13 +212,23 @@ export function getConversationContext(
       }
     } else if (msg.type === "assistant" && msg.message) {
       // Extract assistant message text
-      const assistantText = msg.message.content
-        ?.filter((c: any) => c.type === "text")
-        .map((c: any) => {
-          if (typeof c.text === 'string') return c.text;
-          return c.text?.text || '';
-        })
-        .join("\n");
+      let assistantText = "";
+      const content = msg.message.content;
+
+      if (typeof content === 'string') {
+        // Content is a simple string
+        assistantText = content;
+      } else if (Array.isArray(content)) {
+        // Content is an array of blocks
+        assistantText = content
+          .filter((c: any) => c.type === "text")
+          .map((c: any) => {
+            if (typeof c.text === 'string') return c.text;
+            return c.text?.text || '';
+          })
+          .join("\n");
+      }
+
       if (assistantText) {
         // Truncate based on config
         const truncated = assistantText.length > config.maxAssistantMessageLength
