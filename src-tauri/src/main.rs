@@ -9,16 +9,17 @@ use std::sync::{Arc, Mutex};
 
 use commands::claude::{
     cancel_claude_execution, check_claude_version, clear_custom_claude_path, continue_claude_code,
-    delete_project, delete_project_permanently, enhance_prompt, enhance_prompt_with_gemini,
-    execute_claude_code, find_claude_md_files, get_available_tools, get_claude_execution_config,
-    get_claude_path, get_claude_permission_config, get_claude_session_output, get_claude_settings,
-    get_hooks_config, get_permission_presets, get_project_sessions, get_system_prompt,
-    list_directory_contents, list_hidden_projects, list_projects, list_running_claude_sessions,
-    load_session_history, open_new_session, read_claude_md_file, reset_claude_execution_config,
-    restore_project, resume_claude_code, save_claude_md_file, save_claude_settings,
-    save_system_prompt, search_files, set_custom_claude_path, update_claude_execution_config,
-    update_claude_permission_config, update_hooks_config, update_thinking_mode,
-    validate_hook_command, validate_permission_config, ClaudeProcessState,
+    delete_project, delete_project_permanently, delete_session, delete_sessions_batch,
+    enhance_prompt, enhance_prompt_with_gemini, execute_claude_code, find_claude_md_files,
+    get_available_tools, get_claude_execution_config, get_claude_path, get_claude_permission_config,
+    get_claude_session_output, get_claude_settings, get_hooks_config, get_permission_presets,
+    get_project_sessions, get_system_prompt, list_directory_contents, list_hidden_projects,
+    list_projects, list_running_claude_sessions, load_session_history, open_new_session,
+    read_claude_md_file, reset_claude_execution_config, restore_project, resume_claude_code,
+    save_claude_md_file, save_claude_settings, save_system_prompt, search_files,
+    set_custom_claude_path, update_claude_execution_config, update_claude_permission_config,
+    update_hooks_config, update_thinking_mode, validate_hook_command, validate_permission_config,
+    ClaudeProcessState,
 };
 use commands::mcp::{
     mcp_add, mcp_add_from_claude_desktop, mcp_add_json, mcp_export_config, mcp_get,
@@ -122,6 +123,8 @@ fn main() {
             // Claude & Project Management
             list_projects,
             get_project_sessions,
+            delete_session,
+            delete_sessions_batch,
             delete_project,
             restore_project,
             list_hidden_projects,

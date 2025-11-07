@@ -1,8 +1,16 @@
 import React, { useState } from "react";
-import { ArrowLeft, Clock, Plus } from "lucide-react";
+import { ArrowLeft, Clock, Plus, Trash2, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ClaudeMemoriesDropdown } from "@/components/ClaudeMemoriesDropdown";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatUnixTimestamp, formatISOTimestamp, truncateText, getFirstLine } from "@/lib/date-utils";
 import type { Session, ClaudeMdFile } from "@/lib/api";
@@ -25,6 +33,14 @@ interface SessionListProps {
    * Callback when a session is clicked
    */
   onSessionClick?: (session: Session) => void;
+  /**
+   * Callback when a session should be deleted
+   */
+  onSessionDelete?: (sessionId: string, projectId: string) => Promise<void>;
+  /**
+   * Callback when multiple sessions should be deleted
+   */
+  onSessionsBatchDelete?: (sessionIds: string[], projectId: string) => Promise<void>;
   /**
    * Callback when a CLAUDE.md file should be edited
    */
@@ -57,12 +73,21 @@ export const SessionList: React.FC<SessionListProps> = ({
   projectPath,
   onBack,
   onSessionClick,
+  onSessionDelete,
+  onSessionsBatchDelete,
   onEditClaudeFile,
   onNewSession,
   className,
 }) => {
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Multi-selection mode
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
 
   // 🔧 过滤掉空白无用的会话（没有 first_message 或 id 为空的）
   const validSessions = sessions.filter(session =>
@@ -99,6 +124,83 @@ export const SessionList: React.FC<SessionListProps> = ({
   React.useEffect(() => {
     setCurrentPage(1);
   }, [sortedSessions.length]);
+
+  // Handle delete button click
+  const handleDeleteClick = (e: React.MouseEvent, session: Session) => {
+    e.stopPropagation(); // Prevent triggering onSessionClick
+    setSessionToDelete(session);
+    setDeleteDialogOpen(true);
+  };
+
+  // Confirm deletion
+  const confirmDelete = async () => {
+    if (!sessionToDelete || !onSessionDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await onSessionDelete(sessionToDelete.id, sessionToDelete.project_id);
+      setDeleteDialogOpen(false);
+      setSessionToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete session:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Cancel deletion
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setSessionToDelete(null);
+  };
+
+  // Toggle selection mode
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    setSelectedSessions(new Set());
+  };
+
+  // Toggle session selection
+  const toggleSessionSelection = (sessionId: string) => {
+    const newSelected = new Set(selectedSessions);
+    if (newSelected.has(sessionId)) {
+      newSelected.delete(sessionId);
+    } else {
+      newSelected.add(sessionId);
+    }
+    setSelectedSessions(newSelected);
+  };
+
+  // Select all sessions on current page
+  const selectAllOnPage = () => {
+    if (selectedSessions.size === currentSessions.length) {
+      setSelectedSessions(new Set());
+    } else {
+      const newSelected = new Set(currentSessions.map(s => s.id));
+      setSelectedSessions(newSelected);
+    }
+  };
+
+  // Batch delete selected sessions
+  const handleBatchDelete = async () => {
+    if (selectedSessions.size === 0 || !onSessionsBatchDelete) return;
+
+    try {
+      setIsDeleting(true);
+      const sessionIds = Array.from(selectedSessions);
+      // Get the project_id from the first session
+      const firstSession = sessions.find(s => s.id === sessionIds[0]);
+      if (firstSession) {
+        await onSessionsBatchDelete(sessionIds, firstSession.project_id);
+        setSelectedSessions(new Set());
+        setIsSelectionMode(false);
+      }
+    } catch (error) {
+      console.error("Failed to batch delete sessions:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -148,48 +250,139 @@ export const SessionList: React.FC<SessionListProps> = ({
         </div>
       )}
 
+      {/* Batch operation toolbar */}
+      {onSessionsBatchDelete && validSessions.length > 0 && (
+        <div className="flex items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg border border-border">
+          <div className="flex items-center gap-2">
+            {isSelectionMode ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAllOnPage}
+                >
+                  {selectedSessions.size === currentSessions.length ? (
+                    <>
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      取消全选
+                    </>
+                  ) : (
+                    <>
+                      <Square className="h-4 w-4 mr-2" />
+                      全选当前页
+                    </>
+                  )}
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  已选择 {selectedSessions.size} 个会话
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                批量管理会话
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isSelectionMode && selectedSessions.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBatchDelete}
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {isDeleting ? "删除中..." : `删除选中 (${selectedSessions.size})`}
+              </Button>
+            )}
+
+            <Button
+              variant={isSelectionMode ? "default" : "outline"}
+              size="sm"
+              onClick={toggleSelectionMode}
+              disabled={isDeleting}
+            >
+              {isSelectionMode ? "取消选择" : "批量选择"}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Compact session list */}
       <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
         {currentSessions.map((session) => (
-          <button
+          <div
             key={session.id}
-            onClick={() => onSessionClick?.(session)}
             className={cn(
-              "w-full text-left px-4 py-2.5 hover:bg-muted/30 transition-colors group",
-              session.todo_data && "bg-primary/5 border-l-2 border-l-primary"
+              "relative flex items-center group hover:bg-muted/30 transition-colors",
+              session.todo_data && "bg-primary/5 border-l-2 border-l-primary",
+              isSelectionMode && selectedSessions.has(session.id) && "bg-primary/10"
             )}
           >
-            <div className="flex items-center justify-between gap-3">
-              {/* Session info */}
-              <div className="flex-1 min-w-0 space-y-0.5">
-                {/* First message preview */}
-                <p className="text-sm font-medium truncate text-foreground group-hover:text-primary transition-colors">
-                  {session.first_message
-                    ? truncateText(getFirstLine(session.first_message), 80)
-                    : session.id
-                  }
-                </p>
-
-                {/* Session ID (small and subtle) */}
-                <p className="text-xs font-mono text-muted-foreground truncate">
-                  {session.id}
-                </p>
+            {/* Checkbox in selection mode */}
+            {isSelectionMode && (
+              <div className="px-3 py-2.5">
+                <Checkbox
+                  checked={selectedSessions.has(session.id)}
+                  onCheckedChange={() => toggleSessionSelection(session.id)}
+                />
               </div>
+            )}
 
-              {/* Timestamp - 优先显示最后一条消息时间 */}
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-                <Clock className="h-3 w-3" />
-                <span>
-                  {session.last_message_timestamp
-                    ? formatISOTimestamp(session.last_message_timestamp)
-                    : session.message_timestamp
-                    ? formatISOTimestamp(session.message_timestamp)
-                    : formatUnixTimestamp(session.created_at)
-                  }
-                </span>
+            <button
+              onClick={() => {
+                if (isSelectionMode) {
+                  toggleSessionSelection(session.id);
+                } else {
+                  onSessionClick?.(session);
+                }
+              }}
+              className="flex-1 text-left px-4 py-2.5 min-w-0"
+            >
+              <div className="flex items-center justify-between gap-3">
+                {/* Session info */}
+                <div className="flex-1 min-w-0 space-y-0.5">
+                  {/* First message preview */}
+                  <p className="text-sm font-medium truncate text-foreground group-hover:text-primary transition-colors">
+                    {session.first_message
+                      ? truncateText(getFirstLine(session.first_message), 80)
+                      : session.id
+                    }
+                  </p>
+
+                  {/* Session ID (small and subtle) */}
+                  <p className="text-xs font-mono text-muted-foreground truncate">
+                    {session.id}
+                  </p>
+                </div>
+
+                {/* Timestamp - 优先显示最后一条消息时间 */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+                  <Clock className="h-3 w-3" />
+                  <span>
+                    {session.last_message_timestamp
+                      ? formatISOTimestamp(session.last_message_timestamp)
+                      : session.message_timestamp
+                      ? formatISOTimestamp(session.message_timestamp)
+                      : formatUnixTimestamp(session.created_at)
+                    }
+                  </span>
+                </div>
               </div>
-            </div>
-          </button>
+            </button>
+
+            {/* Delete button - shown on hover (hidden in selection mode) */}
+            {!isSelectionMode && onSessionDelete && (
+              <button
+                onClick={(e) => handleDeleteClick(e, session)}
+                className="px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 text-destructive"
+                title="删除会话"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         ))}
       </div>
 
@@ -198,6 +391,48 @@ export const SessionList: React.FC<SessionListProps> = ({
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认删除会话</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              确定要删除此会话吗？此操作将永久删除会话记录和相关数据，无法恢复。
+            </p>
+            {sessionToDelete && (
+              <div className="mt-3 p-3 bg-muted rounded-md">
+                <p className="text-sm font-medium text-foreground">
+                  {sessionToDelete.first_message
+                    ? truncateText(getFirstLine(sessionToDelete.first_message), 60)
+                    : sessionToDelete.id}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 font-mono">
+                  {sessionToDelete.id}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={cancelDelete}
+              disabled={isDeleting}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "删除中..." : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }; 

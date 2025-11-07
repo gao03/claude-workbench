@@ -493,6 +493,36 @@ export const api = {
   },
 
   /**
+   * Deletes a session and all its associated data
+   * @param sessionId - The session ID to delete
+   * @param projectId - The project ID this session belongs to
+   * @returns Promise resolving to success message
+   */
+  async deleteSession(sessionId: string, projectId: string): Promise<string> {
+    try {
+      return await invoke<string>('delete_session', { sessionId, projectId });
+    } catch (error) {
+      console.error("Failed to delete session:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Deletes multiple sessions in batch
+   * @param sessionIds - Array of session IDs to delete
+   * @param projectId - The project ID these sessions belong to
+   * @returns Promise resolving to success message
+   */
+  async deleteSessionsBatch(sessionIds: string[], projectId: string): Promise<string> {
+    try {
+      return await invoke<string>('delete_sessions_batch', { sessionIds, projectId });
+    } catch (error) {
+      console.error("Failed to batch delete sessions:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Removes a project from the project list (without deleting files)
    * @param projectId - The ID of the project to remove from list
    * @returns Promise resolving to success message

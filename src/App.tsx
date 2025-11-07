@@ -203,6 +203,56 @@ function AppContent() {
   };
 
   /**
+   * Handles session deletion
+   */
+  const handleSessionDelete = async (sessionId: string, projectId: string) => {
+    try {
+      await api.deleteSession(sessionId, projectId);
+      // 重新加载会话列表
+      if (selectedProject) {
+        const sessionList = await api.getProjectSessions(selectedProject.id);
+        setSessions(sessionList);
+      }
+      setToast({
+        message: `会话已成功删除`,
+        type: "success"
+      });
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+      setToast({
+        message: `删除会话失败`,
+        type: "error"
+      });
+      throw err;
+    }
+  };
+
+  /**
+   * Handles batch session deletion
+   */
+  const handleSessionsBatchDelete = async (sessionIds: string[], projectId: string) => {
+    try {
+      await api.deleteSessionsBatch(sessionIds, projectId);
+      // 重新加载会话列表
+      if (selectedProject) {
+        const sessionList = await api.getProjectSessions(selectedProject.id);
+        setSessions(sessionList);
+      }
+      setToast({
+        message: `成功删除 ${sessionIds.length} 个会话`,
+        type: "success"
+      });
+    } catch (err) {
+      console.error("Failed to batch delete sessions:", err);
+      setToast({
+        message: `批量删除会话失败`,
+        type: "error"
+      });
+      throw err;
+    }
+  };
+
+  /**
    * Handles editing a CLAUDE.md file from a project
    */
   const handleEditClaudeFile = (file: ClaudeMdFile) => {
@@ -384,6 +434,8 @@ function AppContent() {
                         projectPath={selectedProject.path}
                         onBack={handleBack}
                         onEditClaudeFile={handleEditClaudeFile}
+                        onSessionDelete={handleSessionDelete}
+                        onSessionsBatchDelete={handleSessionsBatchDelete}
                         onSessionClick={(session) => {
                           // 打开会话并自动切换到该标签页
                           const result = openSessionInBackground(session);

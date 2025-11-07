@@ -896,6 +896,138 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
     Ok(sessions)
 }
 
+/// Deletes a session and all its associated data
+#[tauri::command]
+pub async fn delete_session(
+    session_id: String,
+    project_id: String,
+) -> Result<String, String> {
+    log::info!("Deleting session {} from project {}", session_id, project_id);
+
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+
+    // Delete the session JSONL file
+    let session_file = claude_dir
+        .join("projects")
+        .join(&project_id)
+        .join(format!("{}.jsonl", session_id));
+
+    if session_file.exists() {
+        fs::remove_file(&session_file)
+            .map_err(|e| format!("Failed to delete session file: {}", e))?;
+        log::info!("Deleted session file: {:?}", session_file);
+    } else {
+        log::warn!("Session file not found: {:?}", session_file);
+    }
+
+    // Delete the associated TODO file if it exists
+    let todo_file = claude_dir
+        .join("todos")
+        .join(format!("{}.json", session_id));
+
+    if todo_file.exists() {
+        fs::remove_file(&todo_file)
+            .map_err(|e| format!("Failed to delete TODO file: {}", e))?;
+        log::info!("Deleted TODO file: {:?}", todo_file);
+    }
+
+    // Delete the associated git records file if it exists
+    let git_records_file = claude_dir
+        .join("sessions")
+        .join(&project_id)
+        .join(format!("{}.git-records.json", session_id));
+
+    if git_records_file.exists() {
+        fs::remove_file(&git_records_file)
+            .map_err(|e| format!("Failed to delete git records file: {}", e))?;
+        log::info!("Deleted git records file: {:?}", git_records_file);
+    }
+
+    Ok(format!("Successfully deleted session: {}", session_id))
+}
+
+/// Deletes multiple sessions in batch
+#[tauri::command]
+pub async fn delete_sessions_batch(
+    session_ids: Vec<String>,
+    project_id: String,
+) -> Result<String, String> {
+    log::info!("Batch deleting {} sessions from project {}", session_ids.len(), project_id);
+
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let mut deleted_count = 0;
+    let mut failed_count = 0;
+    let mut errors = Vec::new();
+
+    for session_id in &session_ids {
+        let mut session_deleted = false;
+
+        // Delete the session JSONL file
+        let session_file = claude_dir
+            .join("projects")
+            .join(&project_id)
+            .join(format!("{}.jsonl", session_id));
+
+        if session_file.exists() {
+            match fs::remove_file(&session_file) {
+                Ok(_) => {
+                    log::info!("Deleted session file: {:?}", session_file);
+                    session_deleted = true;
+                }
+                Err(e) => {
+                    let error_msg = format!("Failed to delete session file {}: {}", session_id, e);
+                    log::error!("{}", error_msg);
+                    errors.push(error_msg);
+                    failed_count += 1;
+                    continue;
+                }
+            }
+        }
+
+        // Delete the associated TODO file if it exists
+        let todo_file = claude_dir
+            .join("todos")
+            .join(format!("{}.json", session_id));
+
+        if todo_file.exists() {
+            if let Err(e) = fs::remove_file(&todo_file) {
+                log::warn!("Failed to delete TODO file for {}: {}", session_id, e);
+            } else {
+                log::info!("Deleted TODO file: {:?}", todo_file);
+            }
+        }
+
+        // Delete the associated git records file if it exists
+        let git_records_file = claude_dir
+            .join("sessions")
+            .join(&project_id)
+            .join(format!("{}.git-records.json", session_id));
+
+        if git_records_file.exists() {
+            if let Err(e) = fs::remove_file(&git_records_file) {
+                log::warn!("Failed to delete git records file for {}: {}", session_id, e);
+            } else {
+                log::info!("Deleted git records file: {:?}", git_records_file);
+            }
+        }
+
+        if session_deleted {
+            deleted_count += 1;
+        }
+    }
+
+    if failed_count > 0 {
+        Err(format!(
+            "Batch delete completed with errors: {} deleted, {} failed. Errors: {}",
+            deleted_count,
+            failed_count,
+            errors.join("; ")
+        ))
+    } else {
+        Ok(format!("Successfully deleted {} sessions", deleted_count))
+    }
+}
+
 /// Removes a project from the project list (without deleting files)
 #[tauri::command]
 pub async fn delete_project(project_id: String) -> Result<String, String> {
