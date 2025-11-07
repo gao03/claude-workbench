@@ -142,12 +142,12 @@ export const AIMessage: React.FC<AIMessageProps> = ({
                 <Bot className="w-4 h-4 text-blue-500" />
               </div>
               <span className="font-medium">Claude</span>
-              {formatTimestamp(message.timestamp) && (
+              {formatTimestamp((message as any).receivedAt ?? (message as any).timestamp) && (
                 <>
                   <span className="text-muted-foreground/50">•</span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {formatTimestamp(message.timestamp)}
+                    {formatTimestamp((message as any).receivedAt ?? (message as any).timestamp)}
                   </span>
                 </>
               )}

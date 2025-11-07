@@ -138,7 +138,9 @@ export function useMessageTranslation(config: UseMessageTranslationConfig): UseM
 
       // Add received timestamp for non-user messages
       if (message.type !== "user") {
-        message.receivedAt = new Date().toISOString();
+        const now = new Date().toISOString();
+        message.receivedAt = now;
+        message.timestamp = now;  // Also add timestamp for compatibility
       }
 
       // 🌐 Translation: Process Claude response

@@ -188,7 +188,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
         {/* 消息头部 */}
         <MessageHeader
           variant="user"
-          timestamp={message.timestamp}
+          timestamp={(message as any).sentAt || (message as any).timestamp}
           showAvatar={false}
         />
 

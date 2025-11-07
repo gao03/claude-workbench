@@ -687,9 +687,10 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
                 };
 
                 // List all JSONL files (sessions) in this project directory and find latest activity
+                // 🔧 FIX: Only count sessions with valid first_message (non-empty user messages)
                 let mut sessions = Vec::new();
                 let mut latest_activity = created_at; // Default to project creation time
-                
+
                 if let Ok(session_entries) = fs::read_dir(&path) {
                     for session_entry in session_entries.flatten() {
                         let session_path = session_entry.path();
@@ -698,20 +699,24 @@ pub async fn list_projects() -> Result<Vec<Project>, String> {
                         {
                             if let Some(session_id) = session_path.file_stem().and_then(|s| s.to_str())
                             {
-                                sessions.push(session_id.to_string());
-                                
-                                // Check the modification time of this session file
-                                if let Ok(session_metadata) = fs::metadata(&session_path) {
-                                    let session_modified = session_metadata
-                                        .modified()
-                                        .unwrap_or(SystemTime::UNIX_EPOCH)
-                                        .duration_since(SystemTime::UNIX_EPOCH)
-                                        .unwrap_or_default()
-                                        .as_secs();
-                                    
-                                    // Update latest activity if this session is newer
-                                    if session_modified > latest_activity {
-                                        latest_activity = session_modified;
+                                // 🔧 CHECK: Only include sessions with valid first_message
+                                let (first_message, _) = extract_first_user_message(&session_path);
+                                if first_message.is_some() {
+                                    sessions.push(session_id.to_string());
+
+                                    // Check the modification time of this session file
+                                    if let Ok(session_metadata) = fs::metadata(&session_path) {
+                                        let session_modified = session_metadata
+                                            .modified()
+                                            .unwrap_or(SystemTime::UNIX_EPOCH)
+                                            .duration_since(SystemTime::UNIX_EPOCH)
+                                            .unwrap_or_default()
+                                            .as_secs();
+
+                                        // Update latest activity if this session is newer
+                                        if session_modified > latest_activity {
+                                            latest_activity = session_modified;
+                                        }
                                     }
                                 }
                             }
