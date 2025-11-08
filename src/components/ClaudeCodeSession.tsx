@@ -380,10 +380,11 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
   }, [messages]);
 
   const handleCancelExecution = async () => {
-    if (!claudeSessionId || !isLoading) return;
-    
+    if (!isLoading) return;
+
     try {
-      await api.cancelClaudeExecution(claudeSessionId);
+      // Pass session ID if available, but backend can still cancel without it
+      await api.cancelClaudeExecution(claudeSessionId || undefined);
       
       // Clean up listeners
       unlistenRefs.current.forEach(unlisten => unlisten && typeof unlisten === 'function' && unlisten());
