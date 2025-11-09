@@ -14,6 +14,8 @@ interface KeyboardShortcutsConfig {
   onTogglePlanMode: () => void;
   /** 显示撤回提示词选择器（双击 ESC） */
   onShowRevertDialog?: () => void;
+  /** 是否有对话框打开（如果有，则不处理 ESC） */
+  hasDialogOpen?: boolean;
 }
 
 /**
@@ -29,14 +31,15 @@ interface KeyboardShortcutsConfig {
  * });
  */
 export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
-  const { isActive, onTogglePlanMode, onShowRevertDialog } = config;
+  const { isActive, onTogglePlanMode, onShowRevertDialog, hasDialogOpen = false } = config;
 
   const [lastEscapeTime, setLastEscapeTime] = useState(0);
 
   // Double ESC key detection for revert dialog
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isActive) {
+      // Don't handle ESC if a dialog is open (let the dialog handle it)
+      if (event.key === 'Escape' && isActive && !hasDialogOpen) {
         const now = Date.now();
 
         // Check if this is a double ESC within 300ms
@@ -64,7 +67,7 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
     return () => {
       document.removeEventListener('keydown', handleEscapeKey, { capture: true });
     };
-  }, [lastEscapeTime, isActive, onShowRevertDialog]);
+  }, [lastEscapeTime, isActive, onShowRevertDialog, hasDialogOpen]);
 
   // Shift+Tab for Plan Mode toggle (single press, consistent with Claude Code official)
   useEffect(() => {

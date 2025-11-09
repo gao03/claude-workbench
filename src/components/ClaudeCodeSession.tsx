@@ -97,6 +97,9 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
   // Queued prompts state
   const [queuedPrompts, setQueuedPrompts] = useState<Array<{ id: string; prompt: string; model: "sonnet" | "opus" | "sonnet1m" }>>([]);
 
+  // State for revert prompt picker (defined early for useKeyboardShortcuts)
+  const [showRevertPicker, setShowRevertPicker] = useState(false);
+
   // Settings state to avoid repeated loading in StreamMessage components
   const [claudeSettings, setClaudeSettings] = useState<{ 
     showSystemInitialization?: boolean;
@@ -138,7 +141,8 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
   useKeyboardShortcuts({
     isActive,
     onTogglePlanMode: handleTogglePlanMode,
-    onShowRevertDialog: handleShowRevertDialog
+    onShowRevertDialog: handleShowRevertDialog,
+    hasDialogOpen: showRevertPicker || showSlashCommandsSettings
   });
 
   // ✅ Refactored: Use custom Hook for smart auto-scroll
@@ -155,9 +159,6 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
 
   // New state for preview feature
   const [showPreview, setShowPreview] = useState(false);
-
-  // State for revert prompt picker
-  const [showRevertPicker, setShowRevertPicker] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   
   // Translation state
