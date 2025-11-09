@@ -52,6 +52,8 @@ pub struct PromptRecord {
     pub git_commit_after: Option<String>,
     /// Timestamp when prompt was sent
     pub timestamp: i64,
+    /// Prompt source: "project" (sent from project interface with queue-operation) or "cli" (sent from CLI)
+    pub source: String,
 }
 
 /// Git record for a prompt (stored by content hash)
@@ -600,29 +602,47 @@ pub async fn check_rewind_capabilities(
     let prompt = prompts.get(prompt_index)
         .ok_or_else(|| format!("Prompt #{} not found", prompt_index))?;
 
-    // Calculate hash and check if git record exists
-    let hash = calculate_hash(&prompt.text);
-    let git_record = get_git_record(&session_id, &project_id, &hash)
-        .map_err(|e| format!("Failed to get git record: {}", e))?;
+    // 🔧 FIX: Use prompt.source field (from queue-operation detection) instead of hash matching
+    // This is more reliable as hash matching is fragile (affected by string escaping, encoding, etc.)
+    log::info!("[Rewind Check] Prompt #{} source: {}", prompt_index, prompt.source);
 
-    // Determine capabilities based on whether git record exists
-    if let Some(record) = git_record {
-        // This prompt has git records (sent from project interface)
-        let has_valid_commit = !record.commit_before.is_empty() && record.commit_before != "NONE";
+    if prompt.source == "project" {
+        // This prompt was sent from project interface (has queue-operation marker)
+        // Check if it has valid git records
+        let hash = calculate_hash(&prompt.text);
+        let git_record = get_git_record(&session_id, &project_id, &hash)
+            .map_err(|e| format!("Failed to get git record: {}", e))?;
 
-        Ok(RewindCapabilities {
-            conversation: true,
-            code: has_valid_commit,
-            both: has_valid_commit,
-            warning: if !has_valid_commit {
-                Some("此提示词没有关联的 Git 记录，只能删除消息，无法回滚代码".to_string())
-            } else {
-                None
-            },
-            source: "project".to_string(),
-        })
+        if let Some(record) = git_record {
+            let has_valid_commit = !record.commit_before.is_empty() && record.commit_before != "NONE";
+            
+            log::info!("[Rewind Check] Project prompt with git record: has_valid_commit={}", has_valid_commit);
+            
+            Ok(RewindCapabilities {
+                conversation: true,
+                code: has_valid_commit,
+                both: has_valid_commit,
+                warning: if !has_valid_commit {
+                    Some("此提示词没有关联的 Git 记录，只能删除消息，无法回滚代码".to_string())
+                } else {
+                    None
+                },
+                source: "project".to_string(),
+            })
+        } else {
+            // Project prompt but no git record (edge case: record_prompt_sent might have failed)
+            log::warn!("[Rewind Check] Project prompt but no git record found");
+            Ok(RewindCapabilities {
+                conversation: true,
+                code: false,
+                both: false,
+                warning: Some("此提示词来自项目界面，但没有找到 Git 记录，只能删除消息".to_string()),
+                source: "project".to_string(),
+            })
+        }
     } else {
-        // No git record found - this prompt was sent from CLI
+        // This prompt was sent from CLI (no queue-operation marker)
+        log::info!("[Rewind Check] CLI prompt - conversation only");
         Ok(RewindCapabilities {
             conversation: true,
             code: false,
@@ -655,6 +675,30 @@ fn extract_prompts_from_jsonl(
 
     let mut prompts = Vec::new();
     let mut prompt_index = 0;
+    // First pass: collect all queue-operation records (prompts sent from project interface)
+    let mut queue_operations = std::collections::HashSet::new();
+    for line in content.lines() {
+        if let Ok(msg) = serde_json::from_str::<serde_json::Value>(line) {
+            let msg_type = msg.get("type").and_then(|t| t.as_str());
+            if msg_type == Some("queue-operation") {
+                let operation = msg.get("operation").and_then(|o| o.as_str());
+                if operation == Some("enqueue") {
+                    // Record the content and timestamp of queue-operation
+                    if let (Some(content_text), Some(ts)) = (
+                        msg.get("content").and_then(|c| c.as_str()),
+                        msg.get("timestamp").and_then(|t| t.as_str())
+                    ) {
+                        // Store a hash of content + timestamp (within 10 second window) for matching
+                        queue_operations.insert(content_text.to_string());
+                        log::debug!("[Prompt Source] Found queue-operation: content_preview={}, ts={}", 
+                            content_text.chars().take(20).collect::<String>(), ts);
+                    }
+                }
+            }
+        }
+    }
+    log::info!("[Prompt Source] Found {} queue-operation records", queue_operations.len());
+
 
     for line in content.lines() {
         if let Ok(msg) = serde_json::from_str::<serde_json::Value>(line) {
@@ -735,14 +779,23 @@ fn extract_prompts_from_jsonl(
                 .map(|dt| dt.timestamp())
                 .unwrap_or_else(|| Utc::now().timestamp());
 
+            // Determine source: check if this prompt has a matching queue-operation record
+            let source = if queue_operations.contains(&extracted_text) {
+                log::debug!("[Prompt Source] Prompt #{} matched queue-operation -> source=project", prompt_index);
+                "project".to_string()
+            } else {
+                log::debug!("[Prompt Source] Prompt #{} no queue-operation -> source=cli", prompt_index);
+                "cli".to_string()
+            };
+
             // Create prompt record
-            // Note: CLI prompts won't have git_commit_before, so we use a placeholder
             prompts.push(PromptRecord {
                 index: prompt_index,
                 text: extracted_text,
-                git_commit_before: "NONE".to_string(),  // CLI prompts don't have git records
+                git_commit_before: "NONE".to_string(),  // Will be filled later from git records
                 git_commit_after: None,
                 timestamp,
+                source,
             });
 
             prompt_index += 1;
@@ -774,17 +827,19 @@ pub async fn get_unified_prompt_list(
     let mut cli_count = 0;
 
     for prompt in &mut prompts {
-        let hash = calculate_hash(&prompt.text);
-        if let Some(record) = git_records.get(&hash) {
-            // This prompt has git records (sent from project interface)
-            prompt.git_commit_before = record.commit_before.clone();
-            prompt.git_commit_after = record.commit_after.clone();
+        // Count based on source field (already set correctly by extract_prompts_from_jsonl)
+        if prompt.source == "project" {
             project_count += 1;
+            // Try to enrich with git commit info
+            let hash = calculate_hash(&prompt.text);
+            if let Some(record) = git_records.get(&hash) {
+                prompt.git_commit_before = record.commit_before.clone();
+                prompt.git_commit_after = record.commit_after.clone();
+            }
+            // If no git record found, keep "NONE" placeholder
         } else {
-            // No git record (CLI prompt)
-            prompt.git_commit_before = "NONE".to_string();
-            prompt.git_commit_after = None;
             cli_count += 1;
+            // CLI prompts don't have git records, keep "NONE" placeholder
         }
     }
 
