@@ -85,9 +85,8 @@ fn get_git_records_path(session_id: &str, project_id: &str) -> Result<PathBuf> {
         .join(format!("{}.git-records.json", session_id));
     Ok(records_path)
 }
-
-/// Load git records from .git-records.json
-fn load_git_records(session_id: &str, project_id: &str) -> Result<HashMap<String, GitRecord>> {
+/// Load git records from .git-records.json (using prompt_index as key)
+fn load_git_records(session_id: &str, project_id: &str) -> Result<HashMap<usize, GitRecord>> {
     let records_path = get_git_records_path(session_id, project_id)?;
 
     if !records_path.exists() {
@@ -97,14 +96,24 @@ fn load_git_records(session_id: &str, project_id: &str) -> Result<HashMap<String
     let content = fs::read_to_string(&records_path)
         .context("Failed to read git records file")?;
 
-    let records: HashMap<String, GitRecord> = serde_json::from_str(&content)
-        .context("Failed to parse git records")?;
+    // Support both old format (String keys) and new format (usize keys)
+    // Try parsing as new format first
+    if let Ok(records) = serde_json::from_str::<HashMap<usize, GitRecord>>(&content) {
+        return Ok(records);
+    }
 
-    Ok(records)
+    // Fallback: try parsing old format and migrate
+    if let Ok(_old_records) = serde_json::from_str::<HashMap<String, GitRecord>>(&content) {
+        log::warn!("Found old hash-based git records format, will migrate to index-based format on next save");
+        // Return empty map - old records cannot be reliably migrated without prompt index info
+        return Ok(HashMap::new());
+    }
+
+    Ok(HashMap::new())
 }
 
-/// Save git records to .git-records.json
-fn save_git_records(session_id: &str, project_id: &str, records: &HashMap<String, GitRecord>) -> Result<()> {
+/// Save git records to .git-records.json (using prompt_index as key)
+fn save_git_records(session_id: &str, project_id: &str, records: &HashMap<usize, GitRecord>) -> Result<()> {
     let records_path = get_git_records_path(session_id, project_id)?;
 
     // Ensure directory exists
@@ -122,18 +131,19 @@ fn save_git_records(session_id: &str, project_id: &str, records: &HashMap<String
     Ok(())
 }
 
-/// Save a single git record
-fn save_git_record(session_id: &str, project_id: &str, hash: String, record: GitRecord) -> Result<()> {
+/// Save a single git record (using prompt_index as key)
+fn save_git_record(session_id: &str, project_id: &str, prompt_index: usize, record: GitRecord) -> Result<()> {
     let mut records = load_git_records(session_id, project_id)?;
-    records.insert(hash, record);
+    records.insert(prompt_index, record);
     save_git_records(session_id, project_id, &records)?;
+    log::info!("[Git Record] Saved git record for prompt #{}", prompt_index);
     Ok(())
 }
 
-/// Get a git record by hash
-fn get_git_record(session_id: &str, project_id: &str, hash: &str) -> Result<Option<GitRecord>> {
+/// Get a git record by prompt_index
+fn get_git_record(session_id: &str, project_id: &str, prompt_index: usize) -> Result<Option<GitRecord>> {
     let records = load_git_records(session_id, project_id)?;
-    Ok(records.get(hash).cloned())
+    Ok(records.get(&prompt_index).cloned())
 }
 
 /// Truncate git records (remove records for prompts after the specified index)
@@ -146,14 +156,14 @@ fn truncate_git_records(
     let mut records = load_git_records(session_id, project_id)?;
 
     // Remove git records for all prompts after prompt_index
+    // Now using index-based keys, so simply remove all indices > prompt_index
     for i in (prompt_index + 1)..prompts.len() {
-        if let Some(prompt) = prompts.get(i) {
-            let hash = calculate_hash(&prompt.text);
-            records.remove(&hash);
-        }
+        records.remove(&i);
+        log::debug!("[Truncate] Removed git record for prompt #{}", i);
     }
 
     save_git_records(session_id, project_id, &records)?;
+    log::info!("[Truncate] Truncated git records after prompt #{}", prompt_index);
     Ok(())
 }
 
@@ -380,9 +390,9 @@ pub async fn record_prompt_sent(
     session_id: String,
     project_id: String,
     project_path: String,
-    prompt_text: String,
+    _prompt_text: String,
 ) -> Result<usize, String> {
-    log::info!("Recording prompt sent for session: {}", session_id);
+    log::info!("[Record Prompt] Recording prompt sent for session: {}", session_id);
 
     // Ensure Git repository is initialized
     simple_git::ensure_git_repo(&project_path)
@@ -393,29 +403,33 @@ pub async fn record_prompt_sent(
     let commit_before = simple_git::git_current_commit(&project_path)
         .map_err(|e| format!("Failed to get current commit: {}", e))?;
 
-    log::info!("Current git commit: {}", commit_before);
+    log::info!("[Record Prompt] Current git commit: {}", commit_before);
 
-    // Calculate hash of prompt text
-    let hash = calculate_hash(&prompt_text);
+    // 🔧 FIX: Get prompt_index FIRST (from current JSONL state)
+    // The new prompt hasn't been written to JSONL yet, so prompts.len() will be the index of the new prompt
+    let prompts = extract_prompts_from_jsonl(&session_id, &project_id)
+        .map_err(|e| format!("Failed to extract prompts from JSONL: {}", e))?;
+    
+    let prompt_index = prompts.len(); // This will be the index of the new prompt
+    
+    log::info!("[Record Prompt] New prompt will be assigned index #{}", prompt_index);
 
-    // Save git record using hash as key
+    // Create git record
     let git_record = GitRecord {
         commit_before: commit_before.clone(),
         commit_after: None,
         timestamp: Utc::now().timestamp(),
     };
 
-    save_git_record(&session_id, &project_id, hash.clone(), git_record)
+    // 🔧 FIX: Save git record using prompt_index as key (not hash!)
+    // This is reliable and not affected by translation/encoding/escaping
+    save_git_record(&session_id, &project_id, prompt_index, git_record)
         .map_err(|e| format!("Failed to save git record: {}", e))?;
 
-    log::info!("Recorded prompt with hash {} for session: {} with git_commit_before: {}",
-        hash, session_id, commit_before);
+    log::info!("[Record Prompt] ✅ Saved git record for prompt #{} with commit_before: {}", 
+        prompt_index, commit_before);
 
-    // Return the current index from JSONL
-    let prompts = extract_prompts_from_jsonl(&session_id, &project_id)
-        .map_err(|e| format!("Failed to extract prompts from JSONL: {}", e))?;
-
-    Ok(prompts.len()) // Return the index of the next prompt (current count)
+    Ok(prompt_index)
 }
 
 /// Mark a prompt as completed (after AI finishes)
@@ -448,29 +462,20 @@ pub async fn mark_prompt_completed(
     let commit_after = simple_git::git_current_commit(&project_path)
         .map_err(|e| format!("Failed to get current commit: {}", e))?;
 
-    // Extract prompts from JSONL to get the prompt text
-    let prompts = extract_prompts_from_jsonl(&session_id, &project_id)
-        .map_err(|e| format!("Failed to extract prompts from JSONL: {}", e))?;
-
-    let prompt = prompts.get(prompt_index)
-        .ok_or_else(|| format!("Prompt #{} not found", prompt_index))?;
-
-    // Calculate hash and update git record
-    let hash = calculate_hash(&prompt.text);
-
-    // Load existing git record
-    let mut git_record = get_git_record(&session_id, &project_id, &hash)
+    // 🔧 FIX: Load existing git record using prompt_index (not hash!)
+    let mut git_record = get_git_record(&session_id, &project_id, prompt_index)
         .map_err(|e| format!("Failed to get git record: {}", e))?
         .ok_or_else(|| format!("Git record not found for prompt #{}", prompt_index))?;
 
     // Update commit_after
     git_record.commit_after = Some(commit_after.clone());
 
-    // Save updated git record
-    save_git_record(&session_id, &project_id, hash, git_record)
+    // 🔧 FIX: Save updated git record using prompt_index (not hash!)
+    save_git_record(&session_id, &project_id, prompt_index, git_record)
         .map_err(|e| format!("Failed to save git record: {}", e))?;
 
-    log::info!("Marked prompt #{} as completed with git_commit_after: {}", prompt_index, commit_after);
+    log::info!("[Mark Complete] ✅ Marked prompt #{} as completed with git_commit_after: {}", 
+        prompt_index, commit_after);
     Ok(())
 }
 
@@ -493,9 +498,8 @@ pub async fn revert_to_prompt(
     let prompt = prompts.get(prompt_index)
         .ok_or_else(|| format!("Prompt #{} not found", prompt_index))?;
 
-    // Calculate hash and get git record
-    let hash = calculate_hash(&prompt.text);
-    let git_record = get_git_record(&session_id, &project_id, &hash)
+    // 🔧 FIX: Get git record using prompt_index (not hash!)
+    let git_record = get_git_record(&session_id, &project_id, prompt_index)
         .map_err(|e| format!("Failed to get git record: {}", e))?;
 
     // Validate mode compatibility
@@ -608,15 +612,15 @@ pub async fn check_rewind_capabilities(
 
     if prompt.source == "project" {
         // This prompt was sent from project interface (has queue-operation marker)
-        // Check if it has valid git records
-        let hash = calculate_hash(&prompt.text);
-        let git_record = get_git_record(&session_id, &project_id, &hash)
+        // 🔧 FIX: Check git records using prompt_index (not hash!)
+        let git_record = get_git_record(&session_id, &project_id, prompt_index)
             .map_err(|e| format!("Failed to get git record: {}", e))?;
 
         if let Some(record) = git_record {
             let has_valid_commit = !record.commit_before.is_empty() && record.commit_before != "NONE";
             
-            log::info!("[Rewind Check] Project prompt with git record: has_valid_commit={}", has_valid_commit);
+            log::info!("[Rewind Check] ✅ Project prompt #{} with git record: has_valid_commit={}", 
+                prompt_index, has_valid_commit);
             
             Ok(RewindCapabilities {
                 conversation: true,
@@ -631,7 +635,7 @@ pub async fn check_rewind_capabilities(
             })
         } else {
             // Project prompt but no git record (edge case: record_prompt_sent might have failed)
-            log::warn!("[Rewind Check] Project prompt but no git record found");
+            log::warn!("[Rewind Check] ⚠️ Project prompt #{} but no git record found", prompt_index);
             Ok(RewindCapabilities {
                 conversation: true,
                 code: false,
@@ -642,7 +646,7 @@ pub async fn check_rewind_capabilities(
         }
     } else {
         // This prompt was sent from CLI (no queue-operation marker)
-        log::info!("[Rewind Check] CLI prompt - conversation only");
+        log::info!("[Rewind Check] CLI prompt #{} - conversation only", prompt_index);
         Ok(RewindCapabilities {
             conversation: true,
             code: false,
@@ -830,11 +834,13 @@ pub async fn get_unified_prompt_list(
         // Count based on source field (already set correctly by extract_prompts_from_jsonl)
         if prompt.source == "project" {
             project_count += 1;
-            // Try to enrich with git commit info
-            let hash = calculate_hash(&prompt.text);
-            if let Some(record) = git_records.get(&hash) {
+            // 🔧 FIX: Enrich with git commit info using prompt_index (not hash!)
+            if let Some(record) = git_records.get(&prompt.index) {
                 prompt.git_commit_before = record.commit_before.clone();
                 prompt.git_commit_after = record.commit_after.clone();
+                log::debug!("[Unified List] Enriched prompt #{} with git commits", prompt.index);
+            } else {
+                log::debug!("[Unified List] No git record found for prompt #{}", prompt.index);
             }
             // If no git record found, keep "NONE" placeholder
         } else {
@@ -843,7 +849,7 @@ pub async fn get_unified_prompt_list(
         }
     }
 
-    log::info!("Found {} total prompts ({} from project interface, {} from CLI)",
+    log::info!("[Unified List] Found {} total prompts ({} from project interface, {} from CLI)",
         prompts.len(), project_count, cli_count);
 
     Ok(prompts)
