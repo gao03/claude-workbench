@@ -4,7 +4,10 @@
 2025-11-09
 
 ## 修复概览
-本次修复了两个关键问题：提示词优化撤销功能和统计模块时区问题。
+本次修复了**三个**关键问题：
+1. ✅ 提示词优化撤销功能
+2. ✅ 统计模块时区问题
+3. ✅ SQLite PRAGMA 语句执行错误
 
 ---
 
@@ -247,26 +250,83 @@ let date = if let Ok(dt) = DateTime::parse_from_rfc3339(&entry.timestamp) {
 
 ---
 
+## ✅ 紧急修复：SQLite PRAGMA 语句错误
+
+### 📍 问题描述
+应用启动时崩溃，错误信息：
+```
+thread 'main' panicked at src\main.rs:87:53:
+Failed to initialize database: ExecuteReturnedResults
+```
+
+### 🔍 技术根因
+**问题代码** (`src-tauri/src/commands/storage.rs:24-28`)：
+```rust
+// ❌ 错误：PRAGMA 语句返回结果，不能用 execute()
+conn.execute("PRAGMA journal_mode = WAL", [])?;
+conn.execute("PRAGMA synchronous = NORMAL", [])?;
+```
+
+**问题分析**：
+- `PRAGMA` 语句会返回结果集（如 "WAL"）
+- `execute()` 方法用于不返回结果的语句（INSERT, UPDATE, DELETE）
+- 使用 `execute()` 执行 PRAGMA 会触发 `ExecuteReturnedResults` 错误
+
+### 🎯 解决方案
+**修复代码** (`src-tauri/src/commands/storage.rs:24-29`)：
+```rust
+// ✅ 正确：使用 pragma_update 方法
+conn.pragma_update(None, "journal_mode", "WAL")?;
+conn.pragma_update(None, "synchronous", "NORMAL")?;
+conn.pragma_update(None, "cache_size", 10000)?;
+conn.pragma_update(None, "temp_store", "MEMORY")?;
+conn.pragma_update(None, "mmap_size", 30000000000i64)?;
+```
+
+**关键点**：
+- `pragma_update` 是 rusqlite 提供的专用方法
+- 第一个参数是 schema name（通常为 None）
+- 自动处理返回值
+- 类型安全（cache_size 用 i32，mmap_size 用 i64）
+
+### 🧪 验证
+```bash
+✅ 编译成功
+   Compiling claude-workbench v4.1.2
+   Finished `dev` profile in 8.01s
+
+✅ 应用启动成功
+   Running `target\debug\claude-workbench.exe`
+```
+
+---
+
 ## 🎉 修复总结
 
 | 问题 | 严重性 | 修复难度 | 影响范围 | 状态 |
 |------|--------|---------|---------|------|
 | 提示词优化无法撤销 | 中 | 低 | 用户体验 | ✅ 已修复 |
 | 今日数据时区错误 | 高 | 低 | 数据准确性 | ✅ 已修复 |
+| SQLite 初始化崩溃 | 严重 | 低 | 应用无法启动 | ✅ 已修复 |
 
 ### 关键改进
 
-#### 任务1
+#### 任务1：提示词优化撤销
 - ✅ 实现可撤销的文本更新机制
 - ✅ 使用 `document.execCommand('insertText')` 创建 undo 历史
 - ✅ 支持完整的 undo/redo 操作
 - ✅ 包含降级策略确保兼容性
 
-#### 任务2
+#### 任务2：时区修复
 - ✅ 修复前端日期传递（避免 UTC 转换）
 - ✅ 修复后端日期分组（使用本地时区）
 - ✅ 统一时区处理逻辑
 - ✅ 所有时区的用户均显示准确数据
+
+#### 紧急修复：PRAGMA 错误
+- ✅ 使用正确的 `pragma_update` 方法
+- ✅ 避免 `ExecuteReturnedResults` 错误
+- ✅ 应用正常启动
 
 ---
 
@@ -369,17 +429,22 @@ DateTime::parse_from_rfc3339(&entry.timestamp)?
 
 ## ✅ 验收标准
 
-### 任务1
+### 任务1：提示词优化撤销
 - ✅ 提示词优化后可以 `Ctrl+Z` 撤销
 - ✅ 可以 `Ctrl+Y` 重做
 - ✅ 所有优化方式（Claude/Gemini/API）均支持
 - ✅ 焦点状态正确保持
 
-### 任务2
+### 任务2：时区修复
 - ✅ "今日"数据显示本地时间的今天
 - ✅ 凌晨数据不会被归入昨天
 - ✅ 所有时区用户数据准确
 - ✅ 日期分组使用本地时区
+
+### 紧急修复：数据库初始化
+- ✅ 应用正常启动（无崩溃）
+- ✅ WAL 模式正确启用
+- ✅ 所有 PRAGMA 语句正确执行
 
 ---
 

@@ -21,11 +21,12 @@ pub fn init_database(app: &AppHandle) -> SqliteResult<Connection> {
     let conn = Connection::open(db_path)?;
 
     // ========== 🚀 性能优化：启用 WAL 模式和优化参数 ==========
-    conn.execute("PRAGMA journal_mode = WAL", [])?;
-    conn.execute("PRAGMA synchronous = NORMAL", [])?;
-    conn.execute("PRAGMA cache_size = 10000", [])?;  // 10MB 缓存
-    conn.execute("PRAGMA temp_store = MEMORY", [])?;
-    conn.execute("PRAGMA mmap_size = 30000000000", [])?;  // 30GB memory-mapped I/O
+    // PRAGMA 语句会返回结果，需要使用 pragma_update 或 query_row
+    conn.pragma_update(None, "journal_mode", "WAL")?;
+    conn.pragma_update(None, "synchronous", "NORMAL")?;
+    conn.pragma_update(None, "cache_size", 10000)?;  // 10MB 缓存
+    conn.pragma_update(None, "temp_store", "MEMORY")?;
+    conn.pragma_update(None, "mmap_size", 30000000000i64)?;  // 30GB memory-mapped I/O
 
     log::info!("✅ SQLite WAL mode enabled with performance optimizations");
 
