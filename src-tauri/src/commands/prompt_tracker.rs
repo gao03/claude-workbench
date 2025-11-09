@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use chrono::Utc;
 use log;
-use sha2::{Sha256, Digest};
 
 use super::simple_git;
 use super::claude::get_claude_dir;
@@ -68,12 +67,6 @@ pub struct GitRecord {
     pub timestamp: i64,
 }
 
-/// Calculate SHA256 hash of a string
-fn calculate_hash(text: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(text.as_bytes());
-    format!("{:x}", hasher.finalize())
-}
 
 /// Get path to git records file
 fn get_git_records_path(session_id: &str, project_id: &str) -> Result<PathBuf> {
