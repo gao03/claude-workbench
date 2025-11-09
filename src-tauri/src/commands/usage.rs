@@ -329,13 +329,15 @@ pub fn get_usage_stats(days: Option<u32>) -> Result<UsageStats, String> {
     }
 
     // Filter by days if specified
+    // 🚀 修复时区问题：使用本地时区进行日期比较
     let filtered_entries = if let Some(days) = days {
-        let cutoff = Local::now().naive_local().date() - chrono::Duration::days(days as i64);
+        let cutoff = Local::now().date_naive() - chrono::Duration::days(days as i64);
         all_entries
             .into_iter()
             .filter(|e| {
                 if let Ok(dt) = DateTime::parse_from_rfc3339(&e.timestamp) {
-                    dt.naive_local().date() >= cutoff
+                    // 转换为本地时区后提取日期进行比较
+                    dt.with_timezone(&Local).date_naive() >= cutoff
                 } else {
                     false
                 }
@@ -492,11 +494,13 @@ pub fn get_usage_by_date_range(start_date: String, end_date: String) -> Result<U
     })?;
 
     // Filter entries by date range
+    // 🚀 修复时区问题：转换为本地时区后进行日期比较
     let filtered_entries: Vec<_> = all_entries
         .into_iter()
         .filter(|e| {
             if let Ok(dt) = DateTime::parse_from_rfc3339(&e.timestamp) {
-                let date = dt.naive_local().date();
+                // 先转换为本地时区，再提取日期进行比较
+                let date = dt.with_timezone(&Local).date_naive();
                 date >= start && date <= end
             } else {
                 false
@@ -647,6 +651,7 @@ pub fn get_session_stats(
     let all_entries = get_all_usage_entries(&claude_path);
 
     // Filter by date range if provided
+    // 🚀 修复时区问题：转换为本地时区后进行日期比较
     let filtered_entries: Vec<_> = all_entries
         .into_iter()
         .filter(|e| {
@@ -656,7 +661,8 @@ pub fn get_session_stats(
                     NaiveDate::parse_from_str(until_str, "%Y%m%d"),
                 ) {
                     if let Ok(dt) = DateTime::parse_from_rfc3339(&e.timestamp) {
-                        let date = dt.naive_local().date();
+                        // 先转换为本地时区，再提取日期进行比较
+                        let date = dt.with_timezone(&Local).date_naive();
                         return date >= since_date && date <= until_date;
                     }
                 }

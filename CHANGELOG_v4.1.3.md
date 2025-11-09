@@ -35,13 +35,17 @@
 
 ---
 
-### 2. 修复统计模块时区显示错误
+### 2. 修复统计模块时区显示错误（彻底修复）
 
-**影响**: 数据准确性
+**影响**: 数据准确性（关键）
 
 **问题描述**:
-- "今日数据"在东八区凌晨 0-8 点显示为昨天的数据
-- 原因：前端传递 UTC 时间，后端按 UTC 日期分组
+- "今日数据"包含非当天的数据，或缺少当天部分数据
+- 东八区凌晨 0-8 点的数据被错误归入昨天
+- 根本原因：
+  1. 前端传递 UTC 时间（已修复）
+  2. 后端日期分组使用 UTC（已修复）
+  3. **后端日期过滤使用 UTC**（本次修复）
 
 **示例错误**:
 | 本地时间 | 旧版本显示 | 实际应显示 |
@@ -49,11 +53,13 @@
 | 2025-01-02 02:00 (GMT+8) | 2025-01-01 ❌ | 2025-01-02 ✅ |
 | 2025-01-01 00:30 (GMT+8) | 2024-12-31 ❌ | 2025-01-01 ✅ |
 
-**修复内容**:
+**修复内容**（分两阶段）:
 
-**前端** (`src/components/UsageDashboard.tsx`):
+#### 阶段 1：前端 + 后端分组
+
+**前端** (`src/components/UsageDashboard.tsx:113-165`):
 ```typescript
-// ✅ 使用本地日期格式
+// ✅ 使用本地日期格式，避免 UTC 转换
 const formatLocalDate = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -61,10 +67,11 @@ const formatLocalDate = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+// 传递 "2025-01-02" 而不是 "2024-12-31T16:00:00.000Z"
 api.getUsageByDateRange(formatLocalDate(today), formatLocalDate(today))
 ```
 
-**后端** (`src-tauri/src/commands/usage.rs`):
+**后端日期分组** (`src-tauri/src/commands/usage.rs:390, 558`):
 ```rust
 // ✅ 转换为本地时间后提取日期
 let date = if let Ok(dt) = DateTime::parse_from_rfc3339(&entry.timestamp) {
@@ -74,9 +81,29 @@ let date = if let Ok(dt) = DateTime::parse_from_rfc3339(&entry.timestamp) {
 };
 ```
 
+#### 阶段 2：后端过滤逻辑（彻底修复）
+
+**关键发现**: `naive_local()` **不是**时区转换，只是去掉时区标记！
+
+**后端日期过滤** (`src-tauri/src/commands/usage.rs:338, 503, 665`):
+```rust
+// ❌ 错误（第一次修复遗漏）
+let date = dt.naive_local().date();  // 仍然是 UTC 日期！
+
+// ✅ 正确（本次彻底修复）
+let date = dt.with_timezone(&Local).date_naive();  // 本地日期
+```
+
+**修复位置**（共 5 处）:
+1. `get_usage_stats` - 日期过滤（line 340）
+2. `get_usage_stats` - 日期分组（line 390）
+3. `get_usage_by_date_range` - 日期过滤（line 503）
+4. `get_usage_by_date_range` - 日期分组（line 558）
+5. `get_session_stats` - 日期过滤（line 665）
+
 **修改文件**:
-- `src/components/UsageDashboard.tsx`
-- `src-tauri/src/commands/usage.rs`（2 处）
+- `src/components/UsageDashboard.tsx`（前端）
+- `src-tauri/src/commands/usage.rs`（后端 5 处）
 
 ---
 
