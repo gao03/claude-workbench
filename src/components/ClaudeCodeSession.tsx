@@ -17,6 +17,7 @@ import { StreamMessageV2 } from "./message";
 import { FloatingPromptInput, type FloatingPromptInputRef } from "./FloatingPromptInput";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { SlashCommandsManager } from "./SlashCommandsManager";
+import { RevertPromptPicker } from "./RevertPromptPicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { SplitPane } from "@/components/ui/split-pane";
 import { WebviewPreview } from "./WebviewPreview";
@@ -128,10 +129,16 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
     setIsPlanMode(prev => !prev);
   }, []);
 
+  // Stable callback for showing revert dialog
+  const handleShowRevertDialog = useCallback(() => {
+    setShowRevertPicker(true);
+  }, []);
+
   // ✅ Refactored: Use custom Hook for keyboard shortcuts
   useKeyboardShortcuts({
     isActive,
-    onTogglePlanMode: handleTogglePlanMode
+    onTogglePlanMode: handleTogglePlanMode,
+    onShowRevertDialog: handleShowRevertDialog
   });
 
   // ✅ Refactored: Use custom Hook for smart auto-scroll
@@ -148,6 +155,9 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
 
   // New state for preview feature
   const [showPreview, setShowPreview] = useState(false);
+
+  // State for revert prompt picker
+  const [showRevertPicker, setShowRevertPicker] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   
   // Translation state
@@ -1069,6 +1079,15 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Revert Prompt Picker - Shows when double ESC is pressed */}
+      {showRevertPicker && (
+        <RevertPromptPicker
+          messages={messages}
+          onSelect={handleRevert}
+          onClose={() => setShowRevertPicker(false)}
+        />
       )}
 
     </div>

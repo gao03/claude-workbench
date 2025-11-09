@@ -12,6 +12,8 @@ interface KeyboardShortcutsConfig {
   isActive: boolean;
   /** 切换 Plan Mode */
   onTogglePlanMode: () => void;
+  /** 显示撤回提示词选择器（双击 ESC） */
+  onShowRevertDialog?: () => void;
 }
 
 /**
@@ -22,16 +24,16 @@ interface KeyboardShortcutsConfig {
  * @example
  * useKeyboardShortcuts({
  *   isActive: true,
- *   onTogglePlanMode: () => setIsPlanMode(prev => !prev)
+ *   onTogglePlanMode: () => setIsPlanMode(prev => !prev),
+ *   onShowRevertDialog: () => setShowRevertPicker(true)
  * });
  */
 export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
-  const { isActive, onTogglePlanMode } = config;
+  const { isActive, onTogglePlanMode, onShowRevertDialog } = config;
 
   const [lastEscapeTime, setLastEscapeTime] = useState(0);
 
-  // Double ESC key detection for future rewind dialog
-  // NOTE: Currently placeholder - rewind dialog UI not implemented yet
+  // Double ESC key detection for revert dialog
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isActive) {
@@ -42,8 +44,13 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
           event.preventDefault();
           event.stopPropagation();
 
-          // TODO: Show rewind dialog when UI is implemented
-          console.log('[KeyboardShortcuts] Double ESC detected - rewind dialog placeholder');
+          // Show revert dialog
+          if (onShowRevertDialog) {
+            console.log('[KeyboardShortcuts] Double ESC detected - showing revert dialog');
+            onShowRevertDialog();
+          } else {
+            console.log('[KeyboardShortcuts] Double ESC detected - no handler registered');
+          }
         }
 
         setLastEscapeTime(now);
@@ -57,7 +64,7 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig): void {
     return () => {
       document.removeEventListener('keydown', handleEscapeKey, { capture: true });
     };
-  }, [lastEscapeTime, isActive]);
+  }, [lastEscapeTime, isActive, onShowRevertDialog]);
 
   // Shift+Tab for Plan Mode toggle (single press, consistent with Claude Code official)
   useEffect(() => {
