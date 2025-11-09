@@ -385,7 +385,7 @@ export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-                        提示词 #{prompt.index}
+                        提示词 #{prompt.index + 1}
                       </span>
 
                       {/* 来源标记 */}
