@@ -2,14 +2,16 @@
  * RevertPromptPicker - 撤回提示词选择器
  *
  * 按两次 ESC 键时显示，允许用户选择要撤回的提示词
+ * 智能识别每个提示词的撤回能力（CLI/项目界面）
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, ArrowLeft, MessageSquare, X } from 'lucide-react';
+import { Clock, ArrowLeft, MessageSquare, X, Terminal, FolderGit2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 import type { ClaudeStreamMessage } from '@/types/claude';
-import type { RewindMode } from '@/lib/api';
+import type { RewindMode, RewindCapabilities } from '@/lib/api';
 
 interface PromptEntry {
   /** 提示词索引（从0开始） */
@@ -20,9 +22,17 @@ interface PromptEntry {
   preview: string;
   /** 消息索引（在原始消息列表中的位置） */
   messageIndex: number;
+  /** 撤回能力（异步加载） */
+  capabilities?: RewindCapabilities;
+  /** 加载状态 */
+  loading: boolean;
 }
 
 interface RevertPromptPickerProps {
+  /** 会话ID */
+  sessionId: string;
+  /** 项目ID */
+  projectId: string;
   /** 消息列表 */
   messages: ClaudeStreamMessage[];
   /** 选择回调 */
@@ -71,6 +81,8 @@ const truncateText = (text: string, maxLength: number = 80): string => {
  * RevertPromptPicker 组件
  */
 export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
+  sessionId,
+  projectId,
   messages,
   onSelect,
   onClose,
@@ -78,11 +90,12 @@ export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedMode, setSelectedMode] = useState<RewindMode>('both');
+  const [prompts, setPrompts] = useState<PromptEntry[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLDivElement>(null);
 
-  // 提取所有用户提示词
-  const prompts = useMemo<PromptEntry[]>(() => {
+  // 提取所有用户提示词（初始化）
+  useEffect(() => {
     const userMessages: PromptEntry[] = [];
     let promptIndex = 0;
 
@@ -95,22 +108,91 @@ export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
             content,
             preview: truncateText(content),
             messageIndex,
+            loading: true,
           });
           promptIndex++;
         }
       }
     });
 
-    return userMessages;
-  }, [messages]);
+    setPrompts(userMessages);
 
-  // 如果没有可撤回的提示词，直接关闭
-  useEffect(() => {
-    if (prompts.length === 0) {
+    // 如果没有可撤回的提示词，直接关闭
+    if (userMessages.length === 0) {
       console.log('[RevertPromptPicker] No prompts to revert, closing');
       onClose();
     }
-  }, [prompts.length, onClose]);
+  }, [messages, onClose]);
+
+  // 异步加载每个提示词的撤回能力
+  useEffect(() => {
+    const loadCapabilities = async () => {
+      for (const prompt of prompts) {
+        if (prompt.loading && !prompt.capabilities) {
+          try {
+            const capabilities = await api.checkRewindCapabilities(
+              sessionId,
+              projectId,
+              prompt.index
+            );
+
+            setPrompts(prev =>
+              prev.map(p =>
+                p.index === prompt.index
+                  ? { ...p, capabilities, loading: false }
+                  : p
+              )
+            );
+          } catch (error) {
+            console.error(`Failed to load capabilities for prompt #${prompt.index}:`, error);
+            // 失败时设置默认能力（仅对话）
+            setPrompts(prev =>
+              prev.map(p =>
+                p.index === prompt.index
+                  ? {
+                      ...p,
+                      capabilities: {
+                        conversation: true,
+                        code: false,
+                        both: false,
+                        warning: '无法获取撤回能力信息',
+                        source: 'cli',
+                      },
+                      loading: false,
+                    }
+                  : p
+              )
+            );
+          }
+        }
+      }
+    };
+
+    if (prompts.length > 0) {
+      loadCapabilities();
+    }
+  }, [prompts, sessionId, projectId]);
+
+  // 当前选中提示词的撤回能力
+  const currentCapabilities = useMemo(() => {
+    return prompts[selectedIndex]?.capabilities;
+  }, [prompts, selectedIndex]);
+
+  // 根据当前选中提示词的能力，自动调整选中的模式
+  useEffect(() => {
+    if (!currentCapabilities) return;
+
+    // 如果当前模式不可用，自动切换到可用模式
+    if (selectedMode === 'code_only' && !currentCapabilities.code) {
+      setSelectedMode('conversation_only');
+    } else if (selectedMode === 'both' && !currentCapabilities.both) {
+      if (currentCapabilities.code) {
+        setSelectedMode('code_only');
+      } else {
+        setSelectedMode('conversation_only');
+      }
+    }
+  }, [currentCapabilities, selectedMode]);
 
   // 滚动到选中项
   useEffect(() => {
@@ -144,32 +226,45 @@ export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
 
         case 'Enter':
           e.preventDefault();
-          if (prompts[selectedIndex]) {
-            onSelect(prompts[selectedIndex].index, selectedMode);
-            onClose();
+          if (prompts[selectedIndex] && currentCapabilities) {
+            // 验证模式是否可用
+            if (
+              (selectedMode === 'conversation_only' && currentCapabilities.conversation) ||
+              (selectedMode === 'code_only' && currentCapabilities.code) ||
+              (selectedMode === 'both' && currentCapabilities.both)
+            ) {
+              onSelect(prompts[selectedIndex].index, selectedMode);
+              onClose();
+            }
           }
           break;
 
         case '1':
           e.preventDefault();
-          setSelectedMode('conversation_only');
+          if (currentCapabilities?.conversation) {
+            setSelectedMode('conversation_only');
+          }
           break;
 
         case '2':
           e.preventDefault();
-          setSelectedMode('code_only');
+          if (currentCapabilities?.code) {
+            setSelectedMode('code_only');
+          }
           break;
 
         case '3':
           e.preventDefault();
-          setSelectedMode('both');
+          if (currentCapabilities?.both) {
+            setSelectedMode('both');
+          }
           break;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => document.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [prompts, selectedIndex, selectedMode, onSelect, onClose]);
+  }, [prompts, selectedIndex, selectedMode, currentCapabilities, onSelect, onClose]);
 
   if (prompts.length === 0) {
     return null;
@@ -218,42 +313,65 @@ export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setSelectedMode('conversation_only')}
+                onClick={() => currentCapabilities?.conversation && setSelectedMode('conversation_only')}
+                disabled={!currentCapabilities?.conversation}
                 className={cn(
                   'flex-1 px-3 py-2 text-sm rounded-md transition-colors',
                   selectedMode === 'conversation_only'
                     ? 'bg-blue-500 text-white'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    : currentCapabilities?.conversation
+                    ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    : 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
                 )}
               >
                 <span className="font-mono text-xs mr-1">[1]</span>
                 仅删除对话
               </button>
               <button
-                onClick={() => setSelectedMode('code_only')}
+                onClick={() => currentCapabilities?.code && setSelectedMode('code_only')}
+                disabled={!currentCapabilities?.code}
                 className={cn(
                   'flex-1 px-3 py-2 text-sm rounded-md transition-colors',
                   selectedMode === 'code_only'
                     ? 'bg-blue-500 text-white'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    : currentCapabilities?.code
+                    ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    : 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
                 )}
               >
                 <span className="font-mono text-xs mr-1">[2]</span>
                 仅回滚代码
               </button>
               <button
-                onClick={() => setSelectedMode('both')}
+                onClick={() => currentCapabilities?.both && setSelectedMode('both')}
+                disabled={!currentCapabilities?.both}
                 className={cn(
                   'flex-1 px-3 py-2 text-sm rounded-md transition-colors',
                   selectedMode === 'both'
                     ? 'bg-blue-500 text-white'
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    : currentCapabilities?.both
+                    ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    : 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
                 )}
               >
                 <span className="font-mono text-xs mr-1">[3]</span>
                 对话 + 代码
               </button>
             </div>
+
+            {/* 警告信息 */}
+            {currentCapabilities?.warning && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-3 flex items-start gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md"
+              >
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  {currentCapabilities.warning}
+                </p>
+              </motion.div>
+            )}
           </div>
 
           {/* 提示词列表 */}
@@ -275,22 +393,80 @@ export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
                   setSelectedIndex(idx);
                 }}
                 onDoubleClick={() => {
-                  onSelect(prompt.index, selectedMode);
-                  onClose();
+                  if (prompt.capabilities) {
+                    // 双击时使用当前可用的最佳模式
+                    let mode: RewindMode = 'conversation_only';
+                    if (prompt.capabilities.both) {
+                      mode = 'both';
+                    } else if (prompt.capabilities.code) {
+                      mode = 'code_only';
+                    }
+                    onSelect(prompt.index, mode);
+                    onClose();
+                  }
                 }}
               >
                 <div className="flex items-start gap-3">
                   <MessageSquare className="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
                         提示词 #{prompt.index}
                       </span>
+
+                      {/* 来源标记 */}
+                      {prompt.capabilities && (
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium',
+                            prompt.capabilities.source === 'project'
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                              : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                          )}
+                        >
+                          {prompt.capabilities.source === 'project' ? (
+                            <>
+                              <FolderGit2 className="w-3 h-3" />
+                              项目
+                            </>
+                          ) : (
+                            <>
+                              <Terminal className="w-3 h-3" />
+                              CLI
+                            </>
+                          )}
+                        </span>
+                      )}
+
                       <Clock className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                     </div>
                     <p className="text-sm text-gray-900 dark:text-gray-100 break-words">
                       {prompt.preview}
                     </p>
+
+                    {/* 能力指示器 */}
+                    {prompt.capabilities && (
+                      <div className="mt-2 flex items-center gap-2 text-xs">
+                        <span className="text-gray-500 dark:text-gray-400">可撤回：</span>
+                        {prompt.capabilities.conversation && (
+                          <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                            对话
+                          </span>
+                        )}
+                        {prompt.capabilities.code && (
+                          <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+                            代码
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 加载中 */}
+                    {prompt.loading && (
+                      <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                        加载撤回能力...
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

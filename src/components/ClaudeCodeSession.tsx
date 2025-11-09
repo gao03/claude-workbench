@@ -1082,8 +1082,10 @@ const ClaudeCodeSessionInner: React.FC<ClaudeCodeSessionProps> = ({
       )}
 
       {/* Revert Prompt Picker - Shows when double ESC is pressed */}
-      {showRevertPicker && (
+      {showRevertPicker && effectiveSession && (
         <RevertPromptPicker
+          sessionId={effectiveSession.id}
+          projectId={effectiveSession.project_id}
           messages={messages}
           onSelect={handleRevert}
           onClose={() => setShowRevertPicker(false)}
