@@ -10,18 +10,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, ArrowLeft, MessageSquare, X, Terminal, FolderGit2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
-import type { ClaudeStreamMessage } from '@/types/claude';
 import type { RewindMode, RewindCapabilities } from '@/lib/api';
 
 interface PromptEntry {
-  /** 提示词索引（从0开始） */
+  /** 提示词索引（从0开始，后端分配的准确索引） */
   index: number;
   /** 提示词内容 */
   content: string;
   /** 提示词预览（截断后的内容） */
   preview: string;
-  /** 消息索引（在原始消息列表中的位置） */
-  messageIndex: number;
+  /** 来源（project 或 cli） */
+  source: string;
   /** 撤回能力（异步加载） */
   capabilities?: RewindCapabilities;
   /** 加载状态 */
@@ -33,8 +32,6 @@ interface RevertPromptPickerProps {
   sessionId: string;
   /** 项目ID */
   projectId: string;
-  /** 消息列表 */
-  messages: ClaudeStreamMessage[];
   /** 选择回调 */
   onSelect: (promptIndex: number, mode: RewindMode) => void;
   /** 关闭回调 */
@@ -42,32 +39,6 @@ interface RevertPromptPickerProps {
   /** 可选的样式类名 */
   className?: string;
 }
-
-/**
- * 从消息内容中提取文本
- */
-const extractTextFromMessage = (message: ClaudeStreamMessage): string => {
-  if (!message.message?.content) return '';
-
-  const content = message.message.content;
-  if (typeof content === 'string') {
-    return content;
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((item: any) => {
-        if (typeof item === 'string') return item;
-        if (item.type === 'text' && item.text) return item.text;
-        if (item.text) return item.text;
-        return '';
-      })
-      .join(' ')
-      .trim();
-  }
-
-  return '';
-};
 
 /**
  * 截断文本用于预览
@@ -83,7 +54,6 @@ const truncateText = (text: string, maxLength: number = 80): string => {
 export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
   sessionId,
   projectId,
-  messages,
   onSelect,
   onClose,
   className,
@@ -94,35 +64,39 @@ export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
   const listRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLDivElement>(null);
 
-  // 提取所有用户提示词（初始化）
+  // 从后端加载准确的提示词列表
   useEffect(() => {
-    const userMessages: PromptEntry[] = [];
-    let promptIndex = 0;
+    const loadPrompts = async () => {
+      try {
+        // 调用后端获取准确的提示词列表（包含正确的 index）
+        const promptRecords = await api.getPromptList(sessionId, projectId);
 
-    messages.forEach((msg, messageIndex) => {
-      if (msg.type === 'user') {
-        const content = extractTextFromMessage(msg);
-        if (content) {
-          userMessages.push({
-            index: promptIndex,
-            content,
-            preview: truncateText(content),
-            messageIndex,
-            loading: true,
-          });
-          promptIndex++;
+        console.log('[RevertPromptPicker] Loaded prompts from backend:', promptRecords);
+
+        if (promptRecords.length === 0) {
+          console.log('[RevertPromptPicker] No prompts to revert, closing');
+          onClose();
+          return;
         }
+
+        // 转换为 PromptEntry 格式
+        const promptEntries: PromptEntry[] = promptRecords.map((record) => ({
+          index: record.index,  // 使用后端返回的准确索引
+          content: record.text,
+          preview: truncateText(record.text),
+          source: record.source,
+          loading: true,
+        }));
+
+        setPrompts(promptEntries);
+      } catch (error) {
+        console.error('[RevertPromptPicker] Failed to load prompts:', error);
+        onClose();
       }
-    });
+    };
 
-    setPrompts(userMessages);
-
-    // 如果没有可撤回的提示词，直接关闭
-    if (userMessages.length === 0) {
-      console.log('[RevertPromptPicker] No prompts to revert, closing');
-      onClose();
-    }
-  }, [messages, onClose]);
+    loadPrompts();
+  }, [sessionId, projectId, onClose]);
 
   // 异步加载每个提示词的撤回能力
   useEffect(() => {
@@ -381,7 +355,7 @@ export const RevertPromptPicker: React.FC<RevertPromptPickerProps> = ({
           >
             {prompts.map((prompt, idx) => (
               <div
-                key={`${prompt.index}-${prompt.messageIndex}`}
+                key={prompt.index}
                 ref={idx === selectedIndex ? selectedItemRef : null}
                 className={cn(
                   'p-4 rounded-lg border cursor-pointer transition-all',

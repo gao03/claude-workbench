@@ -132,6 +132,8 @@ export interface PromptRecord {
   gitCommitAfter?: string;
   /** Timestamp when prompt was sent */
   timestamp: number;
+  /** Prompt source: "project" (from project interface) or "cli" (from CLI) */
+  source: string;
 }
 
 /**
