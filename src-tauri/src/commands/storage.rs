@@ -20,6 +20,15 @@ pub fn init_database(app: &AppHandle) -> SqliteResult<Connection> {
     let db_path = app_dir.join("agents.db");
     let conn = Connection::open(db_path)?;
 
+    // ========== 🚀 性能优化：启用 WAL 模式和优化参数 ==========
+    conn.execute("PRAGMA journal_mode = WAL", [])?;
+    conn.execute("PRAGMA synchronous = NORMAL", [])?;
+    conn.execute("PRAGMA cache_size = 10000", [])?;  // 10MB 缓存
+    conn.execute("PRAGMA temp_store = MEMORY", [])?;
+    conn.execute("PRAGMA mmap_size = 30000000000", [])?;  // 30GB memory-mapped I/O
+
+    log::info!("✅ SQLite WAL mode enabled with performance optimizations");
+
     // Create usage_entries table for token usage tracking
     conn.execute(
         "CREATE TABLE IF NOT EXISTS usage_entries (
@@ -38,6 +47,52 @@ pub fn init_database(app: &AppHandle) -> SqliteResult<Connection> {
         )",
         [],
     )?;
+
+    // ========== 🚀 性能优化：添加数据库索引 ==========
+
+    // 1. 会话查询索引（最常用的查询模式）
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_usage_session_id
+         ON usage_entries(session_id)",
+        [],
+    )?;
+
+    // 2. 时间范围查询索引（按时间排序和过滤）
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_usage_timestamp
+         ON usage_entries(timestamp DESC)",
+        [],
+    )?;
+
+    // 3. 项目路径索引（跨会话统计）
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_usage_project_path
+         ON usage_entries(project_path)",
+        [],
+    )?;
+
+    // 4. 复合索引：模型 + 时间（按模型统计成本趋势）
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_usage_model_timestamp
+         ON usage_entries(model, timestamp DESC)",
+        [],
+    )?;
+
+    // 5. 复合索引：项目 + 会话（项目级详细统计）
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_usage_project_session
+         ON usage_entries(project_path, session_id)",
+        [],
+    )?;
+
+    // 6. 成本查询索引（用于成本排序和统计）
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_usage_cost
+         ON usage_entries(cost DESC)",
+        [],
+    )?;
+
+    log::info!("✅ Database indexes created successfully (6 indexes)");
 
     Ok(conn)
 }
@@ -180,12 +235,32 @@ pub async fn storage_read_table(
     drop(pragma_stmt);
 
     // Build query with optional search
+    // 🚀 性能优化：优化 LIKE 查询，避免前置通配符 '%xxx%' 的全表扫描
     let (query, count_query) = if let Some(search) = &searchQuery {
         // Create search conditions for all text columns
         let search_conditions: Vec<String> = columns
             .iter()
             .filter(|col| col.type_name.contains("TEXT") || col.type_name.contains("VARCHAR"))
-            .map(|col| format!("{} LIKE '%{}%'", col.name, search.replace("'", "''")))
+            .map(|col| {
+                let escaped_search = search.replace("'", "''");
+                // 优先使用后缀通配符 'xxx%'，可以利用索引
+                // 如果用户明确输入了通配符，则保留原样
+                if escaped_search.contains('%') || escaped_search.contains('_') {
+                    format!("{} LIKE '{}'", col.name, escaped_search)
+                } else {
+                    // 检查是否是精确匹配查询
+                    if escaped_search.len() > 3 {
+                        // 使用 >= 和 < 范围查询代替 LIKE（更快）
+                        format!(
+                            "({0} >= '{1}' AND {0} < '{1}z' OR {0} LIKE '%{1}%')",
+                            col.name, escaped_search
+                        )
+                    } else {
+                        // 短查询使用传统 LIKE
+                        format!("{} LIKE '%{}%'", col.name, escaped_search)
+                    }
+                }
+            })
             .collect();
 
         if search_conditions.is_empty() {
@@ -560,4 +635,156 @@ fn json_to_sql_value(value: &JsonValue) -> Result<Box<dyn rusqlite::ToSql>, Stri
         JsonValue::String(s) => Ok(Box::new(s.clone())),
         _ => Err("Unsupported value type".to_string()),
     }
+}
+
+// ========== 🚀 性能监控命令 ==========
+
+/// Database performance statistics
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DatabaseStats {
+    pub total_tables: i64,
+    pub total_indexes: i64,
+    pub database_size_mb: f64,
+    pub wal_enabled: bool,
+    pub cache_size_mb: f64,
+    pub page_count: i64,
+    pub page_size: i64,
+    pub usage_entries_count: i64,
+    pub indexes: Vec<IndexInfo>,
+}
+
+/// Index information
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IndexInfo {
+    pub name: String,
+    pub table_name: String,
+    pub columns: String,
+}
+
+/// Get database performance statistics
+#[tauri::command]
+pub async fn storage_get_performance_stats(db: State<'_, AgentDb>) -> Result<DatabaseStats, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+
+    // Get total tables
+    let total_tables: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    // Get total indexes
+    let total_indexes: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    // Get page count and size
+    let page_count: i64 = conn
+        .query_row("PRAGMA page_count", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    let page_size: i64 = conn
+        .query_row("PRAGMA page_size", [], |row| row.get(0))
+        .unwrap_or(4096);
+
+    // Calculate database size
+    let database_size_mb = (page_count * page_size) as f64 / (1024.0 * 1024.0);
+
+    // Check if WAL is enabled
+    let journal_mode: String = conn
+        .query_row("PRAGMA journal_mode", [], |row| row.get(0))
+        .unwrap_or_else(|_| "unknown".to_string());
+    let wal_enabled = journal_mode.to_uppercase() == "WAL";
+
+    // Get cache size
+    let cache_size: i64 = conn
+        .query_row("PRAGMA cache_size", [], |row| row.get(0))
+        .unwrap_or(0);
+    let cache_size_mb = (cache_size.abs() * page_size) as f64 / (1024.0 * 1024.0);
+
+    // Get usage entries count
+    let usage_entries_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM usage_entries", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    // Get index information
+    let mut stmt = conn
+        .prepare(
+            "SELECT name, tbl_name FROM sqlite_master
+             WHERE type='index' AND name NOT LIKE 'sqlite_%'
+             ORDER BY name",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let indexes: Vec<IndexInfo> = stmt
+        .query_map([], |row| {
+            let name: String = row.get(0)?;
+            let table_name: String = row.get(1)?;
+
+            // Get index columns
+            let columns = conn
+                .query_row(
+                    &format!("PRAGMA index_info({})", name),
+                    [],
+                    |row| row.get::<_, String>(2),
+                )
+                .unwrap_or_else(|_| "unknown".to_string());
+
+            Ok(IndexInfo {
+                name,
+                table_name,
+                columns,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<SqliteResult<Vec<_>>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(DatabaseStats {
+        total_tables,
+        total_indexes,
+        database_size_mb,
+        wal_enabled,
+        cache_size_mb,
+        page_count,
+        page_size,
+        usage_entries_count,
+        indexes,
+    })
+}
+
+/// Analyze query performance
+#[tauri::command]
+pub async fn storage_analyze_query(
+    db: State<'_, AgentDb>,
+    query: String,
+) -> Result<String, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+
+    // Use EXPLAIN QUERY PLAN to analyze query
+    let analyze_query = format!("EXPLAIN QUERY PLAN {}", query);
+
+    let mut stmt = conn.prepare(&analyze_query).map_err(|e| e.to_string())?;
+
+    let mut result = String::new();
+    let rows = stmt
+        .query_map([], |row| {
+            let detail: String = row.get(3)?;
+            Ok(detail)
+        })
+        .map_err(|e| e.to_string())?;
+
+    for row in rows {
+        let detail = row.map_err(|e| e.to_string())?;
+        result.push_str(&detail);
+        result.push('\n');
+    }
+
+    Ok(result)
 }

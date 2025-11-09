@@ -40,7 +40,8 @@ use commands::provider::{
 };
 use commands::simple_git::check_and_init_git;
 use commands::storage::{
-    storage_delete_row, storage_execute_sql, storage_insert_row, storage_list_tables,
+    storage_analyze_query, storage_delete_row, storage_execute_sql,
+    storage_get_performance_stats, storage_insert_row, storage_list_tables,
     storage_read_table, storage_reset_database, storage_update_row,
 };
 use commands::translator::{
@@ -195,6 +196,8 @@ fn main() {
             storage_insert_row,
             storage_execute_sql,
             storage_reset_database,
+            storage_get_performance_stats,
+            storage_analyze_query,
             // Slash Commands
             commands::slash_commands::slash_commands_list,
             commands::slash_commands::slash_command_get,
