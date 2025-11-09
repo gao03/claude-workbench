@@ -110,16 +110,22 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
 
       // Get today's date range
       const today = new Date();
-      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      // 🚀 修复时区问题：使用本地日期格式而不是 ISO 字符串
+      const formatLocalDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
 
       let statsData: UsageStats;
       let sessionData: ProjectUsage[] = [];
-      
+
       if (selectedDateRange === "today") {
-        // Today only
+        // Today only - 使用本地日期字符串避免时区问题
+        const todayDateStr = formatLocalDate(today);
         const [statsResult, sessionResult] = await Promise.all([
-          api.getUsageByDateRange(todayStart.toISOString(), todayEnd.toISOString()),
+          api.getUsageByDateRange(todayDateStr, todayDateStr),
           api.getSessionStats()
         ]);
         statsData = statsResult;
@@ -137,23 +143,24 @@ export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onBack }) => {
         const startDate = new Date();
         const days = selectedDateRange === "7d" ? 7 : 30;
         startDate.setDate(startDate.getDate() - days);
-        
-        const formatDateForApi = (date: Date) => {
+
+        // 🚀 修复时区问题：统一使用本地日期格式
+        const formatDateForSessionApi = (date: Date) => {
           const year = date.getFullYear();
           const month = String(date.getMonth() + 1).padStart(2, '0');
           const day = String(date.getDate()).padStart(2, '0');
           return `${year}${month}${day}`;
-        }
+        };
 
         // Fetch all data in parallel for better performance
         const [statsResult, sessionResult] = await Promise.all([
           api.getUsageByDateRange(
-            startDate.toISOString(),
-            endDate.toISOString()
+            formatLocalDate(startDate),
+            formatLocalDate(endDate)
           ),
           api.getSessionStats(
-            formatDateForApi(startDate),
-            formatDateForApi(endDate),
+            formatDateForSessionApi(startDate),
+            formatDateForSessionApi(endDate),
             'desc'
           )
         ]);

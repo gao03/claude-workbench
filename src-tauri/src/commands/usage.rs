@@ -386,12 +386,18 @@ pub fn get_usage_stats(days: Option<u32>) -> Result<UsageStats, String> {
         model_stat.session_count += 1;
 
         // Update daily stats
-        let date = entry
-            .timestamp
-            .split('T')
-            .next()
-            .unwrap_or(&entry.timestamp)
-            .to_string();
+        // 🚀 修复时区问题：使用本地日期而不是 UTC 日期
+        let date = if let Ok(dt) = DateTime::parse_from_rfc3339(&entry.timestamp) {
+            // 转换为本地时间后提取日期
+            dt.with_timezone(&Local).format("%Y-%m-%d").to_string()
+        } else {
+            // 降级：直接从字符串提取（可能不准确）
+            entry.timestamp
+                .split('T')
+                .next()
+                .unwrap_or(&entry.timestamp)
+                .to_string()
+        };
         let daily_stat = daily_stats.entry(date.clone()).or_insert(DailyUsage {
             date,
             total_cost: 0.0,
@@ -554,12 +560,18 @@ pub fn get_usage_by_date_range(start_date: String, end_date: String) -> Result<U
         model_stat.session_count += 1;
 
         // Update daily stats
-        let date = entry
-            .timestamp
-            .split('T')
-            .next()
-            .unwrap_or(&entry.timestamp)
-            .to_string();
+        // 🚀 修复时区问题：使用本地日期而不是 UTC 日期
+        let date = if let Ok(dt) = DateTime::parse_from_rfc3339(&entry.timestamp) {
+            // 转换为本地时间后提取日期
+            dt.with_timezone(&Local).format("%Y-%m-%d").to_string()
+        } else {
+            // 降级：直接从字符串提取（可能不准确）
+            entry.timestamp
+                .split('T')
+                .next()
+                .unwrap_or(&entry.timestamp)
+                .to_string()
+        };
         let daily_stat = daily_stats.entry(date.clone()).or_insert(DailyUsage {
             date,
             total_cost: 0.0,

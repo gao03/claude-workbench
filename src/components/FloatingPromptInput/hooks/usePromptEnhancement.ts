@@ -13,6 +13,46 @@ export interface UsePromptEnhancementOptions {
   expandedTextareaRef: React.RefObject<HTMLTextAreaElement>;
 }
 
+/**
+ * 以可撤销的方式更新 textarea 内容
+ * 使用 document.execCommand 确保操作可以被 Ctrl+Z 撤销
+ */
+function updateTextareaWithUndo(textarea: HTMLTextAreaElement, newText: string) {
+  // 保存当前焦点状态
+  const hadFocus = document.activeElement === textarea;
+
+  // 确保 textarea 获得焦点（execCommand 需要）
+  if (!hadFocus) {
+    textarea.focus();
+  }
+
+  // 选中全部文本
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  // 使用 execCommand 插入新文本（这会创建一个可撤销的历史记录）
+  // 注意：execCommand 已被标记为废弃，但目前仍是唯一支持 undo 的方法
+  const success = document.execCommand('insertText', false, newText);
+
+  if (!success) {
+    // 如果 execCommand 失败（某些浏览器可能不支持），使用备用方案
+    // 虽然这不会创建 undo 历史，但至少能正常工作
+    textarea.value = newText;
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // 将光标移到末尾
+  textarea.setSelectionRange(newText.length, newText.length);
+
+  // 触发 input 事件以更新 React 状态
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // 恢复焦点状态
+  if (hadFocus) {
+    textarea.focus();
+  }
+}
+
 export function usePromptEnhancement({
   prompt,
   selectedModel,
@@ -48,13 +88,16 @@ export function usePromptEnhancement({
       console.log('[handleEnhancePrompt] Enhancement result:', result);
       
       if (result && result.trim()) {
-        onPromptChange(result.trim());
-        
-        // Focus the textarea
+        // 使用可撤销的方式更新文本
         const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
-        target?.focus();
+        if (target) {
+          updateTextareaWithUndo(target, result.trim());
+        }
       } else {
-        onPromptChange(trimmedPrompt + '\n\n⚠️ 增强功能返回空结果，请重试');
+        const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+        if (target) {
+          updateTextareaWithUndo(target, trimmedPrompt + '\n\n⚠️ 增强功能返回空结果，请重试');
+        }
       }
     } catch (error) {
       console.error('[handleEnhancePrompt] Failed to enhance prompt:', error);
@@ -69,7 +112,10 @@ export function usePromptEnhancement({
       }
       
       console.log('[handleEnhancePrompt] Error message to display:', errorMessage);
-      onPromptChange(trimmedPrompt + `\n\n❌ ${errorMessage}`);
+      const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+      if (target) {
+        updateTextareaWithUndo(target, trimmedPrompt + `\n\n❌ ${errorMessage}`);
+      }
     } finally {
       setIsEnhancing(false);
     }
@@ -92,12 +138,16 @@ export function usePromptEnhancement({
       const result = await api.enhancePromptWithGemini(trimmedPrompt, context);
       
       if (result && result.trim()) {
-        onPromptChange(result.trim());
-        
+        // 使用可撤销的方式更新文本
         const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
-        target?.focus();
+        if (target) {
+          updateTextareaWithUndo(target, result.trim());
+        }
       } else {
-        onPromptChange(trimmedPrompt + '\n\n⚠️ Gemini优化功能返回空结果，请重试');
+        const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+        if (target) {
+          updateTextareaWithUndo(target, trimmedPrompt + '\n\n⚠️ Gemini优化功能返回空结果，请重试');
+        }
       }
     } catch (error) {
       console.error('[handleEnhancePromptWithGemini] Failed:', error);
@@ -109,7 +159,10 @@ export function usePromptEnhancement({
         errorMessage = error;
       }
       
-      onPromptChange(trimmedPrompt + '\n\n❌ Gemini: ' + errorMessage);
+      const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+      if (target) {
+        updateTextareaWithUndo(target, trimmedPrompt + '\n\n❌ Gemini: ' + errorMessage);
+      }
     } finally {
       setIsEnhancing(false);
     }
@@ -144,12 +197,16 @@ export function usePromptEnhancement({
       const result = await callEnhancementAPI(provider, trimmedPrompt, context);
       
       if (result && result.trim()) {
-        onPromptChange(result.trim());
-        
+        // 使用可撤销的方式更新文本
         const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
-        target?.focus();
+        if (target) {
+          updateTextareaWithUndo(target, result.trim());
+        }
       } else {
-        onPromptChange(trimmedPrompt + '\n\n⚠️ API返回空结果，请重试');
+        const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+        if (target) {
+          updateTextareaWithUndo(target, trimmedPrompt + '\n\n⚠️ API返回空结果，请重试');
+        }
       }
     } catch (error) {
       console.error('[handleEnhancePromptWithAPI] Failed:', error);
@@ -161,7 +218,10 @@ export function usePromptEnhancement({
         errorMessage = error;
       }
       
-      onPromptChange(trimmedPrompt + `\n\n❌ ${provider.name}: ${errorMessage}`);
+      const target = isExpanded ? expandedTextareaRef.current : textareaRef.current;
+      if (target) {
+        updateTextareaWithUndo(target, trimmedPrompt + `\n\n❌ ${provider.name}: ${errorMessage}`);
+      }
     } finally {
       setIsEnhancing(false);
     }
