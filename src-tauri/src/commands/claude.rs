@@ -3591,3 +3591,29 @@ pub async fn validate_permission_config(
     Ok(validation_result)
 }
 
+/// 列出所有可用的 Claude 安装
+#[tauri::command]
+pub async fn list_claude_installations() -> Result<Vec<crate::claude_binary::ClaudeInstallation>, String> {
+    log::info!("Listing all available Claude installations");
+
+    // 使用现有的发现逻辑来获取所有安装
+    let installations = crate::claude_binary::discover_claude_installations();
+
+    log::info!("Found {} Claude installation(s)", installations.len());
+    for installation in &installations {
+        log::info!("  - {} ({}): {:?}",
+            installation.path,
+            installation.source,
+            installation.version
+        );
+    }
+
+    Ok(installations)
+}
+
+/// Get current Claude binary path (alias for get_claude_path for frontend compatibility)
+#[tauri::command]
+pub async fn get_claude_binary_path(app: AppHandle) -> Result<String, String> {
+    log::info!("Getting current Claude binary path (alias for get_claude_path)");
+    get_claude_path(app).await
+}
