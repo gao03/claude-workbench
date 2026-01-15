@@ -7,6 +7,26 @@ on:
   pull_request:
     branches: [ main, develop ]
     types: [opened, synchronize, reopened]
+  workflow_dispatch:  # 添加这行启用手动触发
+    inputs:
+      platform:
+        description: '选择构建平台'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - linux
+        - windows
+        - macos
+      build_type:
+        description: '构建类型'
+        required: false
+        default: 'release'
+        type: choice
+        options:
+        - release
+        - debug
 
 # Cancel in-progress workflows when a new commit is pushed
 concurrency:
